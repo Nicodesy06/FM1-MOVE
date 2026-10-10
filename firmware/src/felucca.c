@@ -48,12 +48,22 @@
 #if FELUCCA_UART
 #include "midi_uart.c"
 #endif
+#if FM1MOVE
+#define FELUCCA_ARRANGER 0       /* FM1 Move: SLOOP's song sections give way to clips and scenes (M3) */
+#else
 #define FELUCCA_ARRANGER 1
 #include "arranger.c"
+#endif
 #include "seq.c"
 #include "audio.c"
 #include "panel.c"
 #include "ui.c"
+#if FM1MOVE
+#include "ds.c"              /* FM1 Move design system: tokens, Inter fonts, primitives, the band renderer */
+#include "ui_move.c"         /* the ten screens, from one view model */
+#include "ui_layers.c"       /* SLOOP's layers' key and knob logic (its drawing is left out) */
+#include "ui_move_ctl.c"     /* the panel as FM1 Move maps it, the live view model */
+#else
 #include "ui_song.c"
 #include "ui_studio.c"
 #include "icons.c"           /* parameter icons (FELUCCA_ICONS), used by ui_draw.c */
@@ -62,6 +72,7 @@
 #include "ui_layers.c"       /* hold a function button: what the keys and knobs do (TE style) */
 #include "ui_menu.c"
 #include "ui_input.c"
+#endif
 #ifndef FELUCCA_FLASH
 #define FELUCCA_FLASH 1          /* flash driver + storage.c */
 #endif
@@ -180,8 +191,13 @@ static void ota_commit(const uint8_t *parm)
     fm1_enter_update(parm);                             /* record into RAM, core reset (fm1_sys.h) */
 }
 #endif
-#if FELUCCA_OTA
+#ifndef FELUCCA_EDITOR
+#define FELUCCA_EDITOR (!FM1MOVE)   /* SLOOP's web editor speaks four tracks: not in FM1 Move (yet) */
+#endif
+#if FELUCCA_OTA && FELUCCA_EDITOR
 #include "editor.c"          /* web editor SysEx (needs the OTA SysEx plumbing) */
+#elif FELUCCA_OTA
+static void ed_service(void) {}
 #endif
 #if FELUCCA_CDC
 #include "console.c"
@@ -189,5 +205,7 @@ static void ota_commit(const uint8_t *parm)
 #if FELUCCA_OTA
 #include "recovery.c"        /* early, polled USB updater; no synth or settings */
 #endif
+#if !FM1MOVE
 #include "splash.c"          /* SLOOP boot logo (build/gen/sloop_logo.h) */
+#endif
 #include "main.c"

@@ -392,6 +392,7 @@ static void sc_seq(void)
 static void sc_groove(void)
 {
     static const char *const GL[4] = {"SWING", "QUANTIZE", "GROOVE", "HUMANIZE"};
+    static const char *const GS[4] = {"SWING", "QUANT", "GROOVE", "HUMAN"};   /* (the side column) */
     const uint8_t gv[4] = {mv.swing, mv.quant, mv.gamount, mv.human};
     char b[8];
     uint32_t i, f = mv.gfocus & 3u;
@@ -411,7 +412,7 @@ static void sc_groove(void)
     for (i = 1; i < 4u; i++) {
         uint32_t k = (f + i) & 3u;
         int32_t y = 50 + (int32_t)(i - 1u) * 25;
-        ds_label(144, y + 9, 60, GL[k], DS_TEXT3);
+        ds_label(144, y + 9, 54, GS[k], DS_TEXT3);
         ds_cat(ds_itoa(b, gv[k]), "%");
         ds_text_in(&DS_F12, 144, y + 9, 88, DS_R, b, DS_TEXT1);
         ds_gauge(144, y + 14, 88, 2, gv[k] * 10, 0, DS_TEXT2, DS_SURF2);
@@ -586,10 +587,11 @@ static void sc_settings(void) { mv_title(0); mv_list(0); }
 /* a destructive action: what it does, which button confirms (the same one again), anything else cancels */
 static void mv_modal(void)
 {
+    ds_rect(0, Y_TITLE - 12, DS_W, Y_KNOBS - Y_TITLE + 12, DS_BG);   /* the body gives way: the question alone */
     ds_rrect(14, 52, 212, 120, 6, DS_SURF1);
     ds_rframe(14, 52, 212, 120, 6, 1, DS_LINE, DS_SURF1);
     ds_rect(14 + 6, 52, 200, 3, DS_REC);
-    ds_text_in(&DS_F22, 14, 92, 212, DS_C, mv.modal_t, DS_TEXT1);
+    ds_text_in(ds_fit(mv.modal_t, 196, &DS_F22, &DS_F16), 14, 92, 212, DS_C, mv.modal_t, DS_TEXT1);
     ds_text_in(&DS_F12, 14, 114, 212, DS_C, mv.modal_b, DS_TEXT2);
     ds_chip(26, 134, 92, 24, DS_REC, DS_BG, &DS_F12, mv.modal_ok);
     ds_chip_line(122, 134, 92, 24, DS_TEXT2, DS_SURF1, &DS_F12, "ELSE CANCEL");
@@ -608,7 +610,7 @@ static void (*const SCENES[SC_COUNT])(void) = {sc_play, sc_tracks, sc_seq, sc_gr
 static void mv_scene(void)
 {
     mv_status();
-    if (mv.hot >= 0 && !mv.modal) {
+    if (mv.hot >= 0 && !mv.modal && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
         mv_title(0);
         mv_focus();
     } else {
@@ -622,4 +624,4 @@ static void mv_scene(void)
 }
 
 /* draw the screen: only rows that changed reach the panel */
-static void mv_render(int force) { ds_render(mv_scene, ds_hash(2166136261u, &mv, sizeof mv) | 1u, force); }
+static void mv_render(int force) { ds_paint(mv_scene, ds_hash(2166136261u, &mv, sizeof mv) | 1u, force); }

@@ -4,10 +4,15 @@ The specification of the FM1 Move interface for the FM-1's 1.54" 240 × 240 IPS 
 `firmware/src/ds.c` (tokens, type, primitives, components, band renderer) and `firmware/src/ui_move.c` (screens).
 Every image in `docs/ui/mockups/` is rendered **by that firmware code** on the host (§10), at native resolution.
 
-Status: design system and the ten screens implemented and rendered on the host from demo data; the adapter to live
-firmware state and the switch from SLOOP's UI are next (§11). **Not yet seen on a real panel.**
+Status: design system, ten screens, live adapter and controls are **in the FM1MOVE firmware** (it builds and links:
+518 836 B image) and run on a host "virtual FM1" (`tests/fm1move_ui_test.c`). **Not yet seen on a real panel.**
 
 ![All screens](ui/mockups/contact_sheet.png)
+
+Live screens — the FM1MOVE firmware's controller and engine on the virtual FM1, driven like a user
+(`docs/ui/live/`):
+
+![Live screens](ui/live/contact_sheet.png)
 
 ## 1. Principles
 
@@ -192,7 +197,8 @@ python3 tools/gen_dsfont.py OUT.h --preview fonts.png
 | Tokens, type, primitives, components, band renderer | done (host) |
 | Ten screens + modal + toast from a view model | done (host, demo data) |
 | Contrast and label-fit checks | done (automatic) |
-| Live adapter (track/song state → view model) | next, with M1 (eight tracks) |
-| Replace SLOOP's drawing code on the device (build switch), measure flash / frame time | next |
-| Navigation on the real controls | after the switch — host input simulation first, then hardware [TEST-HW] |
+| Live adapter (track/song state → view model) | done (`ui_move_ctl.c mv_fill`) |
+| Replace SLOOP's drawing code on the device (`FM1MOVE=1`), measure flash | done: image 518 836 B (−49 KB vs SLOOP), canvas 240 × 60 (−30 KB pool) |
+| Navigation on simulated controls | done: `tests/fm1move_ui_test.c` (36 checks + 12 000-frame fuzz, ASan) |
+| Navigation on the real controls, frame time on the device | [TEST-HW] |
 | Readability on the real panel | [TEST-HW] |

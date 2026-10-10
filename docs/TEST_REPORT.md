@@ -52,3 +52,23 @@ hat choke per drum track; solo track 8 / mute track 7 by bit; eight protected le
 (this check **fails on SLOOP's voice.c**, passes with the new last-resort steal); kind change leaves no voice; STOP
 frees everything within 2 s. Host time per 32-sample block: 8 tracks ≈ 10 µs vs ≈ 3 µs for the first four (the
 heavy engines are on tracks 5–8). Device cost: [TEST-HW].
+
+### FM1MOVE firmware build + virtual FM1 (2026-10-10)
+
+Build `FM1MOVE=1`: OK — image **518 836 B** (app slot 581 564 B: 62 KB free), RAM 92 560 / 98 304 B, pool
+322 812 / 344 064 B (21 KB free, 8 KB kept spare). SLOOP layout build: OK, 567 872 B.
+
+New host groups (all pass, each also under ASan + UBSan):
+
+| Test | Checks |
+| --- | --- |
+| `groove_test` | 26 — pipeline arithmetic, measured firing times, wrap, 64-bar drift, pads, commit/undo |
+| `projfmt_test` | 15 — round trip, capacity, power loss at every write, damage, heavy-engine limit |
+| `fm1move_ui_test` (virtual FM1) | 36 + a 12 000-frame random-input fuzz: navigation, layers, knobs, groove, confirmations, projects |
+
+Bugs the virtual FM1 found and fixed before any device run: a null-pointer dereference when a knob with no function
+was turned (would have been a fault on the device); encoders moving one step per frame instead of one per detent; a
+cancelled kind change leaving a stale request.
+
+Golden renders: 182 unchanged. Known baseline failure unchanged (`fm1_alnk0_irq` static cost).
+**No FM1 Move build has run on a physical FM-1.**

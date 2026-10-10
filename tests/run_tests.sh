@@ -109,6 +109,15 @@ if $ASAN -o "$OUT/projfmt_asan" tests/projfmt_test.c -lm 2>/dev/null; then
     run "FM1 Move projects under ASan + UBSan" "$OUT/projfmt_asan"
 fi
 
+# FM1 Move on a virtual FM1: the real controls, layers, screens and engine (FM1MOVE=1), driven like a user, and a fuzz
+mkdir -p "$OUT/fm1ui"
+$CC -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/fm1move_ui_test" tests/fm1move_ui_test.c -lm
+run "FM1 Move UI on a virtual FM1: navigation, layers, knobs, groove, confirmations, projects, 12000-frame fuzz" \
+    "$OUT/fm1move_ui_test" "$OUT/fm1ui"
+if $ASAN -o "$OUT/fm1move_ui_asan" tests/fm1move_ui_test.c -lm 2>/dev/null; then
+    run "FM1 Move UI on a virtual FM1 under ASan + UBSan" "$OUT/fm1move_ui_asan" "$OUT/fm1ui"
+fi
+
 # FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
 python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
 $CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c

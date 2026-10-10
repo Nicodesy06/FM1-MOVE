@@ -248,7 +248,12 @@ static void go_home(void)
  * writes the sequencer: every pattern is the one the player records or enters. */
 
 /* the parts' sounds at power-on (engine, preset): bass, pad, lead */
+#if FM1MOVE
+/* FM1 Move's new project (ui_move_ctl.c project_default_tracks): the engine and preset of each synth track */
+static const uint8_t TRK_DEF[NTRK][2] = {{0, 0}, {0, 7}, {1, 0}, {6, 0}, {6, 5}, {3, 2}, {0, 0}, {4, 0}};
+#else
 static const uint8_t TRK_DEF[NTRK][2] = {{0, 0}, {1, 0}, {4, 5}};   /* ANALOG 808 BOOM, DIGITAL RHODES, SAMPLE LOFI FLUTE */
+#endif   /* ANALOG 808 BOOM, DIGITAL RHODES, SAMPLE LOFI FLUTE */
 static uint32_t trk_def_engine(uint32_t i) { return i < NTRK && is_synth(&trk[i]) ? TRK_DEF[i][0] : 0u; }
 
 static int seq_is_empty(const track_t *t) { return track_empty(t); }

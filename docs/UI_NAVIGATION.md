@@ -55,10 +55,10 @@ always say where you are.
 | select a track | SELECT one detent, or SEL + key |
 | mute / solo | GLO held + key |
 | change swing | ARP (GROOVE) → KNOB 1 |
-| change pattern / clip | SAVE held + key 1–8 (launch scene, quantised) |
+| change pattern / clip | SAVE held + key 1–8 (launch scene, quantised — M3, not yet implemented) |
 | record | REC (armed) → PLAY |
-| capture what you just played | REC + PLAY together |
-| duplicate a clip | CLIPS: EDIT + key of the target slot |
+| capture what you just played | REC + PLAY together (M3, not yet implemented) |
+| duplicate a clip | CLIPS: EDIT + key of the target slot (M3, not yet implemented) |
 | apply an effect | FX held + key |
 | change the sound | PRESETS, or KNOB 1–4 on PLAY (macros) |
 

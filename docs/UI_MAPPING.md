@@ -2,8 +2,9 @@
 
 Physical controls only (`HARDWARE_AUDIT.md` §5). K1–K4 = KNOB 1–4. Keys: the 16 white keys are numbered 1–16 left to
 right; black keys follow the mode. "Held" = button held while touching keys/knobs (a layer).
-Status: **design** — the mapping is implemented in SLOOP's input code for the SLOOP screens; wiring it to the new
-screens is the next UI step (`UI_DESIGN_SYSTEM.md` §11).
+Status: **implemented** in `firmware/src/ui_move_ctl.c` (FM1MOVE build) and exercised on the virtual FM1
+(`tests/fm1move_ui_test.c`); not yet on hardware. Not yet wired: SAVE + keys scenes and CLIPS (M3), MIDI-out track
+kind, capture (REC + PLAY).
 
 ## Global
 
@@ -37,7 +38,7 @@ screens is the next UI step (`UI_DESIGN_SYSTEM.md` §11).
 | SOUND · ENV | play | — | ATTACK | DECAY | SUSTAIN | RELEASE |
 | SOUND · LFO | play | — | RATE | WAVE | DEPTH | DESTINATION |
 | PERFORM | play | — | DJ FILTER | DUST | DUCK | TRACK FILTER |
-| PROJECT | — | slot | — | — | — | — (buttons: SAVE save, PLAY load, EDIT copy, REC delete) |
+| PROJECT | — | slot | — | — | — | — (buttons: SAVE save, EDIT load, REC delete; each asks when it would lose data) |
 | SETTINGS | — | row | VALUE | — | — | — |
 
 Encoders have no push switch: nothing in FM1 Move needs a click. Confirmation is "same button again".

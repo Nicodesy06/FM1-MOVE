@@ -18,6 +18,10 @@
  *
  * Built on the host too (tests/project_test.c, -DPROJ_HOST): the part above the #ifndef
  * PROJ_HOST needs core.h, params.c (TP), drums.c (the lanes), the engines and trk_def_engine (ui.c). */
+/* SLOOP's formats hold four tracks, the drum track fourth: fixed here whatever NTRK is (FM1 Move imports them
+ * into tracks 1..4 and stores its own projects as FM1M, projfmt.c) */
+#define PROJ_NTRK 4u
+#define PROJ_DRUM 3u
 #define PROJ_MAGIC 0x46554E35u                 /* "FUN5": format 4 + per-step nudge, parameter locks, fill conditions (SLOOP 2.4) */
 #define PROJ_MAGIC_V4 0x46554E34u              /* "FUN4": four tracks, P_COUNT parameters each, 10-byte steps; read only */
 #define PROJ_MAGIC_V3 0x46554E33u              /* "FUN3": SLOOP 1.x; read only */
@@ -47,7 +51,7 @@ typedef struct {
     uint32_t magic, size;
     int16_t g[PROJ_NG];
     uint8_t sel, drdly, rsv[2];                /* the selected track; 2.5: G_DRDLY */
-    proj_trk_t t[NTRK];
+    proj_trk_t t[PROJ_NTRK];
     uint32_t sum;
 } project_t;
 typedef struct {                               /* a track of format 4 (SLOOP 2.0 .. 2.3), read only */
@@ -62,7 +66,7 @@ typedef struct {                               /* format 4, read only */
     uint32_t magic, size;
     int16_t g[PROJ_NG];
     uint8_t sel, rsv[3];
-    proj_trk_v4_t t[NTRK];
+    proj_trk_v4_t t[PROJ_NTRK];
     uint32_t sum;
 } project_v4_t;
 typedef struct { uint8_t note[4], n, time, flags, vel; } step8_t;   /* the steps of formats 1..3 */
@@ -75,7 +79,7 @@ typedef struct {                               /* format 3 (SLOOP 1.x), read onl
     uint32_t magic, size;
     int16_t g[PROJ_NG_V3];
     uint8_t sel, rsv[3];
-    proj_trk_v3_t t[NTRK];
+    proj_trk_v3_t t[PROJ_NTRK];
     uint32_t sum;
 } project_v3_t;
 typedef struct {                               /* a track of formats 1 and 2, read only */
@@ -87,7 +91,7 @@ typedef struct {                               /* format 2 (until 0.9), read onl
     uint32_t magic, size;
     int16_t g[PROJ_NG_V2];
     uint8_t sel, rsv[3];
-    proj_trk_v2_t t[NTRK];
+    proj_trk_v2_t t[PROJ_NTRK];
     uint32_t sum;
 } project_v2_t;
 typedef struct {                               /* format 1 (until 0.5 beta), read only */
@@ -99,7 +103,9 @@ typedef struct {                               /* format 1 (until 0.5 beta), rea
 _Static_assert(sizeof(project_v2_t) == 2552u && sizeof(project_v1_t) == 688u && sizeof(project_v3_t) == 2584u &&
                sizeof(project_v4_t) == 3112u, "formats 1 / 2 / 3 / 4 as they were stored");
 _Static_assert(sizeof(project_t) <= 3840u, "format 5 fits one flash object (storage.c ST_PAYLOAD_MAX)");
+#if !FM1MOVE
 project_t proj_slot[4] __attribute__((section(".noinit")));
+#endif
 
 static uint32_t proj_hash(const void *p, uint32_t n)   /* FNV-1a over n bytes */
 {
@@ -203,7 +209,7 @@ static int proj_from_v4(project_t *q, const project_v4_t *v4, int n)
     q->size = sizeof *q;
     memcpy(q->g, v4->g, sizeof q->g);
     q->sel = v4->sel;
-    for (i = 0; i < NTRK; i++) {
+    for (i = 0; i < PROJ_NTRK; i++) {
         uint32_t k;
         for (k = 0; k < P_E0; k++)                     /* by id up to P_CHORD, the parameters added since: */
             q->t[i].p[k] = k < PROJ_NP_V4 - 8u ? v4->t[i].p[k] : TP[k].def;   /* their defaults; P_E0.. moved */
@@ -227,8 +233,8 @@ static void proj_from_v3_ok(project_t *q, const project_v3_t *v3)
     q->size = sizeof *q;
     proj_g_from_old(q->g, v3->g);
     q->sel = v3->sel;
-    for (i = 0; i < NTRK; i++)
-        proj_trk_from_v3(&q->t[i], &v3->t[i], i == TRK_DRUM);
+    for (i = 0; i < PROJ_NTRK; i++)
+        proj_trk_from_v3(&q->t[i], &v3->t[i], i == PROJ_DRUM);
     q->sum = proj_sum(q);
 }
 static int proj_from_v3(project_t *q, const project_v3_t *v3, int n)
@@ -252,8 +258,8 @@ static int proj_from_v2(project_t *q, const project_v2_t *v2, int n)
     memset(v3, 0, sizeof *v3);
     memcpy(v3->g, v2->g, sizeof v3->g);
     v3->sel = v2->sel;
-    for (i = 0; i < NTRK; i++)
-        proj_trk_v2_to_v3(&v3->t[i], &v2->t[i], i == TRK_DRUM);
+    for (i = 0; i < PROJ_NTRK; i++)
+        proj_trk_v2_to_v3(&v3->t[i], &v2->t[i], i == PROJ_DRUM);
     proj_from_v3_ok(q, v3);
     return 1;
 }
@@ -271,14 +277,14 @@ static int proj_from_v1(project_t *q, const project_v1_t *v1, int n)
     memcpy(v3->g, v1->g, sizeof v3->g);
     proj_trk_v2_to_v3(&v3->t[0], &v1->t, 0);
     proj_from_v3_ok(q, v3);
-    for (i = 1; i < NTRK; i++) {               /* the other tracks: their defaults, no steps */
+    for (i = 1; i < PROJ_NTRK; i++) {               /* the other tracks: their defaults, no steps */
         uint32_t k;
         for (k = 0; k < P_COUNT; k++)
             q->t[i].p[k] = k >= P_E0 ? ENGINES[trk_def_engine(i)]->edit[k - P_E0].def : TP[k].def;
         q->t[i].engine = (uint8_t)trk_def_engine(i);
         q->t[i].preset = 0xFF;                 /* 0xFF: its default preset (project_load) */
         memset(q->t[i].step, 0, sizeof q->t[i].step);
-        if (i != TRK_DRUM)
+        if (i != PROJ_DRUM)
             for (k = 0; k < NSTEP; k++)
                 q->t[i].step[k].time = ST_REST;
         proj_trk_plain(&q->t[i]);
@@ -309,7 +315,7 @@ static void proj_capture(project_t *p)        /* what is playing now, as a proje
         p->g[i] = song.g[i];
     p->sel = song.sel;
     p->drdly = (uint8_t)song.g[G_DRDLY];
-    for (i = 0; i < NTRK; i++) {
+    for (i = 0; i < PROJ_NTRK; i++) {
         memcpy(p->t[i].p, trk[i].p, sizeof trk[i].p);
         p->t[i].engine = trk[i].eng_req;
         p->t[i].preset = trk[i].preset;
@@ -327,19 +333,34 @@ static void proj_capture(project_t *p)        /* what is playing now, as a proje
 static void proj_apply(const project_t *p, int all)
 {
     uint32_t i, k;
+#if FM1MOVE
+    for (k = 0; k < NTRK; k++) {                         /* a SLOOP project: tracks 1..3 synths, 4 the drums, 5..8 empty */
+        trk_silence(&trk[k]);
+        trk[k].kind = (uint8_t)((k == PROJ_DRUM ? TK_DRUM : TK_SYNTH) + 1u);
+        memset(&trk[k].gv, 0, sizeof trk[k].gv);
+        memset(trk[k].pad_off, 0, sizeof trk[k].pad_off);
+        steps_clear(&trk[k]);
+    }
+    for (k = 0; k < N_ARENA; k++)
+        eng_arena_trk[k] = 0;
+#endif
     for (i = 0; i < PROJ_NG; i++)
         if (all ? i != G_SLOT && i != G_LOAD && i != G_SAVE && i != G_SYNC && i != G_MIDI && i != G_ROUTE : i == G_DRLVL || i == G_DRREV)
             song.g[i] = (int16_t)clamp(p->g[i], GP[i].min, GP[i].max);
     song.g[G_DRDLY] = (int16_t)clamp(p->drdly, GP[G_DRDLY].min, GP[G_DRDLY].max);   /* (a load and a section, as REV) */
-    for (k = 0; k < NTRK; k++) {
+    for (k = 0; k < PROJ_NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
-        uint32_t e = is_synth(t) ? s->engine % NENGINES : 0u;
+        uint32_t e = k != PROJ_DRUM ? s->engine % NENGINES : 0u;
+#if FM1MOVE
+        if (eng_heavy(e))
+            eng_arena_claim(t);                         /* (four tracks: the three arenas are enough) */
+#endif
         t->eng_req = (uint8_t)e;
         t->user = 0;                                    /* (no user preset slot is saved) */
         t->lk_n = 0;                                    /* (the locks in force: the values come from the project) */
         for (i = 0; i < P_COUNT; i++) {                 /* every value back inside its range */
-            const param_desc_t *d = k == TRK_DRUM && i == P_E0 ? &DRUM_KIT_DESC :   /* the drum kit */
+            const param_desc_t *d = k == PROJ_DRUM && i == P_E0 ? &DRUM_KIT_DESC :   /* the drum kit */
                                     i >= P_E0 && i <= P_E7 ? &ENGINES[e]->edit[i - P_E0] : &TP[i];
             t->p[i] = (int16_t)clamp(s->p[i], d->min, d->max);
         }
@@ -358,7 +379,7 @@ static void proj_apply(const project_t *p, int all)
             const plock_t *l = &s->lock[i];
             uint32_t id = l->param;
             if (l->step < NSTEP && id < P_COUNT && p_lockable(id)) {
-                const param_desc_t *d = k == TRK_DRUM && id == P_E0 ? &DRUM_KIT_DESC :
+                const param_desc_t *d = k == PROJ_DRUM && id == P_E0 ? &DRUM_KIT_DESC :
                                         id >= P_E0 && id <= P_E7 ? &ENGINES[e]->edit[id - P_E0] : &TP[id];
                 t->lock[i].step = l->step;
                 t->lock[i].param = (uint8_t)id;
@@ -369,7 +390,7 @@ static void proj_apply(const project_t *p, int all)
                 t->lock[i].val = 0;
             }
         }
-        if (k != TRK_DRUM)
+        if (k != PROJ_DRUM)
             for (i = 0; i < NSTEP; i++) {
                 step_t *st = &t->step[i];
                 uint32_t j;
@@ -398,6 +419,7 @@ static union {
     project_v2_t v2;
     project_v1_t v1;
 } proj_tmp;
+#if !FM1MOVE
 static void proj_fetch(uint32_t slot)
 {
     project_t *q = &proj_slot[slot & 3u];
@@ -405,8 +427,10 @@ static void proj_fetch(uint32_t slot)
     if (!proj_import(q, &proj_tmp, n))
         q->magic = 0;
 }
+#endif
 #include "fm6_bank.c"                           /* the FM6 patch bank (eng_fm6.c PTCH B1..B27): staged in proj_tmp */
 #endif
+#if !FM1MOVE
 
 static void project_save(uint32_t slot)
 {
@@ -434,7 +458,7 @@ static void project_apply(const project_t *p)
     proj_apply(p, 1);
     song.sel = (uint8_t)(p->sel < NTRK ? p->sel : 0u);
     fm1_irq_on();
-    for (k = 0; k < NTRK; k++)                          /* a format 1 project: the default sounds of tracks 2, 3 */
+    for (k = 0; k < PROJ_NTRK; k++)                     /* a format 1 project: the default sounds of tracks 2, 3 */
         if (is_synth(&trk[k]) && p->t[k].preset == 0xFFu) {
             apply_preset_to(&trk[k], TRK_DEF[k][1]);
             steps_clear(&trk[k]);
@@ -461,12 +485,15 @@ static void project_load(uint32_t slot)
     ui_message("LOADED");
 }
 
+#endif /* !FM1MOVE: SLOOP's project slots */
 /* ---- the working project, kept in flash by itself: saved when it changed, the transport is stopped,
  * nothing sounds and the panel was not touched for AUTOSAVE_IDLE (a flash erase stops the audio for
  * ~50 ms: never while something plays); loaded at power-on (autosave_resume) */
 #define AUTOSAVE_IDLE 2500u                    /* ms without input */
 #define AUTOSAVE_GAP 20000u                    /* ms between two saves at least */
+#if !FM1MOVE
 static project_t autosave_buf __attribute__((section(".pool")));
+#endif
 static uint32_t autosave_hash, autosave_ms, autosave_checked;
 
 static int audio_quiet(void)
@@ -482,6 +509,100 @@ static int audio_quiet(void)
     return 1;
 }
 
+#if FM1MOVE
+/* ---- FM1 Move: projects as FM1M streams (projfmt.c): slots 0..3, the autosave in slot 4 */
+#define FMP_AUTOSAVE 4u
+static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + (slot % FMP_SLOTS) * 2u + chunk % 2u; }
+#include "projfmt.c"
+/* SLOOP's USR4 sample slot lived where FM1M projects go: one found there is never written over unasked */
+static int fmp_region_has_sample(void)
+{
+    uint32_t m = 0;
+    return flash_ok && !st_read(SMP_USER4_BASE, &m, 4) && m == SMP_USER_MAGIC;
+}
+static int fmp_used(uint32_t slot)
+{
+    fmp_r_t r;
+    return flash_ok && !fmp_open(&r, slot);
+}
+static int project_save_fmp(uint32_t slot)
+{
+    if (!flash_ok)
+        return -1;
+    if (fmp_region_has_sample())
+        return -10;
+    return fmp_save(slot);
+}
+static int project_load_fmp(uint32_t slot)
+{
+    uint32_t refused = 0;
+    int rc;
+    if (song.playing || transport_req) {
+        ui_message("STOP BEFORE LOAD");
+        return -2;
+    }
+    panic_req = (1u << NTRK) - 1u;
+    rc = flash_ok ? fmp_load(slot, &refused) : -1;
+    if (!rc) {
+        autosave_hash = 0;
+        ui.force = 1;
+        if (refused)
+            ui_message("HEAVY ENGINES: 3 MAX");
+    }
+    return rc;
+}
+static void project_delete_fmp(uint32_t slot)
+{
+    uint32_t k, c;
+    if (!flash_ok || song.playing)
+        return;
+    for (k = 0; k < FMP_NCHUNK; k++)
+        for (c = 0; c < 2u; c++)
+            st_erase(st_sector(fmp_obj(slot, k), c));
+}
+static void autosave_tick(void)                /* main loop: the working project, when it changed and all is quiet */
+{
+    uint32_t h, now = fm1_ms;
+    if (!flash_ok || song.playing || transport_req || rec_wait || ft_on || ctl.menu ||
+        now - ui_input_ms < AUTOSAVE_IDLE || now - autosave_ms < AUTOSAVE_GAP || now - autosave_checked < 1000u)
+        return;
+    autosave_checked = now;
+    fmp_measure(&h);
+    if (h == autosave_hash || !audio_quiet() || fmp_region_has_sample())
+        return;
+    if (fmp_save(FMP_AUTOSAVE) == 0)
+        autosave_hash = h;
+    autosave_ms = fm1_ms;
+}
+static void autosave_resume(void)              /* power-on: the project as it was left, else SLOOP's, imported */
+{
+    project_t *q = (project_t *)&proj_tmp;
+    int n;
+    if (!flash_ok)
+        return;
+    if (fmp_load(FMP_AUTOSAVE, 0) == 0) {
+        fmp_measure(&autosave_hash);
+        return;
+    }
+    n = st_load(OBJ_AUTOSAVE, st_buf, ST_PAYLOAD_MAX);   /* SLOOP's working project (FUN1..FUN5): tracks 1..4 */
+    if (n <= 0 || n > (int)sizeof proj_tmp)
+        return;
+    memcpy(&proj_tmp, st_buf, (uint32_t)n);
+    {
+        project_t imp;                             /* (once, at power-on: on the stack) */
+        if (!proj_import(&imp, &proj_tmp, n))
+            return;
+        (void)q;
+        fm1_irq_off();
+        proj_apply(&imp, 1);
+        song.sel = (uint8_t)(imp.sel < PROJ_NTRK ? imp.sel : 0u);
+        for (n = 0; n < NTRK; n++)
+            if (is_synth(&trk[n]))
+                trk[n].engine = trk[n].eng_req;
+        fm1_irq_on();
+    }
+}
+#else
 static void autosave_tick(void)                /* main loop */
 {
 #if FELUCCA_FLASH
@@ -518,6 +639,7 @@ static void autosave_resume(void)              /* power-on: the project as it wa
             trk[n].engine = trk[n].eng_req;        /* (nothing sounds yet: no fade) */
 #endif
 }
+#endif /* FM1MOVE */
 
 /* settings + learned panel table: one flash object. The flash copy wins at
  * boot (the .noinit copies are garbage after a power-off). */
@@ -603,6 +725,7 @@ static void persist_boot(void)                    /* before settings_init / pane
                 panel = old;
         }
     }
+#if !FM1MOVE
     {   /* projects: fill empty RAM slots from flash, so the slot list is right after power-on. A slot
          * still valid in RAM (a warm reset: an update, UPDATE MODE, a crash) may never have reached
          * flash (a live section stored while playing): marked to be written when quiet */
@@ -616,13 +739,18 @@ static void persist_boot(void)                    /* before settings_init / pane
                     sec_dirty |= (uint8_t)(1u << i);
             }
     }
+#endif
     dsu_boot();                                    /* SLOOP 2.5: the SYN kits (after the settings) */
     up_boot();                                     /* user presets */
     fm6_bank_boot();                               /* the FM6 patch bank (fm6_bank.c) */
 #endif
 }
 
+#if FM1MOVE
+static int project_used(uint32_t slot) { return fmp_used(slot & 3u); }
+#else
 static int project_used(uint32_t slot) { return proj_ok(&proj_slot[slot & 3u]); }
+#endif
 
 #if FELUCCA_FLASH
 /* SLOOP 2.5: the settings object holds the SYN kits after persist_t (drum_synth.c dsu): firmware before 2.5 reads
@@ -738,6 +866,7 @@ static uint32_t settings_restore(const void *raw, uint32_t n)
 }
 
 /* slot 0..3 (n 0: empty), or 4: the working project (loaded now) */
+#if !FM1MOVE
 static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
 {
     if (song.playing || transport_req)
@@ -761,6 +890,7 @@ static uint32_t project_restore(uint32_t slot, const void *raw, uint32_t n)
     sec_dirty &= (uint8_t)~(1u << slot);
     return 0;
 }
+#endif
 #endif
 #if FELUCCA_ARRANGER
 static void arrangement_save(void)

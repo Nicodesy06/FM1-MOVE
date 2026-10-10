@@ -49,7 +49,7 @@ static const uint16_t DS_TRK[8] = {
 #define DS_W 240
 #define DS_H 240
 #ifndef DS_BAND
-#define DS_BAND 120                           /* rows per band (<= the canvas: 240 x 124) */
+#define DS_BAND 60                            /* rows per band (<= the canvas, gfx.c CV_MAX: 240 x 60) */
 #endif
 static int32_t ds_y0, ds_y1;                  /* the band being drawn: rows ds_y0 .. ds_y1 - 1 */
 static uint32_t ds_rowh[DS_H];                /* hash of each row as last sent */
@@ -300,6 +300,8 @@ static int32_t ds_cx1 = DS_W;                 /* glyphs that would end past this
 static int32_t ds_text_w(const ds_font_t *f, const char *s)
 {
     int32_t w = 0;
+    if (!s)
+        return 0;
     for (; *s; s++) {
         const ds_glyph_t *g = ds_glyph(f, (uint8_t)*s);
         if (g)
@@ -312,6 +314,8 @@ static int32_t ds_text_w(const ds_font_t *f, const char *s)
 static int32_t ds_text(const ds_font_t *f, int32_t x, int32_t y, const char *s, uint16_t c)
 {
     int32_t top = y - f->base;
+    if (!s)
+        return x;
     for (; *s; s++) {
         const ds_glyph_t *g = ds_glyph(f, (uint8_t)*s);
         const uint8_t *d;
@@ -498,7 +502,7 @@ static void ds_gauge(int32_t x, int32_t y, int32_t w, int32_t h, int32_t ratio, 
 
 /* the band renderer: draw `scene` band by band and send the rows that changed. sig: a hash of everything the
  * scene shows (0: always render); force: send every row (after something else drew on the screen) */
-static void ds_render(void (*scene)(void), uint32_t sig, int force)
+static void ds_paint(void (*scene)(void), uint32_t sig, int force)
 {
     int32_t y, r;
     if (!force && sig && sig == ds_sig_last)
@@ -531,6 +535,22 @@ static void ds_render(void (*scene)(void), uint32_t sig, int force)
         }
     }
 }
+
+#if FM1MOVE
+/* one-shot: text in a box, cleared to black, sent (the system screens: crash, update, UBOOT; SLOOP's signature) */
+static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const felucca_font_t *f, const char *s, uint16_t c,
+                          int align)
+{
+    (void)f;
+    (void)w;
+    cv_begin(DS_W, 20, DS_BG);   /* (the primitives index rows of DS_W pixels: a full-width band) */
+    ds_y0 = 0;
+    ds_y1 = 20;
+    ds_text_in(&DS_F16, (int32_t)x, 15, (int32_t)w, align == 1 ? DS_C : align == 2 ? DS_R : DS_L, s, c);
+    lcd_blit(0, y, DS_W, 20, cv_px);
+    lcd_sync();
+}
+#endif
 
 /* FNV-1a over a block (the scene signatures) */
 static uint32_t ds_hash(uint32_t h, const void *p, uint32_t n)

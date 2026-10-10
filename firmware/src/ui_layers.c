@@ -20,14 +20,21 @@
  * The keys' part runs in the audio ISR (seq.c layer_now: no lag, no lost press); the SEQ, SEL and
  * GLO keys come to the UI through seq.c lk_q. HOLD: REC held clears the track, SAVE held saves the
  * project (a ring fills; let go before and nothing happens). */
+#if FM1MOVE
+/* the drum levels in order, ghost .. hard (SLOOP's ui_studio.c, used by the step layer's LEVEL knob) */
+static const uint8_t LV_UP[4] = {LV_GHOST, LV_SOFT, LV_NORM, LV_HARD};
+static uint32_t lvl_rank(uint32_t lvl) { return lvl == LV_GHOST ? 0u : lvl == LV_SOFT ? 1u : lvl == LV_NORM ? 2u : 3u; }
+#endif
 static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE};
 static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song"};
+#if FELUCCA_ARRANGER
 static void section_store(uint32_t s);                  /* project.c */
 static void section_load(uint32_t s);
 static uint8_t sec_armed;                               /* store over a used section: the key again within 3 s */
 static uint32_t sec_armed_ms;
 static uint8_t chain_tap[CHAIN_MAX], chain_taps;        /* the section keys tapped in this SAVE hold (the first
                                                          * is asked for at once; two or more: a chain on release) */
+#endif
 #define TAP_MS 450u                                     /* a press shorter than this, untouched: a tap */
 #define SHOW_MS 140u                                    /* the layer shows after this (a tap does not flash it) */
 
@@ -120,10 +127,12 @@ static void step_down(uint32_t w)
     uint32_t idx = ui.step_page * 16u + w;
     if (idx >= trk_len(t))
         return;
+#if FELUCCA_ARRANGER
     if (song.playing && arrangement_enabled) {
         ui_message("STOP THE SONG FIRST");
         return;
     }
+#endif
     if (step_is_on(t, idx)) {
         step_pend_off |= (uint16_t)(1u << w);
         return;
@@ -319,11 +328,13 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
     if (layer >= LY_COUNT)
         return;                                         /* (KB_GRID: the DRUMS grid page's, ui_studio.c) */
     if (!down) {
+        if (FM1MOVE && layer == LY_MIX && w < 0)
+            fill_held = 0;                              /* (FM1 Move: the fill's black key let go) */
         if (w >= 0) {
             ui.step_held &= (uint16_t)~(1u << w);
             if (layer == LY_STEP)
                 step_up((uint32_t)w);
-            if (layer == LY_MIX && w == 8)
+            if (layer == LY_MIX && w == 8 && !FM1MOVE)
                 fill_held = 0;                              /* GLO + key 9 let go: the fill ends */
         }
         return;
@@ -341,12 +352,22 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
         return;
     case LY_SCALE: {                                    /* the key of the song: every synth part */
         uint32_t i, root = (53u + k) % 12u;
+#if FM1MOVE
+        if (w >= 0 && w < (int32_t)NTRK) {              /* FM1 Move: SEL + white keys 1..8 select the track */
+            track_select((uint32_t)w);
+            return;
+        }
+#endif
         for (i = 0; i < NTRK; i++)
             if (is_synth(&trk[i]))
                 trk[i].p[P_ROOT] = (int16_t)root;
         ui_say("KEY ", N_NOTE[root]);
         return;
     }
+#if !FELUCCA_ARRANGER
+    case LY_SONG:                                       /* (FM1 Move: SAVE + keys launch scenes: M3) */
+        return;
+#else
     case LY_SONG: {                                     /* sections A..D: play, store; loop / song; SONG REC */
         char b[2] = {0, 0};
         if (w < 0)
@@ -408,7 +429,26 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
         }
         return;
     }
+#endif
     case LY_MIX:
+#if FM1MOVE
+        if (w >= 0 && w < (int32_t)NTRK) {              /* FM1 Move: keys 1..8 mute, 9..16 solo the eight tracks */
+            trk[w].p[P_MUTE] = (int16_t)!trk[w].p[P_MUTE];
+        } else if (w >= (int32_t)NTRK && w < 2 * (int32_t)NTRK) {
+            song.solo ^= (uint8_t)(1u << (w - (int32_t)NTRK));
+        } else if (w < 0) {                             /* the black keys: fill (held), fill next bar, tap tempo */
+            static const int8_t BK[12] = {0, 1, 0, 2, 0, 0, 3, 0, 0, 0, 0, 0};
+            uint32_t bk = k < 12u ? (uint32_t)BK[k] : 0u;
+            if (bk == 1u)
+                fill_held = 1;
+            else if (bk == 2u) {
+                fill_arm = (uint8_t)!fill_arm;
+                ui_message(fill_arm ? "FILL: NEXT BAR" : "FILL BAR OFF");
+            } else if (bk == 3u)
+                tap_tempo();
+        }
+        return;
+#endif
         if (w >= 0 && w < 4) {
             trk[w].p[P_MUTE] = (int16_t)!trk[w].p[P_MUTE];
         } else if (w >= 4 && w < 8) {
@@ -427,6 +467,7 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
     }
 }
 
+#if FELUCCA_ARRANGER
 /* SAVE let go (ui_input.c): two or more section taps while it was held play as a chain, from the one
  * already asked for (the first), each for the bars of its pattern, looped; one tap was a plain jump */
 static void chain_release(void)
@@ -455,6 +496,7 @@ static void chain_sub(char *sub, uint32_t n)
     sub[k] = 0;
 }
 
+#endif
 /* KNOB 1..4 while a layer is held: what the layer gives them (the page does not see them) */
 static void layer_knobs(uint32_t layer)
 {
@@ -542,8 +584,14 @@ static void layer_knobs(uint32_t layer)
             }
             break;
         case LY_MIX: {
+#if FM1MOVE                                             /* the selected track's volume, pan, sends (as MIXER) */
+            static const uint8_t MIXP[4] = {P_LEVEL, P_PAN, P_REV, P_DLY};
+            const param_desc_t *d = &TP[MIXP[k]];
+            t->p[MIXP[k]] = (int16_t)clamp(t->p[MIXP[k]] + accel(EN_K1 + k, s, d->max - d->min), d->min, d->max);
+#else
             int16_t *lv = k == TRK_DRUM ? &song.g[G_DRLVL] : &trk[k].p[P_LEVEL];
             *lv = (int16_t)clamp(*lv + accel(EN_K1 + k, s, 127), 0, 127);
+#endif
             break;
         }
         default:
@@ -552,6 +600,7 @@ static void layer_knobs(uint32_t layer)
     }
 }
 
+#if !FM1MOVE
 /* --------------------------------------------------------- drawing --- */
 /* 16 tiles (the white keys, 4 x 4) under a title band, the knobs' dials at the bottom */
 typedef struct {
@@ -994,3 +1043,4 @@ static void hold_screen_draw(void)
     te_text_c(120, 30, "keep holding", TE_G3);
     cv_blit(0, 160);
 }
+#endif /* !FM1MOVE */

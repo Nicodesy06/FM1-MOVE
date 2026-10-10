@@ -3,6 +3,7 @@
 /* Small-canvas renderer (no full framebuffer). Draw text/lines into
  * an off-screen strip, then blit it in one DMA transfer. Pixels are stored
  * byte-swapped (the panel takes RGB565 big-endian). */
+#if !FM1MOVE
 typedef struct {               /* proportional, see tools/gen_font.py */
     uint8_t h;
     uint8_t pad;               /* bitmap starts this many pixels left of the pen */
@@ -15,7 +16,19 @@ typedef struct {               /* proportional, see tools/gen_font.py */
 } felucca_font_t;
 #include "felucca_font.h"
 
+#else
+/* FM1 Move: the system screens (crash, update, UBOOT) write with the design system's Inter (ds.c draw_text_box);
+ * SLOOP's Terminus font is not in the image */
+typedef struct { uint8_t h; } felucca_font_t;
+static const felucca_font_t FONT_S = {16};
+static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const felucca_font_t *f, const char *s, uint16_t c,
+                          int align);
+#endif
+#if FM1MOVE
+#define CV_MAX (240u * 60u)       /* FM1 Move: the band renderer's band (ds.c DS_BAND), 240 x 60 */
+#else
 #define CV_MAX (240u * 124u)      /* the graph strip is 240 x 124 */
+#endif
 static uint16_t cv_px[CV_MAX] __attribute__((section(".pool")));
 static uint32_t cv_w, cv_h;
 static int32_t cv_oy;            /* y offset for graph drawing */
@@ -121,6 +134,7 @@ static void cv_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint16_t c)
     }
 }
 
+#if !FM1MOVE
 /* glyph index of a character: lower case folds to upper case when the font
  * has none, anything missing (and C1 controls) draws as '?' */
 static uint32_t glyph(const felucca_font_t *f, uint32_t ch)
@@ -179,3 +193,4 @@ static void draw_text_box(uint32_t x, uint32_t y, uint32_t w, const felucca_font
     cv_blit(x, y);
     lcd_sync();                     /* one-shots (boot, crash, UBOOT, update) finish here */
 }
+#endif

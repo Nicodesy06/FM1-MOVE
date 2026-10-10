@@ -103,6 +103,11 @@ static void felucca_init(void)
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;
     fm6_init();                               /* every part's FM6 patch: the init voice */
+#if FM1MOVE
+    project_default_tracks();                 /* eight tracks: drums, bass, chords, lead, pad, pluck, drums 2, keys */
+    (void)i;
+    if (0)
+#endif
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         track_defaults(t);
@@ -113,7 +118,9 @@ static void felucca_init(void)
         }
         track_defaults_steps(t);              /* the sequencers start empty */
     }
+#if !FM1MOVE
     TDRUM->p[P_E0] = DRUM_DEFAULT_KIT;        /* the 808 kit */
+#endif
     song.sel = 0;
     song.master_q12 = 2048;
     autosave_resume();                        /* the project as it was left (project.c) */
@@ -136,7 +143,11 @@ static void fm1_main(void)
 #endif
     settings_init();
     lcd_init();
+#if FM1MOVE
+    fm1move_splash();                                   /* the FM1 Move boot screen (ui_move_ctl.c) */
+#else
     sloop_splash();                                     /* the SLOOP logo (splash.c) */
+#endif
     if (felucca_dbg.magic != DBG_MAGIC) {
         memset(&felucca_dbg, 0, sizeof felucca_dbg);
         felucca_dbg.magic = DBG_MAGIC;

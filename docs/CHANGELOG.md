@@ -39,3 +39,11 @@
 - `seq.c`: `trk_silence` (shared by kind changes and loads).
 - `tests/projfmt_test.c` (+ ASan/UBSan): round trip, capacity, power loss at every write, damage, heavy limit.
 - `docs/PROJECT_FORMAT.md`.
+
+### FM1MOVE firmware build (new UI integrated)
+- `FM1MOVE=1 sh build.sh`: eight tracks, the FM1 Move UI (ds.c, ui_move.c, `ui_move_ctl.c` controls + live view
+  model), FM1M projects with SLOOP autosave import, design-system boot screen and system screens; SLOOP's drawing
+  code, Terminus font, logo, song sections and web editor left out. Image 518 836 B.
+- Default project: drums (808), ACID 303, RHODES, SUPERSAW, WARM PAD, 8BIT ARP, a second drum kit, M1 PIANO.
+- Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
+- `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.

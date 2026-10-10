@@ -25,7 +25,8 @@ Read first: `docs/DEVELOPMENT_PLAN.md` (milestones and status), `docs/HARDWARE_A
 ```sh
 tools/get_deps.sh /home/user/deps        # once: JieLi toolchain + 3 SDK files; prints the exports below
 export JIELI_TOOLCHAIN=/home/user/deps/jieli/toolchain AC79_SDK=/home/user/deps/ac79sdk
-sh build.sh                              # -> build/felucca.bin, build/felucca.fwsc (fails on RAM/flash/register violations)
+sh build.sh                              # SLOOP layout (4 tracks, SLOOP UI): the regression baseline for the host tests
+FM1MOVE=1 sh build.sh                    # FM1 Move: 8 tracks, the new UI, FM1M projects (no web editor yet)
 SOAK_MIN=2 SKIP_CPU_VALGRIND=1 sh tests/run_tests.sh   # host tests (needs build/ first)
 ```
 
@@ -34,7 +35,9 @@ Known baseline failure: `target cost … fm1_alnk0_irq` (+54 %), present on unto
 `docs/TEST_REPORT.md`. Do not "fix" it with `BUDGET_UPDATE=1` without a measured reason.
 `GOLDEN_UPDATE=1` only for an intended sound change, with the reason in the commit.
 
-UI mockups (rendered by the firmware's own drawing code on the host): see `docs/UI_DESIGN_SYSTEM.md` §Tooling.
+UI mockups and live screens (the firmware's own code on the host): `python3 tools/ui_mockups.py`
+(`docs/ui/mockups/`, `docs/ui/live/`). The tests run `build/` from the SLOOP-layout build; the FM1MOVE tests
+(`eight_track_test`, `groove_test`, `projfmt_test`, `fm1move_ui_test`) compile the engine with `FM1MOVE=1` themselves.
 
 ## Architecture in one breath
 

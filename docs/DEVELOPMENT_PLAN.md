@@ -25,8 +25,9 @@ Living document. Milestones follow the master brief (M0–M7); each step is smal
 
 Order (each a commit):
 
-Status: steps 1–3 done (commits `524f642`, `6e0778d`); step 4's engine part done and host-tested; project format
-and the firmware build with the new UI pending.
+Status: steps 1–6 done on the host; the FM1MOVE firmware builds with eight tracks, the new UI and FM1M projects.
+Open in M1: MIDI-out track kind, per-track MIDI channel parameter, import of SLOOP project slots 1–4 (the autosave is
+imported), web editor for eight tracks.
 
 1. **Track kind.** `track_t.kind` (SYNTH, DRUM, MIDI); `is_drum(t)` reads it; `TDRUM` / `TRK_DRUM` uses replaced by
    "the drum track(s)". Still 4 tracks: behaviour identical, golden renders unchanged.
@@ -74,7 +75,9 @@ dense playing; exact numbers documented with the implementation).
    band renderer, components.
 3. [x] Screens rendered **by that firmware code** on the host into 240 × 240 PNG mockups (`tests/ui_mockups.c`), plus
    automatic contrast, label-fit and partial-redraw checks.
-4. [ ] Wire to live data; replace SLOOP's drawing code behind a build switch; measure flash/RAM/frame time.
+4. [x] Wire to live data; replace SLOOP's drawing code behind a build switch (`FM1MOVE=1`); flash/RAM measured.
+5. [x] Virtual FM1: navigation tested on simulated controls (`tests/fm1move_ui_test.c`).
+6. [ ] Hardware: readability, frame time, real controls [TEST-HW] — needs the owner's device.
 
 ## M5 — Sound & performance, M6 — Dual-core R&D, M7 — Stabilisation
 
