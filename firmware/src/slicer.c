@@ -176,22 +176,22 @@ static int slicer_busy(const track_t *t)
 }
 
 /* the drum track: as drums_render, through the SLICER when it is on (or still fading) */
-static void slicer_drums(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, uint32_t n)
+static void slicer_drums(track_t *t, int32_t a0, int32_t a1, int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly,
+                         uint32_t n)
 {
-    const track_t *t = TDRUM;
-    const sl_t *s = &sl[TRK_DRUM];
+    const sl_t *s = &sl[(uint32_t)(t - trk) % NTRK];
     uint32_t i;
     if (t->p[P_SLCR] == SL_OFF && !s->gc && !s->w) {
         slicer_track(t, 0, n);
-        drums_render(ml, mr, rev, dly, n);
+        drums_render(t, a0, a1, ml, mr, rev, dly, n);
         return;
     }
     for (i = 0; i < n; i++)
         sl_dbuf[i] = 0;
-    drums_render_mono(sl_dbuf, n);
+    drums_render_mono(t, a0, a1, sl_dbuf, n);
     slicer_track(t, sl_dbuf, n);
     {
-        int32_t send = song.g[G_DRREV] * 258, dsend = song.g[G_DRDLY] * 258, pan = t->p[P_PAN];
+        int32_t send = DRUM_REV(t) * 258, dsend = DRUM_DLY(t) * 258, pan = t->p[P_PAN];
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
         for (i = 0; i < n; i++) {
             int32_t x = sl_dbuf[i];

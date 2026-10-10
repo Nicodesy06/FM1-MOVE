@@ -63,7 +63,7 @@ static int drum_voice_on(int32_t zid)
             return 1;
     return 0;
 }
-static void quiet(void) { uint32_t i; for (i = 0; i < NDRUM; i++) drums.v[i].active = 0; drums.tail = 0; run_peak(3u * FS / CTL); }
+static void quiet(void) { uint32_t i; for (i = 0; i < NDRUM; i++) drums.v[i].active = 0; drums.tl[TRK_DRUM] = 0; run_peak(3u * FS / CTL); }
 
 int main(void)
 {
@@ -89,7 +89,7 @@ int main(void)
 
     TDRUM->p[P_E0] = (int16_t)DRUM_USR;                  /* USR1 */
     quiet();
-    drum_on(36, 110);
+    drum_on(TDRUM, 36, 110);
     check(drum_voice_on(DZ_USR + 0), "USR1, KICK: its zone (slot 0, zone 0)");
     {
         uint32_t i;
@@ -101,30 +101,30 @@ int main(void)
     pk = run_peak(40);
     check(pk > 2000, "... and it sounds");
     quiet();
-    drum_on(38, 110);
+    drum_on(TDRUM, 38, 110);
     check(drum_voice_on(DZ_USR + 1), "SNARE: zone 1");
     quiet();
-    drum_on(40, 110);                                    /* GM electric snare -> SNARE 2 lane: no sound in the kit */
+    drum_on(TDRUM, 40, 110);                                    /* GM electric snare -> SNARE 2 lane: no sound in the kit */
     check(!drum_voice_on(DZ_USR + 1) && run_peak(40) < 64, "a lane without a sound (SNARE 2): silent");
     quiet();
-    drum_on(35, 110);                                    /* GM 35 -> KICK 2: none */
+    drum_on(TDRUM, 35, 110);                                    /* GM 35 -> KICK 2: none */
     check(run_peak(40) < 64, "GM 35 (KICK 2 lane): silent, not the kick");
     quiet();
-    drum_on(76, 110);
+    drum_on(TDRUM, 76, 110);
     check(run_peak(40) < 64, "the click's wood block (76): not a lane");
     quiet();
-    drum_on(46, 110);
+    drum_on(TDRUM, 46, 110);
     check(drum_voice_on(DZ_USR + 3), "OPEN HAT: zone 3");
     run_peak(4);
-    drum_on(42, 110);
+    drum_on(TDRUM, 42, 110);
     check(!drum_voice_on(DZ_USR + 3) && drum_voice_on(DZ_USR + 2), "the closed hat chokes the open one");
     quiet();
-    drum_on(44, 110);                                    /* GM pedal hat -> PEDAL lane: none, and no choke */
+    drum_on(TDRUM, 44, 110);                                    /* GM pedal hat -> PEDAL lane: none, and no choke */
     check(run_peak(20) < 64, "PEDAL lane without a sound: silent");
 
     TDRUM->p[P_E0] = (int16_t)(DRUM_USR + 1u);           /* USR2: empty */
     quiet();
-    drum_on(36, 110);
+    drum_on(TDRUM, 36, 110);
     check(run_peak(40) < 64, "USR2 (an empty slot): silent");
 
     {   /* USR3+4: one kit over two slots, the editor's split: KICK and HAT in USR3, SNARE and OPEN HAT in USR4 */
@@ -134,18 +134,18 @@ int main(void)
         slot_build(3, n4, l4, 2);
         check(usr_nz[2] == 2u && usr_nz[3] == 2u, "USR3 and USR4 read: 2 zones each (USR4 from its own place)");
         TDRUM->p[P_E0] = (int16_t)DRUM_PAIR;
-        quiet(); drum_on(36, 110);
+        quiet(); drum_on(TDRUM, 36, 110);
         check(drum_voice_on(DZ_USR + 2 * 16 + 0), "USR3+4: KICK from USR3");
-        quiet(); drum_on(38, 110);
+        quiet(); drum_on(TDRUM, 38, 110);
         check(drum_voice_on(DZ_USR + 3 * 16 + 0) && run_peak(40) > 2000, "USR3+4: SNARE from USR4, and it sounds");
-        quiet(); drum_on(46, 110); run_peak(4); drum_on(42, 110);
+        quiet(); drum_on(TDRUM, 46, 110); run_peak(4); drum_on(TDRUM, 42, 110);
         check(!drum_voice_on(DZ_USR + 3 * 16 + 1) && drum_voice_on(DZ_USR + 2 * 16 + 1), "USR3+4: the closed hat (USR3) chokes the open one (USR4)");
-        quiet(); drum_on(49, 110);
+        quiet(); drum_on(TDRUM, 49, 110);
         check(run_peak(40) < 64, "USR3+4: a lane in neither slot (CRASH): silent");
         TDRUM->p[P_E0] = (int16_t)(DRUM_USR + 3u);       /* USR4 alone: its two sounds */
-        quiet(); drum_on(36, 110);
+        quiet(); drum_on(TDRUM, 36, 110);
         check(run_peak(40) < 64, "USR4 alone: no KICK there");
-        quiet(); drum_on(38, 110);
+        quiet(); drum_on(TDRUM, 38, 110);
         check(drum_voice_on(DZ_USR + 3 * 16 + 0), "USR4 alone: its SNARE");
         quiet();
     }
@@ -166,7 +166,7 @@ int main(void)
     }
     TDRUM->p[P_E0] = (int16_t)DRUM_SAMPLED;              /* 808: as before */
     quiet();
-    drum_on(36, 110);
+    drum_on(TDRUM, 36, 110);
     {
         uint32_t i, syn = 0;
         for (i = 0; i < NDRUM; i++) syn += drums.v[i].active && drums.synth[i];
@@ -174,7 +174,7 @@ int main(void)
     }
     TDRUM->p[P_E0] = 0;                                  /* ACOUSTIC: the GM sample set */
     quiet();
-    drum_on(38, 110);
+    drum_on(TDRUM, 38, 110);
     {
         uint32_t i, gm = 0;
         for (i = 0; i < NDRUM; i++) gm += drums.v[i].active && !drums.synth[i] && drums.v[i].s[4] < DZ_USR;

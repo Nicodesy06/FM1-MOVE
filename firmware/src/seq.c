@@ -1110,13 +1110,13 @@ static void arm_start(track_t *t)
     }
 }
 
-static void drum_input(uint32_t lane, uint32_t lvl, uint32_t rat, int rec);
+static void drum_input(track_t *t, uint32_t lane, uint32_t lvl, uint32_t rat, int rec);
 static const uint8_t *in_chord;                    /* input_on's note is note in_chord_i of in_chord (CHORD+) */
 static uint32_t in_chord_n, in_chord_i;
 static void input_on(track_t *t, uint32_t note, uint32_t vel)
 {
     if (is_drum(t)) {                             /* (a GM note on the drum track: its lane) */
-        drum_input(lane_of_note(note), vel_lvl(vel), 0, 1);
+        drum_input(t, lane_of_note(note), vel_lvl(vel), 0, 1);
         return;
     }
     last_note = (uint8_t)note;
@@ -1138,7 +1138,7 @@ static void input_on(track_t *t, uint32_t note, uint32_t vel)
 static void input_off(track_t *t, uint32_t note)
 {
     if (is_drum(t)) {
-        if (ft_on && ft_trk == TRK_DRUM)
+        if (ft_on && ft_trk == trk_index(t))
             ft_note_off(lane_of_note(note));
         return;
     }
@@ -1151,15 +1151,14 @@ static void input_off(track_t *t, uint32_t note)
 
 /* a drum hit from a key, MIDI or a roll: lane, level; rat: its ratchet when recorded (rolls); rec: it
  * may be recorded (a roll records one hit a step) */
-static void drum_input(uint32_t lane, uint32_t lvl, uint32_t rat, int rec)
+static void drum_input(track_t *t, uint32_t lane, uint32_t lvl, uint32_t rat, int rec)
 {
-    track_t *t = TDRUM;
     lane &= 15u;
     pen_lane = (uint8_t)lane;
     arm_start(t);
-    if (ft_on && ft_trk == TRK_DRUM)
+    if (ft_on && ft_trk == trk_index(t))
         ft_note_on(lane, lvl);
-    if (rec && ((song.rec >> TRK_DRUM) & 1u) && song.playing)
+    if (rec && ((song.rec >> trk_index(t)) & 1u) && song.playing)
         rec_hit(t, lane, lvl, rat);
     trk_note_on(t, LANE_NOTE[lane], lvl_vel(lvl, 100));
 }
@@ -1208,7 +1207,7 @@ static void roll_hit(uint32_t r)
         roll[r].rec_abs = abs;
     }
     if (is_drum(t)) {
-        drum_input(roll[r].note, roll[r].lvl, rat, rec || !armed);
+        drum_input(t, roll[r].note, roll[r].lvl, rat, rec || !armed);
         seq_out_on(t, LANE_NOTE[roll[r].note & 15u], lvl_vel(roll[r].lvl, 100));
         return;
     }
@@ -1251,12 +1250,13 @@ static void roll_start(uint32_t k, track_t *t, uint32_t note, uint32_t lvl)
 
 static void roll_end(uint32_t r)
 {
-    if (roll[r].on && roll[r].off && roll[r].trk != TRK_DRUM) {
-        trk_note_off(&trk[roll[r].trk % NTRK], roll[r].note);
-        seq_out_off(&trk[roll[r].trk % NTRK], roll[r].note);
+    track_t *t = &trk[roll[r].trk % NTRK];
+    if (roll[r].on && roll[r].off && !is_drum(t)) {
+        trk_note_off(t, roll[r].note);
+        seq_out_off(t, roll[r].note);
     }
-    if (roll[r].on && roll[r].trk == TRK_DRUM)
-        seq_out_off(&trk[TRK_DRUM], LANE_NOTE[roll[r].note & 15u]);
+    if (roll[r].on && is_drum(t))
+        seq_out_off(t, LANE_NOTE[roll[r].note & 15u]);
     roll[r].on = 0;
 }
 
@@ -1410,7 +1410,7 @@ static void key_down(uint32_t k)
             return;
         }
         kb_kind[k] = KS_DRUM;
-        drum_input(lane, lvl, 0, 1);
+        drum_input(t, lane, lvl, 0, 1);
         mc = trk_midi_ch(sel);
         midi_out_event(0x09u | (0x90u | mc) << 8 | (uint32_t)LANE_NOTE[lane] << 16 | lvl_vel(lvl, 100) << 24);
         return;
@@ -1494,9 +1494,9 @@ static void key_up(uint32_t k)
         }
         return;
     case KS_DRUM:
-        if (ft_on && ft_trk == TRK_DRUM)
+        if (ft_on && ft_trk == kb_trk[k])
             ft_note_off(kb_nt[k][0]);
-        mc = trk_midi_ch(TRK_DRUM);
+        mc = trk_midi_ch(kb_trk[k] % NTRK);
         midi_out_event(0x08u | (0x80u | mc) << 8 | (uint32_t)LANE_NOTE[kb_nt[k][0] & 15u] << 16);
         return;
     default:
@@ -1531,7 +1531,7 @@ static void audition_block(void)
     aud_lanes = 0;
     for (l = 0; m; l++, m >>= 1)
         if (m & 1u)
-            trk_note_on(TDRUM, LANE_NOTE[l], lvl_vel((lv >> (2u * l)) & 3u, 100));
+            trk_note_on(is_drum(TSEL) ? TSEL : TDRUM, LANE_NOTE[l], lvl_vel((lv >> (2u * l)) & 3u, 100));
 }
 
 static void keyboard_block(void)
@@ -2281,7 +2281,7 @@ static void events_block(uint32_t n)
         t = midi_route(ch, d1, st == 0x90u && d2);
         if (is_drum(t)) {
             if (st == 0x90u && d2)
-                drum_input(lane_of_note(d1), vel_lvl(d2), 0, 1);
+                drum_input(t, lane_of_note(d1), vel_lvl(d2), 0, 1);
         } else if (st == 0x90u && d2) {
             input_on(t, d1, d2);
         } else {

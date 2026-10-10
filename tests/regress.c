@@ -330,7 +330,7 @@ static uint64_t instr_now(void)
 static void cpu_drums(uint32_t k)
 {
     if ((k * CTL) % (FS / 8u) < CTL)
-        drum_on((k * CTL) % (FS / 2u) < CTL ? 36u : ((k * CTL) / (FS / 8u)) % 4u == 2u ? 38u : 42u, 100u);
+        drum_on(TDRUM, (k * CTL) % (FS / 2u) < CTL ? 36u : ((k * CTL) / (FS / 8u)) % 4u == 2u ? 38u : 42u, 100u);
 }
 /* the counted second (its own function: under callgrind, --toggle-collect=cpu_counted counts just this;
  * hostsim.c empties __attribute__, so the pragma keeps it out of line) */

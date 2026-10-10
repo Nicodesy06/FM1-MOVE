@@ -126,11 +126,11 @@ int main(void)
         for (i = 0; i < NDRUM; i++)
             drums.v[i].active = 0;
         TDRUM->p[P_E0] = (int16_t)(DRUM_SYN + 2u);
-        drum_on(38, 100);
+        drum_on(TDRUM, 38, 100);
         for (i = 0; i < NDRUM; i++)
             act += drums.v[i].active && drums.synth[i] && drums.ds[i].d == &dsu.k[2].s[1] && drums.kit[i] == DRUM_SYN + 2u;
         TDRUM->p[P_E0] = (int16_t)(DRUM_SAMPLED + 5u);
-        drum_on(38, 100);
+        drum_on(TDRUM, 38, 100);
         for (i = 0; i < NDRUM; i++)
             act += drums.v[i].active && drums.synth[i] && drums.ds[i].d == &DS_KITS[5].s[1];
         check(act == 2u, "KIT = SYN3 plays its own sounds (RAM); the factory kits theirs");
@@ -203,7 +203,7 @@ int main(void)
             }
             dsu.k[t & 3u].crush = (uint8_t)(rng_s >> 40);
             TDRUM->p[P_E0] = (int16_t)(DRUM_SYN + (t & 3u));
-            drum_on(DS_LANE_NOTE[t % DS_LANES], 30u + t % 98u);
+            drum_on(TDRUM, DS_LANE_NOTE[t % DS_LANES], 30u + t % 98u);
             for (blk = 0; blk < 6u; blk++) {
                 mix_block(b, CTL);
                 for (i = 0; i < CTL * 2u; i++) {

@@ -24,22 +24,26 @@ static const char *const DRUM_KIT_STYLES[] = {"STUDIO", "SOFT", "PUNCHY", "BRIGH
                                               "YOUR KIT", "YOUR KIT", "YOUR KIT", "YOUR KIT", "BIG KIT",
                                               "YOUR SYNTH", "YOUR SYNTH", "YOUR SYNTH", "YOUR SYNTH"};
 _Static_assert(sizeof(DRUM_KIT_NAMES) / sizeof(DRUM_KIT_NAMES[0]) == DRUM_KITS, "a name per kit");
-static uint32_t drum_kit(void) { return (uint32_t)clamp(TDRUM->p[P_E0], 0, DRUM_KITS - 1); }
+static uint32_t drum_kit_of(const track_t *t) { return (uint32_t)clamp(t->p[P_E0], 0, DRUM_KITS - 1); }
+static uint32_t drum_kit(void) { return drum_kit_of(TDRUM); }   /* (SLOOP's UI: the drum track's kit) */
 #define DRUM_DEFAULT_KIT DRUM_SAMPLED   /* power-on: 808 */
 
+/* FM1 Move: one drum engine for every drum track. The NDRUM voices are shared; each remembers the track it
+ * plays for (own), which mixes it with its own level, pan, sends, filter, slicer and mute (drums_mix(t)). A
+ * hit steals the oldest voice of any drum track; the hi-hat chokes only its own track's open hat. */
 static struct {
     voice_t v[NDRUM];
+    uint8_t own[NDRUM];          /* the drum track each voice plays for */
+    int32_t tl[NTRK];            /* declick tails, per drum track */
     uint32_t age;
     int16_t set;                 /* SMP_SETS index of "PERC" (GM map), -1 = none */
-    int32_t tail;                /* declick: the last output of cut voices, decaying */
-    int32_t peak;                /* largest |output| since the UI last looked (TRACKS meter) */
+    int32_t peak;                /* largest |output| of any drum track since the UI last looked (TRACKS meter) */
     uint8_t kit[NDRUM];
     int32_t filter[NDRUM], env[NDRUM];
     uint8_t synth[NDRUM];        /* the voice plays a synthesised kit (ds[]) */
     dsv_t ds[NDRUM];
     volatile uint16_t hits;      /* bit per lane hit since the UI last looked (pads, key LEDs) */
     volatile uint8_t kick;       /* a kick was hit (fx.c DUCK) */
-    int32_t a0, a1;              /* the drum track's mute / solo attenuation over this block (fx.c), Q15, 0 = heard */
 } drums = {.set = -2};
 
 static int32_t ds_buf[CTL];
@@ -180,16 +184,23 @@ static void click_render(int32_t *ml, int32_t *mr, uint32_t n)
 }
 
 /* a synthesised voice: note on the 16 sounds snd (a factory kit, SYN1..4), the oldest voice stolen */
-static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel, uint32_t kit, const dsnd_t *snd, uint32_t crush)
+/* the hi-hat: a closed or pedal hat chokes the open one of the same drum track */
+static void drum_choke(uint32_t ti, uint32_t note)
+{
+    uint32_t i;
+    if (note == 42u || note == 44u)
+        for (i = 0; i < NDRUM; i++)
+            if (drums.v[i].active && drums.v[i].note == 46u && drums.own[i] == ti) {
+                drums.v[i].active = 0;
+                drums.tl[ti] += drums.v[i].s[7];       /* fade what it was playing, not a step */
+            }
+}
+static void __attribute__((noinline)) drum_synth_on(uint32_t ti, uint32_t note, uint32_t vel, uint32_t kit, const dsnd_t *snd,
+                                                    uint32_t crush)
 {
     voice_t *v = &drums.v[0];
     uint32_t i;
-    if (note == 42u || note == 44u)                 /* hi-hat choke */
-        for (i = 0; i < NDRUM; i++)
-            if (drums.v[i].active && drums.v[i].note == 46u) {
-                drums.v[i].active = 0;
-                drums.tail += drums.v[i].s[7];
-            }
+    drum_choke(ti, note);
     for (i = 0; i < NDRUM; i++) {
         if (!drums.v[i].active) {
             v = &drums.v[i];
@@ -198,9 +209,10 @@ static void __attribute__((noinline)) drum_synth_on(uint32_t note, uint32_t vel,
         if (drums.v[i].age < v->age)
             v = &drums.v[i];
     }
-    if (v->active)
-        drums.tail += v->s[7];
     i = (uint32_t)(v - drums.v);
+    if (v->active)
+        drums.tl[drums.own[i] % NTRK] += v->s[7];
+    drums.own[i] = (uint8_t)ti;
     v->note = (uint8_t)note;
     v->vel = (uint8_t)vel;
     v->active = 1;
@@ -220,16 +232,16 @@ static void drum_audition_poll(void)
     dsu_aud_vel = 0;
     {
         const dsu_kit_t *u = dsu_kit(dsu_aud_k);
-        drum_synth_on(DS_LANE_NOTE[dsu_aud_lane % DS_LANES], vel, DRUM_SYN + dsu_aud_k % DSU_N, u->s, u->crush);
+        drum_synth_on(TRK_DRUM, DS_LANE_NOTE[dsu_aud_lane % DS_LANES], vel, DRUM_SYN + dsu_aud_k % DSU_N, u->s, u->crush);
     }
 }
 
-static void drum_on(uint32_t note, uint32_t vel)
+static void drum_on(const track_t *t, uint32_t note, uint32_t vel)
 {
     int32_t si = drum_set();
     const smp_set_t *set;
     voice_t *v = &drums.v[0];
-    uint32_t i, zi = 0xFFFFu, kit = drum_kit();
+    uint32_t i, zi = 0xFFFFu, kit = drum_kit_of(t), ti = (uint32_t)(t - trk) % NTRK;
     int32_t zid = -1;
     if (note != 76u && note != 77u)                 /* the pads and key LEDs (not the click's wood block) */
         drums.hits |= (uint16_t)(1u << lane_of_note(note));
@@ -237,7 +249,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         drums.kick = 1;                             /* (DUCK) */
     if (kit >= DRUM_SYN) {                          /* SYN1..SYN4: your synthesised kit */
         const dsu_kit_t *u = dsu_kit(kit - DRUM_SYN);
-        drum_synth_on(note, vel, kit, u->s, u->crush);
+        drum_synth_on(ti, note, vel, kit, u->s, u->crush);
         return;
     }
     if (kit >= DRUM_USR) {                          /* a user kit: the lane's sound, as its note (the hat choke) */
@@ -254,7 +266,7 @@ static void drum_on(uint32_t note, uint32_t vel)
         if (zid < 0)
             return;                                 /* (an empty slot, or no sound on this lane) */
     } else if (kit >= DRUM_SAMPLED) {               /* synthesised kit */
-        drum_synth_on(note, vel, kit, DS_KITS[kit - DRUM_SAMPLED].s, DS_KITS[kit - DRUM_SAMPLED].crush);
+        drum_synth_on(ti, note, vel, kit, DS_KITS[kit - DRUM_SAMPLED].s, DS_KITS[kit - DRUM_SAMPLED].crush);
         return;
     }
     if (zid < 0) {                                  /* the GM sample kit */
@@ -268,12 +280,7 @@ static void drum_on(uint32_t note, uint32_t vel)
             return;
         zid = (int32_t)zi;
     }
-    if (note == 42u || note == 44u)                 /* hi-hat choke */
-        for (i = 0; i < NDRUM; i++)
-            if (drums.v[i].active && drums.v[i].note == 46u) {
-                drums.v[i].active = 0;
-                drums.tail += drums.v[i].s[7];          /* fade what it was playing, not a step */
-            }
+    drum_choke(ti, note);
     for (i = 0; i < NDRUM; i++) {                   /* free voice, else the oldest */
         if (!drums.v[i].active) {
             v = &drums.v[i];
@@ -283,7 +290,8 @@ static void drum_on(uint32_t note, uint32_t vel)
             v = &drums.v[i];
     }
     if (v->active)
-        drums.tail += v->s[7];                      /* stolen voice: fade its last value */
+        drums.tl[drums.own[v - drums.v] % NTRK] += v->s[7];   /* stolen voice: fade its last value */
+    drums.own[v - drums.v] = (uint8_t)ti;
     v->note = (uint8_t)note;
     v->vel = (uint8_t)vel;
     v->active = 1;
@@ -308,31 +316,53 @@ static void drum_on(uint32_t note, uint32_t vel)
     }
 }
 
-/* adds the drums into the dry mix and the reverb and delay sends; mono != 0: into mono instead, before
- * the pan and the sends (the SLICER, slicer.c slicer_drums, does those after it) */
-static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, int32_t *mono, uint32_t n)
+/* a drum track's level and sends: SLOOP's GLO > DRUMS values (one drum track), FM1 Move's the track's own
+ * (LEVEL scaled so that its default, 104, is SLOOP's default drum level) */
+static int32_t drum_lvl(const track_t *t)
 {
-    uint32_t k, i;
-    int32_t lvl = song.g[G_DRLVL] * 200, send = song.g[G_DRREV] * 258, dsend = song.g[G_DRDLY] * 258, pk = drums.peak;
-    int32_t pan = trk[TRK_DRUM].p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
-    for (i = 0; i < n && drums.tail; i++) {         /* declick tail, ~0.4 ms */
+#if FM1MOVE
+    return (int32_t)(20000u * LEVEL_Q12[t->p[P_LEVEL] & 127] / LEVEL_Q12[104]);   /* (32-bit: the table tops at ~2x) */
+#else
+    (void)t;
+    return song.g[G_DRLVL] * 200;
+#endif
+}
+#if FM1MOVE
+#define DRUM_REV(t) ((t)->p[P_REV])
+#define DRUM_DLY(t) ((t)->p[P_DLY])
+#else
+#define DRUM_REV(t) song.g[G_DRREV]
+#define DRUM_DLY(t) song.g[G_DRDLY]
+#endif
+/* adds drum track t's voices into the dry mix and the reverb and delay sends; mono != 0: into mono instead,
+ * before the pan and the sends (the SLICER, slicer.c slicer_drums, does those after it). a0, a1: the track's
+ * mute / solo attenuation at the block's start and end (Q15, 0 = heard) */
+static inline void drums_mix(track_t *t, int32_t a0, int32_t a1, int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly,
+                             int32_t *mono, uint32_t n)
+{
+    uint32_t k, i, ti = (uint32_t)(t - trk) % NTRK;
+    int32_t lvl = drum_lvl(t), send = DRUM_REV(t) * 258, dsend = DRUM_DLY(t) * 258, pk = t->peak;
+    int32_t pan = t->p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
+    int32_t tail = drums.tl[ti];
+    for (i = 0; i < n && tail; i++) {               /* declick tail, ~0.4 ms */
         if (mono) {
-            mono[i] += drums.tail;
+            mono[i] += tail;
         } else {
-            ml[i] += drums.tail;
-            mr[i] += drums.tail;
+            ml[i] += tail;
+            mr[i] += tail;
         }
-        drums.tail -= drums.tail / 16 + (drums.tail > 0 ? 1 : drums.tail < 0 ? -1 : 0);
+        tail -= tail / 16 + (tail > 0 ? 1 : tail < 0 ? -1 : 0);
     }
+    drums.tl[ti] = tail;
     for (k = 0; k < NDRUM; k++) {               /* synthesised voices: render, then as below */
         voice_t *v = &drums.v[k];
         uint32_t m = n < CTL ? n : CTL;             /* (the mix runs in blocks of CTL) */
-        if (!v->active || !drums.synth[k])
+        if (!v->active || !drums.synth[k] || drums.own[k] != ti)
             continue;
         if (!ds_render(&drums.ds[k], ds_buf, m))
             v->active = 0;
         for (i = 0; i < m; i++) {
-            int32_t s = mulq15(ds_buf[i], mulq15(lvl, 32767 - drums.a0 - (((drums.a1 - drums.a0) * (int32_t)i) >> CTL_LOG2)));
+            int32_t s = mulq15(ds_buf[i], mulq15(lvl, 32767 - a0 - (((a1 - a0) * (int32_t)i) >> CTL_LOG2)));
             v->s[7] = s;
             if (s > pk || -s > pk)
                 pk = s < 0 ? -s : s;
@@ -348,14 +378,14 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
                 dly[i] += mulq15(s, dsend);
         }
         if (!v->active) {
-            drums.tail += v->s[7];                  /* ended: no step at the end */
+            drums.tl[ti] += v->s[7];                /* ended: no step at the end */
             v->s[7] = 0;
         }
     }
     for (k = 0; k < NDRUM; k++) {
         voice_t *v = &drums.v[k];
         const smp_zone_t *z;
-        if (drums.synth[k])
+        if (drums.synth[k] || drums.own[k] != ti)
             continue;
         z = drum_zone_of(v);
         uint32_t frac = v->ph[1], stepq = (uint32_t)v->s[5];   /* Q16 source samples per output (drum_on) */
@@ -379,7 +409,7 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
             if (!v->active)
                 break;
             s = v->s[2] + (((v->s[3] - v->s[2]) * (int32_t)(frac >> 1)) >> 15);
-            s = mulq15(s, mulq15(g, 32767 - drums.a0 - (((drums.a1 - drums.a0) * (int32_t)i) >> CTL_LOG2)));
+            s = mulq15(s, mulq15(g, 32767 - a0 - (((a1 - a0) * (int32_t)i) >> CTL_LOG2)));
             if (drums.kit[k] == 1u || drums.kit[k] == 4u) {
                 drums.filter[k] += (s - drums.filter[k]) >> (drums.kit[k] == 1u ? 2 : 1);
                 s = drums.filter[k];
@@ -405,7 +435,15 @@ static inline void drums_mix(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dl
         }
         v->ph[1] = frac;
     }
-    drums.peak = pk;
+    t->peak = pk;
+    if (pk > drums.peak)
+        drums.peak = pk;
 }
-static void drums_render(int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, uint32_t n) { drums_mix(ml, mr, rev, dly, 0, n); }
-static void drums_render_mono(int32_t *mono, uint32_t n) { drums_mix(0, 0, 0, 0, mono, n); }
+static void drums_render(track_t *t, int32_t a0, int32_t a1, int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly, uint32_t n)
+{
+    drums_mix(t, a0, a1, ml, mr, rev, dly, 0, n);
+}
+static void drums_render_mono(track_t *t, int32_t a0, int32_t a1, int32_t *mono, uint32_t n)
+{
+    drums_mix(t, a0, a1, 0, 0, 0, 0, mono, n);
+}

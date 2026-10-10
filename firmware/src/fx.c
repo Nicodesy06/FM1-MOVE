@@ -477,7 +477,7 @@ static void djf_process(int32_t *l, int32_t *r, uint32_t n)
 static int32_t master_cur = -1;                        /* the volume knob, ramped per sample (no zipper) */
 static void __attribute__((noinline)) mix_block(int32_t *out, uint32_t n)   /* (out of line: the ISR stays small, tests/target_budget.py) */
 {
-    uint32_t i;
+    uint32_t i, k;
     int32_t m0, m1;
     for (i = 0; i < n; i++)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
@@ -486,16 +486,20 @@ static void __attribute__((noinline)) mix_block(int32_t *out, uint32_t n)   /* (
     for (i = 0; i < NTRK; i++)
         if (is_synth(&trk[i]))
             mix_part(&trk[i], n);
-    drums.a0 = TDRUM->att;                              /* the drum track's mute / solo fade */
-    drums.a1 = 32767 - gain_next(TDRUM);
-    {
+    for (k = 0; k < NTRK; k++) {                        /* each drum track (FM1 Move: any number of them) */
         static int32_t dl[CTL], dr[CTL], dv[CTL], dd[CTL];
+        track_t *t = &trk[k];
+        int32_t a0, a1;
         tsvf_t fc;
-        djf_t *f = &tflt[TRK_DRUM];
-        if (n <= CTL && djf_block(f, TDRUM->p[P_TFLT], &fc)) {   /* the drum track's FILTER: left, right, the sends */
+        djf_t *f = &tflt[k];
+        if (!is_drum(t))
+            continue;
+        a0 = t->att;                                    /* its mute / solo fade */
+        a1 = 32767 - gain_next(t);
+        if (n <= CTL && djf_block(f, t->p[P_TFLT], &fc)) {   /* the drum track's FILTER: left, right, the sends */
             for (i = 0; i < n; i++)
                 dl[i] = dr[i] = dv[i] = dd[i] = 0;
-            slicer_drums(dl, dr, dv, dd, n);
+            slicer_drums(t, a0, a1, dl, dr, dv, dd, n);
             tflt_run(f, &fc, dl, n, 0);
             tflt_run(f, &fc, dr, n, 1);
             tflt_run(f, &fc, dv, n, 2);
@@ -507,7 +511,7 @@ static void __attribute__((noinline)) mix_block(int32_t *out, uint32_t n)   /* (
                 send_d[i] += dd[i];
             }
         } else {
-            slicer_drums(mix_l, mix_r, send_r, send_d, n);   /* drums_render, through the SLICER when on */
+            slicer_drums(t, a0, a1, mix_l, mix_r, send_r, send_d, n);   /* drums_render, through the SLICER when on */
         }
     }
     click_render(mix_l, mix_r, n);                      /* the metronome: its own voice (drums.c), any kit, any mute */

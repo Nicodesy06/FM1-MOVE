@@ -15,12 +15,12 @@ static uint32_t one_hit(uint32_t kit, uint32_t note, int32_t *peak, uint64_t *en
     drums.set = -2;
     TDRUM->p[P_E0] = (int16_t)kit;
     song.g[G_DRLVL] = 100;
-    drum_on(note, 110);
+    drum_on(TDRUM, note, 110);
     *peak = 0;
     *energy = 0;
     for (j = 0; j < FS * 6u / CTL; j++) {
         memset(l, 0, sizeof l), memset(r, 0, sizeof r), memset(rv, 0, sizeof rv);
-        drums_render(l, r, rv, rv, CTL);
+        drums_render(TDRUM, 0, 0, l, r, rv, rv, CTL);
         for (k = 0; k < CTL; k++) {
             int32_t a = l[k] < 0 ? -l[k] : l[k];
             assert(a < 131072);
@@ -71,9 +71,9 @@ int main(int argc, char **argv)
                 if (j % 100u == 0u) {
                     static const uint8_t N[6] = {46, 49, 51, 36, 38, 39};
                     uint32_t q;
-                    for (q = 0; q < 6u; q++) drum_on(N[q], 100);
+                    for (q = 0; q < 6u; q++) drum_on(TDRUM, N[q], 100);
                 }
-                drums_render(l, r, rv, rv, CTL);
+                drums_render(TDRUM, 0, 0, l, r, rv, rv, CTL);
             }
             clock_gettime(CLOCK_MONOTONIC, &t1);
             *(k ? &ns_y : &ns_s) = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / (rep_n * (double)CTL);
@@ -93,10 +93,10 @@ int main(int argc, char **argv)
             TDRUM->p[P_E0] = (int16_t)kit;
             for (j = 0; j < 16u; j++) {
                 uint32_t q, s;
-                for (q = 0; q < 3u && P[j][q]; q++) drum_on(P[j][q], q ? 90 : 115);
+                for (q = 0; q < 3u && P[j][q]; q++) drum_on(TDRUM, P[j][q], q ? 90 : 115);
                 for (s = 0; s < step / CTL; s++) {
                     memset(l, 0, sizeof l), memset(r, 0, sizeof r), memset(rv, 0, sizeof rv);
-                    drums_render(l, r, rv, rv, CTL);
+                    drums_render(TDRUM, 0, 0, l, r, rv, rv, CTL);
                     for (k = 0; k < CTL; k++) wav_put(f, clamp(l[k], -32767, 32767), clamp(r[k], -32767, 32767));
                 }
             }

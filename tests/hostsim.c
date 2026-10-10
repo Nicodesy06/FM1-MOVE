@@ -315,7 +315,7 @@ static double tracks_cost(const uint8_t parts[NPART][3], uint32_t *busy_max)
         for (k = 0; k < 2u * FS / CTL + nblk; k++) {   /* 2 s to settle (attacks), then measure */
             uint64_t t0;
             if ((k * CTL) % (FS / 8u) < CTL)          /* 16ths at 120 BPM */
-                drum_on((k * CTL) % (FS / 2u) < CTL ? 36u : ((k * CTL) / (FS / 8u)) % 4u == 2u ? 38u : 42u, 100u);
+                drum_on(TDRUM, (k * CTL) % (FS / 2u) < CTL ? 36u : ((k * CTL) / (FS / 8u)) % 4u == 2u ? 38u : 42u, 100u);
             t0 = now_ns();
             mix_block(o, CTL);
             if (k >= 2u * FS / CTL) {                  /* (the host's own noise only ever adds) */
@@ -864,7 +864,7 @@ int main(int argc, char **argv)
             fm1_in.notes = (fp > FS / 10 && fp < FS * 3 / 2) ? n : 0;
         }
         if (getenv("DRUMS") && fp % (FS / 4u) < CTL)   /* kick / closed hat / snare on 8ths */
-            drum_on(fp % (FS / 2u) < CTL ? 36u : (fp / (FS / 4u)) % 4u == 3u ? 38u : 42u, 100u);
+            drum_on(TDRUM, fp % (FS / 2u) < CTL ? 36u : (fp / (FS / 4u)) % 4u == 3u ? 38u : 42u, 100u);
         if (getenv("DIST"))
             inst.p[P_DIST] = (int16_t)atoi(getenv("DIST"));
         if (getenv("LEVEL"))
