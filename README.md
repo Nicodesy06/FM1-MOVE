@@ -35,7 +35,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 | Browser test view | ▶ [nicodesy06.github.io/FM1-MOVE/sim](https://nicodesy06.github.io/FM1-MOVE/sim/) — the firmware compiled to WebAssembly on a simulated panel (simulation, not the device) |
 | Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move experimental, SLOOP stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly, not yet on an FM-1 |
 | Manual | [nicodesy06.github.io/FM1-MOVE/manual](https://nicodesy06.github.io/FM1-MOVE/manual/) — quick start and every feature |
-| SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) — every engine and sequencer feature kept; song arranger removed (clips / scenes next) |
+| SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) — every engine and sequencer feature kept; song arranger replaced by clips and scenes |
 | Hardware | ⏳ not tested yet |
 | Branch | [`fm1-move/dev`](../../tree/fm1-move/dev) — `master` is the untouched SLOOP 2.5 baseline |
 
@@ -48,6 +48,14 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 - 12 synth engines and 153 sounds from SLOOP; up to three tracks on the heavy engines (FM6, GRAIN, PHYS) at once.
 - One shared 8-voice synth budget with predictable stealing that **never** exceeds it, even with eight held leads.
 
+### Clips, scenes and step editing
+- **6 clips per track** (8 × 6): hold **CLIPS** and press white keys 1–6 to launch the selected track's clips,
+  9–14 to launch **scenes** (clip *n* on every track). Playing, the launch waits for the **next bar** and the clip
+  starts on its first step; stopped, it starts at once. Key lights show playing, queued, filled and empty clips.
+- Clips are written with the usual tools (step entry, live recording, erase, groove) and saved with the project.
+- **STEP page** (SLOOP's step editor, back): a piano roll with a cursor; play keys to write the step (chords too),
+  release to move on; STEP / NOTE / TIME / FLAG (accent, slide) on the knobs.
+
 ### Groove Engine
 - **Non-destructive quantize** with strength 0–100 %: the recorded timing is kept, `q = raw + s · (grid − raw)`.
 - **8 groove templates** (Straight, MPC 16, House, UK Garage, Broken, Rolling, Latin, User) with real timing offsets,
@@ -59,7 +67,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 ### Projects
 - Sparse, versioned **FM1M** format: a typical 8-track project is about 1 KB, eight full 64-step tracks about 5 KB.
 - Power-loss safe: a save cut at any flash write leaves the old project or the new one, never a mix.
-- Autosave; SLOOP's working project is imported on first boot.
+- 2 project slots (with their clips) + the autosave; SLOOP's working project is imported on first boot.
 
 ### Kept from SLOOP
 USB-MIDI in/out, TRS MIDI in, MIDI clock in, USB audio to a computer or phone, 16 punch-in effects, chord and
@@ -87,7 +95,8 @@ arrangement**. Every screen is one press away.
 | --- | --- | --- |
 | **HOME** | PLAY | (held) PROJECT and SETTINGS |
 | **SEL** | TRACKS | keys 1–8 select a track |
-| **SEQ** | SEQUENCER | the 16 white keys are the steps |
+| **SEQ** | SEQUENCER (again: the STEP page) | the 16 white keys are the steps |
+| **SAVE** | CLIPS | keys 1–6 launch clips, 9–14 scenes (on the next bar) |
 | **ARP** | GROOVE | note repeat |
 | **GLO** | MIXER | keys 1–8 mute, 9–16 solo |
 | **FX** | PERFORM | punch-in effects |
@@ -119,7 +128,7 @@ web editor before trying FM1 Move. Installing custom firmware is at your own ris
 
 ## Not there yet
 
-Clips, scenes and capture · MIDI-out tracks and per-track MIDI channels · import of SLOOP's saved project slots ·
+Capture · MIDI-out tracks and per-track MIDI channels · import of SLOOP's saved project slots ·
 step and piano-roll editing on the device page · dual-core research. See the [development plan](docs/DEVELOPMENT_PLAN.md) and the
 [feature matrix](docs/FEATURE_MATRIX.md).
 
