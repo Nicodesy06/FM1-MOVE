@@ -110,11 +110,13 @@ static void demo(void)
     mv.t[5].mute = 1;
     mv.t[3].solo = 0;
     for (i = 0; i < 8u; i++) {
-        mv.t[i].clips = (uint8_t)(0x0Fu >> (i % 3u));
+        mv.t[i].clips = (uint8_t)(0x3Fu >> (i % 3u) & ~(i == 5u ? 0x30u : 0u));
         mv.t[i].clip = i == 5u ? 0xFFu : (uint8_t)(i % 2u);
     }
     mv.t[2].queued = 2;
     mv.t[6].clip = 0xFF;
+    mv.scene = 0xFF;
+    mv.blink = 1;
     mv.sel = 1;
     mv.playing = 1;
     mv.bpm10 = 1240;
@@ -243,12 +245,11 @@ int main(int argc, char **argv)
     /* CLIPS */
     demo();
     mv.screen = SC_CLIPS;
-    mv.scene = 0;
     mv.row_sel = 1;
-    kn(0, "SCENE", "1", 125, 0);
-    kn(1, "LAUNCH", "1 BAR", 500, 0);
-    kn(2, "CLIP LEN", "4 BAR", 500, 0);
-    kn(3, "FOLLOW", "OFF", 0, 0);
+    kn(0, "CLIP", "2", 200, 0);
+    kn(1, "LAUNCH", "CLIPS", -1, 0);
+    kn(2, "COPY", "EDIT", -1, 0);
+    kn(3, "CLEAR", "REC", -1, 0);
     render(dir, "07_clips");
 
     /* MIXER */
@@ -354,11 +355,11 @@ int main(int argc, char **argv)
     mv.screen = SC_CLIPS;
     mv.row_sel = 1;
     mv.toast_t = 30;
-    snprintf(mv.toast, sizeof mv.toast, "CLIP 2 DUPLICATED");
-    kn(0, "SCENE", "1", 125, 0);
-    kn(1, "LAUNCH", "1 BAR", 500, 0);
-    kn(2, "CLIP LEN", "4 BAR", 500, 0);
-    kn(3, "FOLLOW", "OFF", 0, 0);
+    snprintf(mv.toast, sizeof mv.toast, "NEXT BAR: CLIP 3");
+    kn(0, "CLIP", "2", 200, 0);
+    kn(1, "LAUNCH", "CLIPS", -1, 0);
+    kn(2, "COPY", "EDIT", -1, 0);
+    kn(3, "CLEAR", "REC", -1, 0);
     render(dir, "15_toast");
 
     /* partial redraw: nothing changed -> no render, no rows; one playhead step -> only the rows it touches */

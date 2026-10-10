@@ -76,7 +76,8 @@ typedef struct {
     int8_t g_off[8];                           /* the event offsets of 8 sixteenths, in 1/32 of a step (-16..16) */
     uint8_t g_vel[8];                          /* their velocities 0..127 */
     /* CLIPS */
-    uint8_t scene, crow;                       /* playing scene, first row shown */
+    uint8_t scene;                             /* the scene playing (every track on clip k), 0xFF none */
+    uint8_t blink;                             /* the blink phase (a clip asked for)  */
     /* SOUND */
     char cat[10];
     uint8_t preset_i, preset_n;
@@ -430,44 +431,57 @@ static void sc_groove(void)
     }
 }
 
-/* CLIPS: tracks across, clip slots down; playing filled, queued outlined, the selection framed */
+/* CLIPS: tracks across, the six clips down. The clip a track plays: filled (a play mark while the transport runs;
+ * empty: a frame); asked for (the next bar): a frame with a blinking play mark; holding a pattern: dim with a bar;
+ * empty: the surface. The cursor (the selected track's clip EDIT / REC act on): framed in white */
+#define CL_NROW 6u
 static void sc_clips(void)
 {
     char b[12], *e;
     uint32_t i, r;
-    e = ds_cat(b, "SCENE ");
-    ds_itoa(e, mv.scene + 1);
-    mv_title(b);
+    if (mv.scene < CL_NROW) {
+        e = ds_cat(b, "SCENE ");
+        ds_itoa(e, mv.scene + 1);
+        mv_title(b);
+    } else {
+        mv_title("CLIPS");
+    }
     for (i = 0; i < MV_NTRK; i++) {
         int32_t x = 26 + (int32_t)i * 26;
         ds_itoa(b, (int32_t)i + 1);
-        ds_text_in(&DS_F12, x, 54, 24, DS_C, b, i == mv.sel ? DS_TEXT1 : MV_TC(i));
+        ds_text_in(&DS_F12, x, 56, 24, DS_C, b, i == mv.sel ? DS_TEXT1 : MV_TC(i));
         if (i == mv.sel)
-            ds_rect(x + 4, 57, 16, 2, DS_TEXT1);
+            ds_rect(x + 4, 59, 16, 2, DS_TEXT1);
     }
-    for (r = 0; r < 4u; r++) {
-        uint32_t clip = mv.crow + r;
-        int32_t y = 62 + (int32_t)r * 28;
-        ds_itoa(b, (int32_t)clip + 1);
-        ds_text_in(&DS_F12, MX - 2, y + 16, 14, DS_C, b, clip == mv.scene ? DS_TEXT1 : DS_TEXT3);
+    for (r = 0; r < CL_NROW; r++) {
+        int32_t y = 64 + (int32_t)r * 18;
+        ds_itoa(b, (int32_t)r + 1);
+        ds_text_in(&DS_F12, MX - 2, y + 13, 14, DS_C, b, r == mv.scene ? DS_TEXT1 : r == mv.row_sel ? DS_TEXT2 : DS_TEXT3);
         for (i = 0; i < MV_NTRK; i++) {
             const mv_track_t *t = &mv.t[i];
             int32_t x = 26 + (int32_t)i * 26;
             uint16_t c = MV_TC(i);
-            if (t->clip == clip) {
-                ds_rrect(x, y, 24, 24, 3, c);
-                ds_icon(IC_PLAY, x + 6, y + 6, DS_BG, c);
-            } else if (t->queued == clip) {
-                ds_rframe(x, y, 24, 24, 3, 2, c, DS_BG);
-                ds_icon(IC_PLAY, x + 6, y + 6, c, DS_BG);
-            } else if ((t->clips >> clip) & 1u) {
-                ds_rrect(x, y, 24, 24, 3, DS_DIM(c));
-                ds_rect(x + 4, y + 18, 16, 2, c);
+            uint32_t holds = (t->clips >> r) & 1u;
+            if (i == mv.sel && r == mv.row_sel)          /* (first: its inside is the cell's ground) */
+                ds_rframe(x - 2, y - 2, 28, 20, 4, 2, DS_TEXT1, DS_BG);
+            if (t->queued == r) {
+                ds_rframe(x, y, 24, 16, 3, 2, c, DS_BG);
+                if (mv.blink)
+                    ds_icon(IC_PLAY, x + 6, y + 2, c, DS_BG);
+            } else if (t->clip == r && holds) {
+                ds_rrect(x, y, 24, 16, 3, c);
+                if (mv.playing)
+                    ds_icon(IC_PLAY, x + 6, y + 2, DS_BG, c);
+            } else if (t->clip == r) {
+                ds_rframe(x, y, 24, 16, 3, 2, c, DS_BG);
+                if (mv.playing)
+                    ds_icon(IC_PLAY, x + 6, y + 2, c, DS_BG);
+            } else if (holds) {
+                ds_rrect(x, y, 24, 16, 3, DS_DIM(c));
+                ds_rect(x + 4, y + 12, 16, 2, c);
             } else {
-                ds_rrect(x, y, 24, 24, 3, DS_SURF1);
+                ds_rrect(x, y, 24, 16, 3, DS_SURF1);
             }
-            if (i == mv.sel && clip == mv.row_sel)
-                ds_rframe(x - 2, y - 2, 28, 28, 4, 2, DS_TEXT1, DS_BG);
         }
     }
 }

@@ -91,6 +91,8 @@ static int clip_store_irq(uint32_t ti, uint32_t k)
     uint32_t h, len = clip_measure(t, &h);
     if (h == clip_hash[ti] && clip_cur[ti] == k && !clip_out[ti])
         return 0;                                /* (unchanged since its last store) */
+    if (clip_out[ti] && h == clip_hash[ti] && clip_cur[ti] == k)
+        return -1;                               /* (refused already as it is: said once) */
     if (clip_pattern_empty(t)) {                 /* an empty pattern: an empty clip */
         clip_remove(ti, k);
     } else {
@@ -98,6 +100,7 @@ static int clip_store_irq(uint32_t ti, uint32_t k)
         if (clip_used - clip_len[ti][k] + len > CLIP_MEM || len > 0xFFFFu) {
             clip_full = 1;
             clip_out[ti] = 1;                    /* (the project keeps the pattern in its track) */
+            clip_hash[ti] = h;                   /* (what was refused: no new attempt until it changes) */
             return -1;
         }
         clip_remove(ti, k);
@@ -301,6 +304,9 @@ static void clip_tick(void)
                 clip_launch(i, clip_next[i]);
     clip_sync_all();
 }
+/* for the UI: the clip track ti plays; whether clip k holds a pattern */
+static uint32_t clip_playing(uint32_t ti) { return ti < NTRK ? clip_cur[ti] : CLIP_NONE; }
+static uint32_t clip_holds(uint32_t ti, uint32_t k) { return ti < NTRK && k < NCLIP && clip_len[ti][k] != 0u; }
 /* for the UI: 0 empty, 1 holds a pattern, 2 playing, 3 asked for (the next bar) */
 static uint32_t clip_state(uint32_t ti, uint32_t k)
 {

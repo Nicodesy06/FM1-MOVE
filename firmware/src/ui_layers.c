@@ -321,6 +321,9 @@ static void tap_tempo(void)
     }
 }
 
+#if FM1MOVE
+static void ctl_clip_key(int32_t w);                 /* ui_move_ctl.c */
+#endif
 /* a key of the layers the UI runs (seq.c lk_q): SEQ steps, SEL key, GLO mix */
 static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
 {
@@ -365,7 +368,10 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
         return;
     }
 #if !FELUCCA_ARRANGER
-    case LY_SONG:                                       /* (FM1 Move: SAVE + keys launch scenes: M3) */
+    case LY_SONG:                                       /* FM1 Move: SAVE (CLIPS) + keys launch clips and scenes */
+#if FM1MOVE
+        ctl_clip_key(w);
+#endif
         return;
 #else
     case LY_SONG: {                                     /* sections A..D: play, store; loop / song; SONG REC */

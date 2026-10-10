@@ -6,7 +6,8 @@
  *
  *   top row    FX PERFORM   SEL TRACKS   ENV SOUND.ENV   LFO SOUND.LFO   EDIT SOUND   GLO MIXER
  *   bottom row HOME PLAY    SAVE CLIPS   ARP GROOVE      SEQ SEQUENCER   PLAY transport   REC record
- *   held       FX punch, EDIT erase, ARP roll, SEQ steps, SEL track / key, GLO mute / solo, SAVE (scenes, M3)
+ *   held       FX punch, EDIT erase, ARP roll, SEQ steps, SEL track / key, GLO mute / solo,
+ *              SAVE (CLIPS) white keys 1..6 launch the track's clips, 9..14 the scenes (the next bar)
  *   HOME held  the system pages: PROJECT, SETTINGS
  *   encoders   SELECT track (a button held: the tempo), PRESETS sound, ALGORITHM the screen's navigator, KNOB 1..4
  * Destructive actions ask first: a modal, the same button again confirms, anything else (or 4 s) cancels. */
@@ -48,7 +49,20 @@ static struct {
     uint8_t layer_shown;
 } ctl = {.hot = -1, .kind_req = TK_COUNT, .force = 1};
 
-enum { ACT_NONE, ACT_KIND, ACT_SAVE, ACT_LOAD, ACT_DELETE, ACT_COMMIT };
+/* clip.c (included by projfmt.c, after this file) */
+static void clip_launch(uint32_t ti, uint32_t k);
+static void clip_scene(uint32_t k);
+static int clip_copy(uint32_t ti, uint32_t from, uint32_t to);
+static void clip_erase(uint32_t ti, uint32_t k);
+static void clip_reset_track(uint32_t ti);
+static void clip_init(void);
+static void clip_tick(void);
+static uint32_t clip_state(uint32_t ti, uint32_t k);
+static uint32_t clip_playing(uint32_t ti);
+static uint32_t clip_holds(uint32_t ti, uint32_t k);
+static uint8_t clip_full;
+
+enum { ACT_NONE, ACT_KIND, ACT_SAVE, ACT_LOAD, ACT_DELETE, ACT_COMMIT, ACT_CLIPCOPY, ACT_CLIPCLEAR };
 
 static void ctl_toast(const char *a, const char *b)
 {
@@ -64,6 +78,10 @@ static void ctl_messages(void)
     if (ui.msg_t) {
         ctl_toast(ui.msg, "");
         ui.msg_t = 0;
+    }
+    if (clip_full) {                                     /* (clip.c: a store found no room; said once per refusal) */
+        ctl_toast("CLIP MEMORY FULL", "");
+        clip_full = 0;
     }
     if (ctl.toast_ms && fm1_ms - (ctl.toast_ms & ~1u) > CTL_TOAST_MS)
         ctl.toast_ms = 0;
@@ -81,7 +99,7 @@ static void ctl_arm(uint32_t act, uint32_t btn, uint32_t arg, const char *t, con
 }
 
 /* ------------------------------------------------------- knob bindings --- */
-enum { KB_NONE, KB_TP, KB_GP, KB_MACRO, KB_GRV_Q, KB_GRV_AMT, KB_GRV_HUM, KB_SHIFT, KB_KIND, KB_KIT, KB_SET };
+enum { KB_NONE, KB_TP, KB_GP, KB_MACRO, KB_GRV_Q, KB_GRV_AMT, KB_GRV_HUM, KB_SHIFT, KB_KIND, KB_KIT, KB_SET, KB_CLIP };
 typedef struct {
     uint8_t kind, id;
     const char *label;
@@ -133,6 +151,7 @@ static kbind_t ctl_bind(uint32_t k)
         default: return (kbind_t){KB_MACRO, (uint8_t)k, 0};
         }
     case SC_PERFORM: return PRF[k];
+    case SC_CLIPS: return !k ? (kbind_t){KB_CLIP, 0, "CLIP"} : NONE;
     default: return NONE;
     }
 }
@@ -218,16 +237,6 @@ static void st_turn(uint32_t r, int32_t s)
 
 /* -------------------------------------------------------------- actions --- */
 static int fmp_used(uint32_t slot);                      /* project.c (FM1MOVE) */
-/* clip.c (included by projfmt.c, after this file) */
-static void clip_launch(uint32_t ti, uint32_t k);
-static void clip_scene(uint32_t k);
-static int clip_copy(uint32_t ti, uint32_t from, uint32_t to);
-static void clip_erase(uint32_t ti, uint32_t k);
-static void clip_reset_track(uint32_t ti);
-static void clip_init(void);
-static void clip_tick(void);
-static uint32_t clip_state(uint32_t ti, uint32_t k);
-static uint8_t clip_full;
 static int project_save_fmp(uint32_t slot);
 static int project_load_fmp(uint32_t slot);
 static void project_delete_fmp(uint32_t slot);
@@ -260,6 +269,17 @@ static void ctl_do(uint32_t act, uint32_t arg)
         project_delete_fmp(arg);
         ctl_toast("DELETED ", b);
         break;
+    case ACT_CLIPCOPY: {                                 /* the clip playing on the selected track -> slot arg */
+        b[0] = (char)('1' + (arg % NCLIP));
+        ctl_toast(clip_copy(song.sel, clip_playing(song.sel), arg % NCLIP) ? "CLIP MEMORY FULL" : "COPIED TO CLIP ", b);
+        clip_full = 0;                                   /* (said here) */
+        break;
+    }
+    case ACT_CLIPCLEAR:
+        b[0] = (char)('1' + (arg % NCLIP));
+        clip_erase(song.sel, arg % NCLIP);
+        ctl_toast("CLEARED CLIP ", b);
+        break;
     case ACT_COMMIT:
         fm1_irq_off();
         groove_commit(TSEL);
@@ -283,6 +303,55 @@ static void screen_go(uint32_t sc)
     song.seq_mode = sc == SC_SEQ;
 }
 
+/* CLIPS: launch clip k of the selected track; playing, it starts on the next bar */
+static void ctl_clip_launch(uint32_t k)
+{
+    char b[2] = {(char)('1' + k % NCLIP), 0};
+    clip_launch(song.sel, k % NCLIP);
+    ctl_toast(song.playing ? "NEXT BAR: CLIP " : "CLIP ", b);
+}
+/* SAVE (CLIPS) held + a key (ui_layers.c layer_key): white keys 1..6 the selected track's clips, 9..14 the scenes */
+static void ctl_clip_key(int32_t w)
+{
+    char b[2] = {0, 0};
+    if (w >= 0 && w < (int32_t)NCLIP) {
+        ctl_clip_launch((uint32_t)w);
+    } else if (w >= 8 && w < 8 + (int32_t)NCLIP) {
+        b[0] = (char)('1' + (w - 8));
+        clip_scene((uint32_t)(w - 8));
+        ctl_toast(song.playing ? "NEXT BAR: SCENE " : "SCENE ", b);
+    }
+    ctl.used[B_SAVE] = 1;
+}
+/* CLIPS screen, EDIT: the clip playing copied into the clip the cursor is on (asks before replacing one) */
+static void ctl_clip_copy(void)
+{
+    uint32_t to = ctl.row[SC_CLIPS] % NCLIP, from = clip_playing(song.sel);
+    char t[24] = "REPLACE CLIP 1?";
+    if (from == to) {
+        ctl_toast("PICK ANOTHER CLIP", "");
+    } else if (from >= NCLIP || !clip_holds(song.sel, from)) {
+        ctl_toast("NOTHING TO COPY", "");
+    } else if (clip_holds(song.sel, to)) {
+        t[13] = (char)('1' + to);
+        ctl_arm(ACT_CLIPCOPY, B_EDIT, to, t, "THE CLIP PLAYING GOES OVER IT", "EDIT COPY");
+    } else {
+        ctl_do(ACT_CLIPCOPY, to);
+    }
+}
+/* CLIPS screen, REC: the clip the cursor is on cleared (asks) */
+static void ctl_clip_clear(void)
+{
+    uint32_t k = ctl.row[SC_CLIPS] % NCLIP;
+    char t[24] = "CLEAR CLIP 1?";
+    if (!clip_holds(song.sel, k)) {
+        ctl_toast("EMPTY CLIP", "");
+        return;
+    }
+    t[11] = (char)('1' + k);
+    ctl_arm(ACT_CLIPCLEAR, B_REC, k, t, "ITS PATTERN GOES", "REC CLEAR");
+}
+
 /* a button tapped (released quickly, nothing touched while held) */
 static void ctl_tap(uint32_t b)
 {
@@ -302,6 +371,10 @@ static void ctl_tap(uint32_t b)
                 ctl_toast("EMPTY SLOT", "");
             break;
         }
+        if (!ctl.menu && ctl.screen == SC_CLIPS) {
+            ctl_clip_copy();
+            break;
+        }
         screen_go(SC_SOUND);
         break;
     case B_GLO: screen_go(SC_MIXER); break;
@@ -317,6 +390,10 @@ static void ctl_tap(uint32_t b)
             } else {
                 ctl_do(ACT_SAVE, r);
             }
+            break;
+        }
+        if (!ctl.menu && ctl.screen == SC_CLIPS) {       /* CLIPS again: the clip the cursor is on */
+            ctl_clip_launch(ctl.row[SC_CLIPS]);
             break;
         }
         screen_go(SC_CLIPS);
@@ -431,6 +508,10 @@ static void ui_input(void)
             ctl_arm(ACT_DELETE, B_REC, ctl.row[SC_PROJECT], t, "IT CANNOT BE UNDONE", "REC DELETE");
         pressed &= ~ctl_btn_bit(B_REC);
     }
+    if ((pressed & ctl_btn_bit(B_REC)) && !ctl.menu && ctl.screen == SC_CLIPS && held == LY_PLAY) {   /* CLIPS: clear */
+        ctl_clip_clear();
+        pressed &= ~ctl_btn_bit(B_REC);
+    }
     if (pressed & ctl_btn_bit(B_REC)) {
         if (!ft_owns_press()) {
             if (song.rec || rec_wait) {
@@ -518,8 +599,8 @@ static void ui_input(void)
                 g->amt = g->vamt = 100;
         } else if (sc == SC_SOUND && is_synth(TSEL)) {   /* the engine */
             select_engine((uint32_t)clamp((int32_t)TSEL->eng_req + s, 0, NENGINES - 1));
-        } else if (sc == SC_CLIPS) {
-            ctl.row[sc] = 0;                             /* (one clip per track until M3) */
+        } else if (sc == SC_CLIPS) {                     /* the clip cursor */
+            ctl.row[sc] = (uint8_t)clamp((int32_t)ctl.row[sc] + s, 0, NCLIP - 1);
         }
     }
     for (k = 0; k < 4u; k++) {
@@ -576,6 +657,9 @@ static void ui_input(void)
         }
         case KB_SET:
             st_turn(ctl.row[SC_SETTINGS], s);
+            break;
+        case KB_CLIP:
+            ctl.row[SC_CLIPS] = (uint8_t)clamp((int32_t)ctl.row[SC_CLIPS] + s, 0, NCLIP - 1);
             break;
         default:
             break;
@@ -641,6 +725,23 @@ static void ui_leds(void)
                 keys |= 1u << key_of_white(k);
             else
                 dim |= 1u << key_of_white(k);
+        }
+    } else if (ui.layer == LY_SONG) {                    /* CLIPS held: 1-6 the track's clips, 9-14 the scenes */
+        uint32_t blink = (fm1_ms / 125u) & 1u, i, any, all;
+        for (k = 0; k < NCLIP; k++) {
+            uint32_t st = clip_state(song.sel, k), holds = clip_holds(song.sel, k);
+            if (st == 3u ? blink : st == 2u)
+                keys |= 1u << key_of_white(k);          /* playing: lit; asked for: blinking */
+            else if (holds)
+                dim |= 1u << key_of_white(k);
+            for (i = 0, any = 0, all = 1; i < NTRK; i++) {
+                any |= clip_holds(i, k);
+                all &= clip_playing(i) == k;
+            }
+            if (all)
+                keys |= 1u << key_of_white(8u + k);     /* the scene playing */
+            else if (any)
+                dim |= 1u << key_of_white(8u + k);
         }
     } else if (ui.layer == LY_MIX) {                     /* GLO: 1-8 heard, 9-16 soloed */
         for (k = 0; k < NTRK; k++) {
@@ -727,6 +828,10 @@ static void mv_knob(uint32_t k)
     case KB_SET:
         st_value(ctl.row[SC_SETTINGS], o->value);
         break;
+    case KB_CLIP:
+        ds_itoa(o->value, (int32_t)(ctl.row[SC_CLIPS] % NCLIP) + 1);
+        o->ratio = (int16_t)((ctl.row[SC_CLIPS] % NCLIP) * 1000u / (NCLIP - 1u));
+        break;
     default:
         o->label = 0;
         break;
@@ -792,9 +897,12 @@ static void mv_fill(void)
         o->arm = (uint8_t)(((song.rec >> i) & 1u) || (rec_wait && i == song.sel));
         o->vol = (uint8_t)(t->p[P_LEVEL] * 100 / 127);
         o->pan = (int8_t)(t->p[P_PAN] * 50 / 64);
-        o->clips = (uint8_t)(track_empty(t) ? 0u : 1u);
-        o->clip = (uint8_t)(song.playing && !track_empty(t) ? 0u : 0xFFu);
-        o->queued = 0xFF;
+        for (k = 0, o->clips = 0, o->queued = 0xFF; k < NCLIP; k++) {
+            o->clips |= (uint8_t)(clip_holds(i, k) << k);
+            if (clip_state(i, k) == 3u)
+                o->queued = (uint8_t)k;
+        }
+        o->clip = (uint8_t)clip_playing(i);
     }
     mv.playing = song.playing;
     mv.rec = (uint8_t)(song.rec != 0u && song.playing);
@@ -912,6 +1020,21 @@ static void mv_fill(void)
     for (i = 0; i < 16u && i < PUNCH_NFX; i++)
         mv.fx[i] = PUNCH_NAME[i];
     mv.fx_on = (uint16_t)(punch.cur >= 0 ? 1u << punch.cur : 0u);
+    /* CLIPS */
+    mv.scene = 0xFF;
+    for (k = 0; k < NCLIP; k++) {
+        for (i = 0; i < NTRK && clip_playing(i) == k; i++)
+            ;
+        if (i == NTRK)
+            mv.scene = (uint8_t)k;                       /* every track on clip k */
+    }
+    mv.blink = (uint8_t)((fm1_ms / 250u) & 1u);
+    if (!ctl.menu && ctl.screen == SC_CLIPS) {
+        mv.row_sel = ctl.row[SC_CLIPS];
+        mv.k[1].label = "LAUNCH", str_cpy(mv.k[1].value, "CLIPS", 12);
+        mv.k[2].label = "COPY", str_cpy(mv.k[2].value, "EDIT", 12);
+        mv.k[3].label = "CLEAR", str_cpy(mv.k[3].value, "REC", 12);
+    }
     /* PROJECT / SETTINGS */
     if (ctl.menu && ctl.screen == SC_PROJECT) {
         for (i = 0; i < FMP_NPROJ; i++) {

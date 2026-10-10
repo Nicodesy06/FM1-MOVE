@@ -396,6 +396,60 @@ int main(int argc, char **argv)
     }
     release(B_FX);
 
+    /* clips: CLIPS held + keys launch on the next bar, scenes, the cursor's copy and clear */
+    track_select(1);
+    {
+        uint8_t n = 48;
+        put_step(&trk[1], 4, 1, &n, ST_NOTE, 0);
+        trk[1].seq_active = 1;
+    }
+    tap(B_SAVE);
+    check(ctl.screen == SC_CLIPS && song.playing && clip_holds(1, 0) && clip_playing(1) == 0,
+          "CLIPS: track 2's pattern is its clip 1, playing");
+    press(B_SAVE);
+    keyw(1);
+    release(B_SAVE);
+    check(ctl.screen == SC_CLIPS && clip_state(1, 1) == 3 && mv.t[1].queued == 1 && clip_playing(1) == 0,
+          "CLIPS held + white key 2: clip 2 asked for (next bar), clip 1 still plays, no tap");
+    ppm("07c-clips-queued");
+    frames(140);
+    check(clip_playing(1) == 1 && track_empty(&trk[1]) && mv.t[1].clip == 1, "... on the bar: clip 2 (empty) plays");
+    {
+        uint8_t n = 60;
+        put_step(&trk[1], 0, 1, &n, ST_NOTE, 0);
+        frames(3);
+    }
+    check(clip_holds(1, 1), "a step written: clip 2 holds it");
+    turn(EN_ALGO, 2);
+    tap(B_EDIT);
+    check(ctl.row[SC_CLIPS] == 2 && clip_holds(1, 2) && !ctl.arm, "EDIT: the clip playing copied to the cursor's empty clip 3");
+    turn(EN_ALGO, -2);
+    tap(B_EDIT);
+    check(ctl.arm == ACT_CLIPCOPY && mv.modal, "EDIT over a clip that holds a pattern asks first");
+    tap(B_FX);
+    check(!ctl.arm && ctl.screen == SC_CLIPS && clip_holds(1, 0), "... another button cancels (clip 1 kept)");
+    turn(EN_K1, 2);
+    check(ctl.row[SC_CLIPS] == 2, "KNOB 1 moves the clip cursor too");
+    tap(B_REC);
+    check(ctl.arm == ACT_CLIPCLEAR && !song.rec && !rec_wait, "REC on CLIPS asks before clearing the cursor's clip (no recording)");
+    tap(B_REC);
+    check(!clip_holds(1, 2) && clip_holds(1, 1), "... REC again clears clip 3 only");
+    press(B_SAVE);
+    keyw(8);
+    release(B_SAVE);
+    frames(140);
+    for (i = 0, k = 1; i < NTRK; i++)
+        k &= clip_playing(i) == 0;
+    check(k && mv.scene == 0 && clip_holds(1, 0), "CLIPS held + white key 9: scene 1 on every track on the bar");
+    ppm("07b-clips-live");
+    tap(B_SAVE);
+    check(clip_state(1, 2) == 3, "CLIPS tapped on CLIPS: the cursor's clip is asked for");
+    tap(B_PLAY);
+    frames(4);
+    check(!song.playing && clip_playing(1) == 2, "... STOP before the bar: it starts at once");
+    tap(B_PLAY);
+    frames(10);
+
     /* fuzz: random use */
     {
         uint32_t seed = 12345u, f, over = 0;
