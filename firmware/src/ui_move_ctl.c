@@ -8,6 +8,8 @@
  *   bottom row HOME PLAY    SAVE CLIPS   ARP GROOVE      SEQ SEQUENCER   PLAY transport   REC record
  *   held       FX punch, EDIT erase, ARP roll, SEQ steps, SEL track / key, GLO mute / solo,
  *              SAVE (CLIPS) white keys 1..6 launch the track's clips, 9..14 the scenes (the next bar)
+ *   SEQ again  the STEP page (synth tracks): SLOOP's step editor, a cursor over a piano roll; keys write the cursor's
+ *              step (pressed together: a chord), letting go moves on; STEP / NOTE / TIME / FLAG on the knobs
  *   HOME held  the system pages: PROJECT, SETTINGS
  *   encoders   SELECT track (a button held: the tempo), PRESETS sound, ALGORITHM the screen's navigator, KNOB 1..4
  * Destructive actions ask first: a modal, the same button again confirms, anything else (or 4 s) cancels. */
@@ -99,13 +101,15 @@ static void ctl_arm(uint32_t act, uint32_t btn, uint32_t arg, const char *t, con
 }
 
 /* ------------------------------------------------------- knob bindings --- */
-enum { KB_NONE, KB_TP, KB_GP, KB_MACRO, KB_GRV_Q, KB_GRV_AMT, KB_GRV_HUM, KB_SHIFT, KB_KIND, KB_KIT, KB_SET, KB_CLIP };
+enum { KB_NONE, KB_TP, KB_GP, KB_MACRO, KB_GRV_Q, KB_GRV_AMT, KB_GRV_HUM, KB_SHIFT, KB_KIND, KB_KIT, KB_SET, KB_CLIP, KB_STEP };
 typedef struct {
     uint8_t kind, id;
     const char *label;
 } kbind_t;
 
 static uint32_t sel_kind(void) { return trk_kind(TSEL); }
+/* the SEQUENCER's STEP page is shown (synth tracks: the drum track keeps its grid) */
+static int ctl_roll(void) { return !ctl.menu && ctl.screen == SC_SEQ && ctl.page[SC_SEQ] == 1u && !is_drum(TSEL); }
 
 /* what KNOB k does on the screen shown */
 static kbind_t ctl_bind(uint32_t k)
@@ -138,7 +142,12 @@ static kbind_t ctl_bind(uint32_t k)
             return DRM[k];
         return (kbind_t){KB_MACRO, (uint8_t)k, 0};
     case SC_TRACKS: return TRK[k];
-    case SC_SEQ: return SEQ[k];
+    case SC_SEQ:
+        if (ctl_roll()) {
+            static const char *const RL[4] = {"STEP", "NOTE", "TIME", "FLAG"};
+            return (kbind_t){KB_STEP, (uint8_t)k, RL[k]};
+        }
+        return SEQ[k];
     case SC_GROOVE: return GRV[k];
     case SC_MIXER: return MIX[k];
     case SC_SOUND:
@@ -294,13 +303,101 @@ static void ctl_do(uint32_t act, uint32_t arg)
 static void screen_go(uint32_t sc)
 {
     if (!ctl.menu && ctl.screen == sc) {                 /* the same button again: the next page */
-        static const uint8_t NP[SC_COUNT] = {1, 1, 1, 2, 1, 1, 4, 1, 1, 1};
+        static const uint8_t NP[SC_COUNT] = {1, 1, 2, 2, 1, 1, 4, 1, 1, 1};
         ctl.page[sc] = (uint8_t)((ctl.page[sc] + 1u) % NP[sc]);
     }
     ctl.menu = 0;
     ctl.screen = (uint8_t)sc;
     ctl.hot = -1;
     song.seq_mode = sc == SC_SEQ;
+}
+
+/* STEP page (SLOOP's STEP): the knobs edit the cursor's step. STEP the cursor, NOTE transposes it (an empty step:
+ * the last note entered), TIME note / tie / rest, FLAG - / accent / slide / both */
+static void ctl_step_edit(uint32_t k, int32_t s)
+{
+    track_t *t = TSEL;
+    step_t *st = &t->step[ui.cursor % NSTEP];
+    uint32_t i, f;
+    static uint32_t sess, sess_at = 0xFFFFu;
+    if (k) {                                             /* the edits of one step: one undo */
+        if (sess_at != ui.cursor || !sess)
+            sess = (undo_sess += 4u) | 3u;
+        sess_at = ui.cursor;
+        undo_mark(t, sess);
+        t->seq_active = 1;
+    }
+    switch (k) {
+    case 0:
+        cursor_set((int32_t)ui.cursor + s);
+        break;
+    case 1:
+        if (!st->n) {
+            st->note[0] = last_note;
+            st->n = 1;
+            st->time = ST_NOTE;
+            break;
+        }
+        for (i = 0; i < st->n; i++)
+            st->note[i] = (uint8_t)clamp(st->note[i] + s, 1, 127);
+        st->time = ST_NOTE;
+        last_note = st->note[0];
+        break;
+    case 2:
+        st->time = (uint8_t)clamp((int32_t)st->time + (s > 0 ? 1 : -1), ST_NOTE, ST_REST);
+        break;
+    default:
+        f = (st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u);
+        f = (uint32_t)clamp((int32_t)f + (s > 0 ? 1 : -1), 0, 3);
+        st->flags = (uint8_t)((st->flags & ~(SF_ACCENT | SF_SLIDE)) | (f & 1u ? SF_ACCENT : 0u) | (f & 2u ? SF_SLIDE : 0u));
+        break;
+    }
+}
+/* STEP page entry, acid style (SLOOP's seq_entry): the keys pressed together (a mono part: the last one) become the
+ * cursor's step; letting go of every key moves on. Not while recording or armed: the keys record live then */
+static void ctl_step_entry(uint32_t pressed)
+{
+    track_t *t = TSEL;
+    step_t *st = &t->step[ui.cursor % NSTEP];
+    uint32_t k;
+    if (song.rec || rec_wait || ft_on)
+        return;
+    for (k = 0; k < 27u; k++) {
+        uint32_t note;
+        if (!((pressed >> k) & 1u))
+            continue;
+        note = kb_map(t, k);
+        if (note == KB_SILENT)
+            continue;
+        if (!ui.entry_open) {
+            ui.entry_open = 1;
+            undo_mark(t, (undo_sess += 4u) | 3u);
+            st->n = 0;
+            st->lvl = st->rat = 0;
+            st->time = ST_NOTE;
+            t->seq_active = 1;
+        }
+        if (t->p[P_CHORD] && !t->p[P_VOICE]) {           /* chord mode: the chord as it sounds, not only its root */
+            uint8_t c[4];
+            uint32_t m, j;
+            if (kb_kind[k] == KS_NOTE && kb_n[k] && kb_root[k] == note) {
+                m = kb_n[k] > 4u ? 4u : kb_n[k];
+                memcpy(c, kb_nt[k], m);
+            } else {
+                m = chord_notes(t, note, c);
+            }
+            for (j = 0; j < m && st->n < 4u; j++)
+                st->note[st->n++] = c[j];
+        } else if (t->p[P_VOICE]) {
+            st->note[0] = (uint8_t)note;
+            st->n = 1;
+        } else if (st->n < 4u) {
+            st->note[st->n++] = (uint8_t)note;
+        }
+        last_note = (uint8_t)note;
+    }
+    if (ui.entry_open && !fm1_in.notes)
+        cursor_set((int32_t)ui.cursor + 1);
 }
 
 /* CLIPS: launch clip k of the selected track; playing, it starts on the next bar */
@@ -375,6 +472,13 @@ static void ctl_tap(uint32_t b)
             ctl_clip_copy();
             break;
         }
+        if (ctl_roll()) {                                /* STEP page: EDIT clears the cursor's step, moves on */
+            undo_mark(TSEL, (undo_sess += 4u) | 3u);
+            step_clear(&TSEL->step[ui.cursor % NSTEP]);
+            cursor_set((int32_t)ui.cursor + 1);
+            ctl_toast("STEP CLEARED", "");
+            break;
+        }
         screen_go(SC_SOUND);
         break;
     case B_GLO: screen_go(SC_MIXER); break;
@@ -399,7 +503,13 @@ static void ctl_tap(uint32_t b)
         screen_go(SC_CLIPS);
         break;
     case B_ARP: screen_go(SC_GROOVE); break;
-    case B_SEQ: screen_go(SC_SEQ); break;
+    case B_SEQ:
+        screen_go(SC_SEQ);
+        if (is_drum(TSEL))
+            ctl.page[SC_SEQ] = 0;                        /* (the drum track: its grid only) */
+        else if (ctl.page[SC_SEQ])
+            cursor_set(ui.cursor);                       /* (onto the pattern, a new entry) */
+        break;
     default: break;
     }
 }
@@ -547,6 +657,11 @@ static void ui_input(void)
         else
             song.octave = (int8_t)(song.octave < 3 ? song.octave + 1 : song.octave);
     }
+    if (ctl_roll()) {
+        cursor_fix();                                    /* (LENGTH shorter, another track: onto its last step) */
+        if (held == LY_PLAY)
+            ctl_step_entry(notes);
+    }
     /* the encoders */
     if (held != LY_PLAY) {                               /* a layer held: SLOOP's layer knobs (steps, punch, erase ..) */
         uint32_t lb = LAYER_BTN[held];
@@ -588,6 +703,8 @@ static void ui_input(void)
         if (ctl.menu) {
             uint32_t n = sc == SC_PROJECT ? FMP_NPROJ : ST_COUNT;
             ctl.row[sc] = (uint8_t)clamp((int32_t)ctl.row[sc] + s, 0, (int32_t)n - 1);
+        } else if (ctl_roll()) {                         /* STEP page: the cursor */
+            cursor_set((int32_t)ui.cursor + s);
         } else if (sc == SC_SEQ) {
             uint32_t pages = (trk_len(TSEL) + 15u) / 16u;
             ui.step_page = (uint8_t)clamp((int32_t)ui.step_page + s, 0, (int32_t)pages - 1);
@@ -657,6 +774,9 @@ static void ui_input(void)
         }
         case KB_SET:
             st_turn(ctl.row[SC_SETTINGS], s);
+            break;
+        case KB_STEP:
+            ctl_step_edit(kb.id, s);
             break;
         case KB_CLIP:
             ctl.row[SC_CLIPS] = (uint8_t)clamp((int32_t)ctl.row[SC_CLIPS] + s, 0, NCLIP - 1);
@@ -828,6 +948,36 @@ static void mv_knob(uint32_t k)
     case KB_SET:
         st_value(ctl.row[SC_SETTINGS], o->value);
         break;
+    case KB_STEP: {
+        static const char *const TIME_N[3] = {"NOTE", "TIE", "REST"};
+        static const char *const FLAG_N[4] = {"-", "ACC", "SLIDE", "A+S"};
+        const step_t *st = &TSEL->step[ui.cursor % NSTEP];
+        char *e;
+        switch (kb.id & 3u) {
+        case 0:
+            e = ds_itoa(o->value, (int32_t)ui.cursor + 1);
+            e = ds_cat(e, "/");
+            ds_itoa(e, (int32_t)trk_len(TSEL));
+            o->ratio = (int16_t)(trk_len(TSEL) > 1u ? ui.cursor * 1000u / (trk_len(TSEL) - 1u) : 0u);
+            break;
+        case 1:
+            if (st->n && st->time == ST_NOTE) {
+                note_name(o->value, st->note[0]);
+                if (st->n > 1) {
+                    e = ds_cat(o->value + str_len(o->value), "+");
+                    ds_itoa(e, st->n - 1);
+                }
+            } else {
+                str_cpy(o->value, "--", sizeof o->value);
+            }
+            break;
+        case 2: str_cpy(o->value, TIME_N[st->time % 3u], sizeof o->value); break;
+        default:
+            str_cpy(o->value, FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], sizeof o->value);
+            break;
+        }
+        break;
+    }
     case KB_CLIP:
         ds_itoa(o->value, (int32_t)(ctl.row[SC_CLIPS] % NCLIP) + 1);
         o->ratio = (int16_t)((ctl.row[SC_CLIPS] % NCLIP) * 1000u / (NCLIP - 1u));
@@ -923,6 +1073,7 @@ static void mv_fill(void)
     mv.hot = ctl.hot >= 0 && fm1_ms - ctl.hot_ms < CTL_HOT_MS ? ctl.hot : -1;
     for (k = 0; k < 4u; k++)
         mv_knob(k);
+    mv.nofocus = (uint8_t)(ctl_roll() || (!ctl.menu && ctl.screen == SC_CLIPS));
     if (ui.layer != LY_PLAY) {                           /* a layer held: what its knobs do */
         static const char *const LK[LY_COUNT][4] = {
             {0}, {"FILTER", "DUST", "DUCK", "TRK FLT"}, {"SHIFT", "LENGTH", "TRANSP", 0}, {"RATE", 0, 0, 0},
@@ -936,6 +1087,8 @@ static void mv_fill(void)
         }
     }
     /* SEQUENCER */
+    if (ctl_roll())
+        ui.step_page = ui.bank;                          /* (the STEP page shows the cursor's 16 steps) */
     mv.len = (uint8_t)trk_len(ts);
     mv.spage = ui.step_page;
     {
@@ -969,6 +1122,40 @@ static void mv_fill(void)
     }
     if (song.playing && ts->seq_idx / 16u == ui.step_page)
         mv.step16 = (uint8_t)(ts->seq_idx % 16u);
+    else if (ctl_roll() && song.playing)
+        mv.step16 = 0xFF;                                /* (the playhead is on another page) */
+    if (ctl_roll()) {                                    /* the STEP page: notes, marks, the range of the pattern */
+        uint32_t lo = 127, hi = 0, len = trk_len(ts);
+        mv.cur = (uint8_t)(ui.cursor % 16u);
+        mv.cur_abs = ui.cursor;
+        for (i = 0; i < len; i++)
+            for (k = 0; k < ts->step[i].n && k < 4u; k++) {
+                lo = ts->step[i].note[k] < lo ? ts->step[i].note[k] : lo;
+                hi = ts->step[i].note[k] > hi ? ts->step[i].note[k] : hi;
+            }
+        if (lo > hi)
+            lo = hi = last_note;
+        if (hi - lo < 12u) {                             /* at least an octave, the notes in the middle */
+            uint32_t pad = (12u - (hi - lo)) / 2u;
+            lo = lo > pad ? lo - pad : 0u;
+            hi = lo + 12u;
+        }
+        mv.roll_lo = (uint8_t)lo;
+        mv.roll_hi = (uint8_t)(hi > 127u ? 127u : hi);
+        for (i = 0; i < MV_NSTEP; i++) {
+            uint32_t idx = (uint32_t)ui.step_page * 16u + i;
+            const step_t *st = &ts->step[idx % NSTEP];
+            if (idx >= len)
+                break;
+            mv.roll_fl[i] = (uint8_t)((st->flags & SF_ACCENT ? RF_ACC : 0u) | (st->flags & SF_SLIDE ? RF_SLIDE : 0u) |
+                                      (st->time == ST_TIE ? RF_TIE : 0u));
+            if (st->time == ST_TIE)
+                mv.roll_n[i] = 1;
+            else if (step_on(st))
+                for (k = 0; k < st->n && k < 4u; k++)
+                    mv.roll_nt[i][mv.roll_n[i]++] = st->note[k];
+        }
+    }
 
     /* GROOVE */
     {
@@ -1008,7 +1195,7 @@ static void mv_fill(void)
         mv.preset_n = DRUM_KITS;
     }
     mv.page = ctl.page[ctl.screen];
-    mv.npages = ctl.screen == SC_SOUND ? 4u : ctl.screen == SC_GROOVE ? 1u : 1u;
+    mv.npages = ctl.screen == SC_SOUND ? 4u : ctl.screen == SC_SEQ && !is_drum(ts) ? 2u : 1u;
     if (ctl.menu)
         mv.npages = 2, mv.page = ctl.screen == SC_SETTINGS;
     for (k = 0; k < 4u; k++) {

@@ -17,6 +17,7 @@ static const char *const SC_NAME[SC_COUNT] = {"PLAY", "TRACKS", "SEQUENCER", "GR
                                               "PERFORM", "PROJECT", "SETTINGS"};
 enum { MK_SYNTH, MK_DRUM, MK_MIDI };
 enum { LVK_OFF, LVK_GHOST, LVK_SOFT, LVK_NORM, LVK_HARD };   /* a step's level as drawn */
+enum { RF_ACC = 1, RF_SLIDE = 2, RF_TIE = 4 };                 /* a STEP page step's marks */
 
 #define MV_NTRK 8
 #define MV_NSTEP 16                            /* steps on screen: one page */
@@ -57,6 +58,7 @@ typedef struct {
     /* the four knobs */
     mv_knob_t k[4];
     int8_t hot;                                /* the knob being turned (focus overlay), -1 none */
+    uint8_t nofocus;                           /* the screen stays while a knob turns (what it edits is drawn) */
     char hot_unit[6];
     /* SEQUENCER */
     uint8_t len, div_label_i, spage;           /* length, the page shown (16 steps) */
@@ -69,6 +71,13 @@ typedef struct {
     uint8_t lane;                              /* drums: the lane edited */
     char lane_name[10];
     int8_t held;                               /* the step held (SEQ + key), -1 none */
+    /* SEQUENCER, STEP page (the cursor's 16 steps) */
+    uint8_t cur;                               /* the cursor in the page 0..15 */
+    uint8_t cur_abs;                           /* the cursor in the pattern */
+    uint8_t roll_n[MV_NSTEP];                  /* notes in the step (a chord: up to 4) */
+    uint8_t roll_nt[MV_NSTEP][4];
+    uint8_t roll_fl[MV_NSTEP];                 /* RF_* */
+    uint8_t roll_lo, roll_hi;                  /* the note range drawn (the whole pattern's) */
     /* GROOVE */
     char tmpl[12];
     uint8_t swing, quant, gamount, human;      /* percent */
@@ -310,6 +319,7 @@ static void sc_tracks(void)
 /* SEQUENCER: the pattern above (synth: a small piano roll, drums: the 16 lanes), the page's 16 steps below,
  * one per white key, grouped by beat */
 static int32_t seq_x(uint32_t i) { return 11 + (int32_t)i * 13 + (int32_t)(i / 4u) * 6; }
+static void sc_roll(void);
 static void sc_seq(void)
 {
     const mv_track_t *t = &mv.t[mv.sel];
@@ -317,6 +327,10 @@ static void sc_seq(void)
     uint32_t i, j;
     uint16_t c = MV_SELC;
     int32_t ph = mv.playing ? (int32_t)mv.step16 : -1;
+    if (mv.page == 1u && t->kind != MK_DRUM) {
+        sc_roll();
+        return;
+    }
     e = b;
     if (t->kind == MK_DRUM) {
         e = ds_cat(e, mv.lane_name);
@@ -386,6 +400,87 @@ static void sc_seq(void)
         int32_t x = MX + (int32_t)i * 57;
         uint16_t pc = i == mv.spage ? DS_TEXT1 : i * 16u < mv.len ? DS_TEXT3 : DS_SURF1;
         ds_rect(x, 172, 53, 2, pc);
+    }
+}
+
+/* SEQUENCER, STEP page (SLOOP's step editor): the cursor's 16 steps as a piano roll over the pattern's note range;
+ * the cursor a raised column with a white mark, the playhead a tint and a bar. Under it the steps as cells: a note
+ * filled, a tie a half bar, a rest empty; an accent a cap on top (shape, not only colour); a slide a ramp to the
+ * next step */
+#define RL_Y0 (Y_BODY + 4)
+#define RL_H 96
+static int32_t roll_y(uint32_t n)
+{
+    uint32_t span = (uint32_t)(mv.roll_hi - mv.roll_lo);
+    return RL_Y0 + RL_H - 6 - (int32_t)((n - mv.roll_lo) * (RL_H - 8u) / (span ? span : 1u));
+}
+static void sc_roll(void)
+{
+    char b[24], *e;
+    uint32_t i, j, n, span = (uint32_t)(mv.roll_hi - mv.roll_lo);
+    uint16_t c = MV_SELC;
+    int32_t ph = mv.playing && mv.step16 < MV_NSTEP ? (int32_t)mv.step16 : -1, semi = (int32_t)(RL_H - 8) / (int32_t)(span ? span : 1u);
+    e = ds_cat(b, "STEP ");
+    e = ds_itoa(e, mv.cur_abs + 1);
+    e = ds_cat(e, " / ");
+    ds_itoa(e, mv.len);
+    mv_title(b);
+    if (semi >= 4)                                       /* the black keys' rows, when there is room for them */
+        for (n = mv.roll_lo; n <= mv.roll_hi; n++)
+            if ((0x54Au >> (n % 12u)) & 1u)
+                ds_rect(MX, roll_y(n) - semi / 2 + 2, 224, semi > 2 ? semi - 1 : 1, DS_SURF1);
+    for (n = (mv.roll_lo + 11u) / 12u * 12u; n <= mv.roll_hi; n += 12u)   /* the Cs */
+        ds_hline(MX, roll_y(n) + 2, 224, DS_LINE);
+    if (ph >= 0)
+        ds_rect(seq_x((uint32_t)ph) - 1, RL_Y0, 13, RL_H, DS_SURF1);
+    if (mv.cur < MV_NSTEP) {
+        ds_rect(seq_x(mv.cur) - 1, RL_Y0, 13, RL_H, DS_SURF2);
+        ds_tri(seq_x(mv.cur) + 1, RL_Y0 + RL_H + 7, seq_x(mv.cur) + 9, RL_Y0 + RL_H + 7, seq_x(mv.cur) + 5,
+               RL_Y0 + RL_H + 2, DS_TEXT1);
+    }
+    for (i = 0; i < MV_NSTEP && i < mv.len; i++) {
+        int32_t x = seq_x(i), w;
+        uint32_t g = mv.st_gate[i] ? mv.st_gate[i] : 1u;
+        if (!mv.roll_n[i] || (mv.roll_fl[i] & RF_TIE))
+            continue;
+        w = 13 * (int32_t)g - 2 + (int32_t)((i % 4u + g - 1u) / 4u) * 6;
+        if (i + g > MV_NSTEP)
+            w = seq_x(MV_NSTEP - 1u) + 11 - x;
+        for (j = 0; j < mv.roll_n[i] && j < 4u; j++) {
+            int32_t y = roll_y(mv.roll_nt[i][j]);
+            uint16_t nc = (int32_t)i == ph || i == mv.cur ? DS_TEXT1 : c;
+            ds_rrect(x, y, w, 5, 2, nc);
+            if (mv.roll_fl[i] & RF_ACC)
+                ds_rect(x + 2, y - 3, 7, 2, nc);         /* accent: a cap */
+        }
+        if ((mv.roll_fl[i] & RF_SLIDE) && i + g < MV_NSTEP && mv.roll_n[i + g]) {   /* slide: a ramp into the next */
+            int32_t y0 = roll_y(mv.roll_nt[i][0]) + 2, y1 = roll_y(mv.roll_nt[i + g][0]) + 2;
+            ds_line(x + w - 2, y0, seq_x(i + g) + 2, y1, 2, DS_TEXT2);
+        }
+    }
+    /* the steps */
+    for (i = 0; i < MV_NSTEP; i++) {
+        int32_t x = seq_x(i), y = 156;
+        if (i >= mv.len) {
+            ds_rect(x + 4, y + 6, 3, 1, DS_SURF1);
+            continue;
+        }
+        if (i == mv.cur)
+            ds_rframe(x - 2, y - 2, 15, 16, 3, 2, DS_TEXT1, DS_BG);
+        if (mv.roll_fl[i] & RF_TIE)
+            ds_rrect(x, y + 6, 11, 6, 2, DS_MID(c));
+        else if (mv.roll_n[i])
+            ds_rrect(x, y, 11, 12, 2, (int32_t)i == ph ? DS_TEXT1 : c);
+        else
+            ds_rframe(x, y, 11, 12, 2, 1, DS_SURF2, DS_BG);
+        if (mv.roll_n[i] && (mv.roll_fl[i] & RF_ACC) && !(mv.roll_fl[i] & RF_TIE))
+            ds_rect(x + 2, y + 2, 7, 2, DS_BG);
+        if ((int32_t)i == ph)
+            ds_rect(x, 171, 11, 2, DS_TEXT1);
+    }
+    for (i = 0; i < 4u; i++) {                           /* the pages of the pattern: the cursor's lit */
+        int32_t x = MX + (int32_t)i * 57;
+        ds_rect(x, 174, 53, 2, i == mv.spage ? DS_TEXT1 : i * 16u < mv.len ? DS_TEXT3 : DS_SURF1);
     }
 }
 
@@ -624,7 +719,7 @@ static void (*const SCENES[SC_COUNT])(void) = {sc_play, sc_tracks, sc_seq, sc_gr
 static void mv_scene(void)
 {
     mv_status();
-    if (mv.hot >= 0 && !mv.modal && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
+    if (mv.hot >= 0 && !mv.modal && !mv.nofocus && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
         mv_title(0);
         mv_focus();
     } else {

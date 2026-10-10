@@ -396,6 +396,51 @@ int main(int argc, char **argv)
     }
     release(B_FX);
 
+    /* the STEP page: SEQ again; keys write the cursor's step and move on, the knobs edit it, EDIT clears it */
+    track_select(3);
+    tap(B_SEQ);
+    if (ctl.page[SC_SEQ] != 1u)
+        tap(B_SEQ);
+    frames(2);
+    check(ctl_roll() && mv.npages == 2u && mv.page == 1u, "SEQ again on a synth track: the STEP page");
+    cursor_set(0);
+    steps_clear(TSEL);
+    TSEL->p[P_VOICE] = 0;                                 /* (poly: chords) */
+    keyw(0);
+    check(step_on(&TSEL->step[0]) && TSEL->step[0].n == 1 && ui.cursor == 1u, "a key writes the cursor's step, letting go moves on");
+    {
+        uint32_t k1 = key_of_white(0), k2 = key_of_white(2);
+        fm1_in.notes |= 1u << k1;
+        frame();
+        fm1_in.notes |= 1u << k2;
+        frame();
+        check(ui.cursor == 1u, "... still on the step while a key is held");
+        fm1_in.notes &= ~((1u << k1) | (1u << k2));
+        frame();
+    }
+    check(TSEL->step[1].n == 2 && ui.cursor == 2u, "two keys together: a chord in one step");
+    turn(EN_K3, -1);                                      /* (an empty step is a rest: one down, a tie) */
+    check(TSEL->step[2].time == ST_TIE && !strcmp(mv.k[2].value, "TIE"), "TIME: the step becomes a tie");
+    turn(EN_K1, -2);
+    check(ui.cursor == 0u && !strcmp(mv.k[0].value, "1/16"), "STEP: the cursor (1/16)");
+    {
+        uint32_t n0 = TSEL->step[0].note[0];
+        turn(EN_K2, 2);
+        turn(EN_K4, 1);
+        check(TSEL->step[0].note[0] == n0 + 2u && (TSEL->step[0].flags & SF_ACCENT), "NOTE transposes it, FLAG accents it");
+    }
+    ppm("03b-sequencer-step");
+    turn(EN_ALGO, 1);
+    check(ui.cursor == 1u, "ALGORITHM moves the cursor too");
+    tap(B_EDIT);
+    check(!step_on(&TSEL->step[1]) && ui.cursor == 2u && ctl.screen == SC_SEQ, "EDIT clears the cursor's step and moves on");
+    turn(EN_SELECT, -3);
+    tap(B_SEQ);
+    tap(B_SEQ);
+    check(ctl.screen == SC_SEQ && !ctl_roll() && ctl.page[SC_SEQ] == 0u, "the drum track: its grid only");
+    track_select(3);
+    steps_clear(TSEL);
+
     /* clips: CLIPS held + keys launch on the next bar, scenes, the cursor's copy and clear */
     track_select(1);
     {
