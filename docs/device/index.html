@@ -3659,7 +3659,7 @@ async function connectVirtual() {
   say("Starting the virtual FM1…");
   let X;
   try {
-    const r = await fetch("../sim/fm1sim.wasm");
+    const r = await fetch("../sim/fm1sim.wasm?v=e56ef74fb826", { cache: "no-cache" });   /* (make_device.py: this build) */
     if (!r.ok) throw new Error("fm1sim.wasm: HTTP " + r.status);
     ({ instance: { exports: X } } = await WebAssembly.instantiate(await r.arrayBuffer(), {}));
   } catch (e) { say("Could not load the virtual FM1: " + e.message, true); return; }

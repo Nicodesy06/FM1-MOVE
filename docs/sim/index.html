@@ -109,6 +109,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
   <h1>FM1 MOVE</h1>
   <span class="sub">Browser test view — the firmware's own code, compiled to WebAssembly</span>
   <span class="pill">SIMULATION</span>
+  <span class="pill" id="fwver" title="the firmware compiled into this page">FM1 MOVE 0.2</span>
   <nav><a href="../manual/">Manual</a><a href="../device/">Device &amp; install</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
 </header>
 
@@ -151,7 +152,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
   </div>
   <div class="card">
     <h2>WHAT THIS IS</h2>
-    The FM1 Move firmware (eight-track engine, Groove Engine, controls, screens, projects) running unchanged on a
+    The FM1 Move firmware (eight-track engine, Groove Engine, clips and scenes, the STEP editor, controls, screens, projects) running unchanged on a
     simulated panel. Saved projects stay in this browser. It is <b>not</b> the hardware: timing, audio load and the
     screen's speed differ, and nothing here has been tested on an FM-1 yet.
     <div id="status" style="margin-top:8px;color:var(--text-3)"></div>
@@ -358,7 +359,7 @@ async function boot() {
   buildPanel();
   addEventListener("resize", layoutKeys);
   try {
-    const r = await fetch("fm1sim.wasm");
+    const r = await fetch("fm1sim.wasm?v=e56ef74fb826", { cache: "no-cache" });   /* (never an older firmware from the cache) */
     const { instance } = await WebAssembly.instantiate(await r.arrayBuffer(), {});
     X = instance.exports; mem = X.memory;
     X.sim_init();

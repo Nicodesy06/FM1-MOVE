@@ -297,36 +297,33 @@ int main(int argc, char **argv)
     kn(3, "TRK FLT", "LP 40", 300, 1);
     render(dir, "11_perform");
 
-    /* PROJECT */
+    /* PROJECT (as the firmware lists it: 2 slots, the autosave keeps the work in progress) */
     demo();
     mv.screen = SC_PROJECT;
     mv.playing = 0;
-    {
-        static const char *const N[6] = {"1  NIGHT DRIVE", "2  AFRO 122", "3  DUB SKETCH", "4  EMPTY", "5  EMPTY",
-                                         "6  EMPTY"};
-        static const char *const R[6] = {"124 BPM", "122 BPM", "86 BPM", "", "", ""};
-        for (i = 0; i < 6u; i++) {
-            snprintf(mv.row_l[i], 16, "%s", N[i]);
-            snprintf(mv.row_r[i], 16, "%s", R[i]);
-        }
-        mv.nrows = 6;
-        mv.row_sel = 1;
-        mv.row_cur = 0;
-    }
+    mv.npages = 2;
+    mv.page = 0;
+    snprintf(mv.row_l[0], 16, "1  PROJECT");
+    snprintf(mv.row_r[0], 16, "SAVED");
+    snprintf(mv.row_l[1], 16, "2  EMPTY");
+    mv.row_r[1][0] = 0;
+    mv.nrows = 2;
+    mv.row_sel = 0;
+    mv.row_cur = 0xFF;
     kn(0, "SAVE", "SAVE", -1, 0);
-    kn(1, "PLAY", "LOAD", -1, 0);
-    kn(2, "EDIT", "COPY", -1, 0);
-    kn(3, "REC", "DELETE", -1, 0);
+    kn(1, "EDIT", "LOAD", -1, 0);
+    mv.k[2].label = mv.k[3].label = 0;
     render(dir, "12_project");
 
-    /* SETTINGS */
+    /* SETTINGS (the firmware's rows, ui_move_ctl.c ST_LABEL) */
     demo();
     mv.screen = SC_SETTINGS;
-    mv.npages = 3;
+    mv.npages = 2;
+    mv.page = 1;
     mv.playing = 0;
     {
-        static const char *const L[6] = {"CLOCK IN", "CLOCK OUT", "MIDI OUT", "TRACK 8 CH", "LIGHTS", "BRIGHTNESS"};
-        static const char *const R[6] = {"USB", "ON", "SEQUENCER", "5", "LOW", "80 %"};
+        static const char *const L[6] = {"CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS", "KEY LIGHTS", "USB AUDIO"};
+        static const char *const R[6] = {"USB", "SEQ", "NOTES", "LOW", "WHITE", "MAIN"};
         for (i = 0; i < 6u; i++) {
             snprintf(mv.row_l[i], 16, "%s", L[i]);
             snprintf(mv.row_r[i], 16, "%s", R[i]);

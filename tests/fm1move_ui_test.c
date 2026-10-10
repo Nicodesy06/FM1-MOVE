@@ -357,6 +357,7 @@ int main(int argc, char **argv)
     frames(10);
     hold_ms(B_HOME, 800);
     check(ctl.menu && ctl.screen == SC_PROJECT, "HOME held: the PROJECT page");
+    frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("12-project-live");
     {
         int16_t bpm = song.g[G_BPM];
@@ -377,6 +378,7 @@ int main(int argc, char **argv)
     }
     hold_ms(B_HOME, 800);
     check(ctl.menu && ctl.screen == SC_SETTINGS, "HOME held again: SETTINGS");
+    frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("13-settings-live");
     tap(B_HOME);
     check(!ctl.menu && ctl.screen == SC_PLAY, "HOME tapped: back to PLAY");
@@ -429,6 +431,19 @@ int main(int argc, char **argv)
         turn(EN_K4, 1);
         check(TSEL->step[0].note[0] == n0 + 2u && (TSEL->step[0].flags & SF_ACCENT), "NOTE transposes it, FLAG accents it");
     }
+    {                                                     /* (a phrase in the rest of the page, for the picture) */
+        static const uint8_t PH[12] = {67, 0, 70, 72, 0, 74, 72, 70, 0, 67, 65, 62};
+        uint32_t w;
+        for (w = 0; w < 12u; w++)
+            if (PH[w]) {
+                uint8_t n = PH[w];
+                put_step(TSEL, 4u + w, 1, &n, ST_NOTE, 0);
+            }
+        TSEL->step[5].time = ST_TIE;
+        TSEL->step[9].flags |= SF_SLIDE;
+        TSEL->step[13].flags |= SF_ACCENT;
+    }
+    frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("03b-sequencer-step");
     turn(EN_ALGO, 1);
     check(ui.cursor == 1u, "ALGORITHM moves the cursor too");
@@ -486,6 +501,7 @@ int main(int argc, char **argv)
     for (i = 0, k = 1; i < NTRK; i++)
         k &= clip_playing(i) == 0;
     check(k && mv.scene == 0 && clip_holds(1, 0), "CLIPS held + white key 9: scene 1 on every track on the bar");
+    frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("07b-clips-live");
     tap(B_SAVE);
     check(clip_state(1, 2) == 3, "CLIPS tapped on CLIPS: the cursor's clip is asked for");

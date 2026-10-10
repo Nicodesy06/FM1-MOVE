@@ -93,6 +93,8 @@ def main(move_pkg, version, sloop_pkg=None):
         if html.count(mark) != 1:
             raise SystemExit(f"device.html must contain {mark} once")
         html = html.replace(mark, text)
+    wasm = ROOT / "docs/sim/fm1sim.wasm"                 # the virtual FM1 asks for this exact build (never a cached one)
+    html = html.replace("fm1sim.wasm?v=WASMHASH", "fm1sim.wasm?v=" + hashlib.sha256(wasm.read_bytes()).hexdigest()[:12])
     out = ROOT / "docs/device"
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(html, encoding="utf-8")
