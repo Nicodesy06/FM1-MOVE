@@ -87,6 +87,13 @@ else
     echo "(stress under ASan: this compiler has no AddressSanitizer, skipped)"
 fi
 
+# FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
+python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
+$CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c
+mkdir -p "$OUT/ui"
+run "FM1 Move UI: ten screens render, every label fits, only changed rows are sent" "$OUT/ui_mockups" "$OUT/ui"
+run "FM1 Move UI: contrast of the colour tokens (WCAG, after RGB565)" python3 tools/ui_contrast.py
+
 $CC -o "$OUT/upreset_test" tests/upreset_test.c
 run "user presets (UP_PUT parser, bank round trip, versions)" "$OUT/upreset_test"
 

@@ -66,12 +66,12 @@ dense playing; exact numbers documented with the implementation).
 
 ## M4 — Premium UI (starts now, in parallel)
 
-1. `docs/UI_DESIGN_SYSTEM.md`, `UI_NAVIGATION.md`, `UI_MAPPING.md`.
-2. Design-system C module (`firmware/src/ds/`): tokens, Inter fonts (OFL) rasterised by `tools/gen_dsfont.py`,
+1. [x] `docs/UI_DESIGN_SYSTEM.md`, `UI_NAVIGATION.md`, `UI_MAPPING.md`.
+2. [x] Design-system C module (`firmware/src/ds.c`): tokens, Inter fonts (OFL) rasterised by `tools/gen_dsfont.py`,
    band renderer, components.
-3. Screens rendered **by that firmware code** on the host into 240 × 240 PNG mockups (`tests/ui_mockups.c`), plus an
-   automatic contrast check.
-4. Wire to live data; replace SLOOP's drawing code behind a build switch; measure flash/RAM/frame time.
+3. [x] Screens rendered **by that firmware code** on the host into 240 × 240 PNG mockups (`tests/ui_mockups.c`), plus
+   automatic contrast, label-fit and partial-redraw checks.
+4. [ ] Wire to live data; replace SLOOP's drawing code behind a build switch; measure flash/RAM/frame time.
 
 ## M5 — Sound & performance, M6 — Dual-core R&D, M7 — Stabilisation
 
