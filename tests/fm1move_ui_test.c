@@ -456,6 +456,60 @@ int main(int argc, char **argv)
     track_select(3);
     steps_clear(TSEL);
 
+    /* SEQ held: the STEPS page over any screen; SEL held: the KEY page (the chords on the keys); a tap never shows them */
+    tap(B_HOME);
+    track_select(1);
+    steps_clear(TSEL);
+    {
+        uint8_t n = 48;
+        put_step(TSEL, 0, 1, &n, ST_NOTE, 0);
+        put_step(TSEL, 4, 1, &n, ST_NOTE, 0);
+        TSEL->step[5].time = ST_TIE;
+        TSEL->step[4].flags |= SF_ACCENT;
+        TSEL->seq_active = 1;
+    }
+    press(B_SEQ);
+    check(mv.layer == MVL_NONE && ctl.screen == SC_PLAY, "SEQ just pressed: no STEPS page yet (a tap does not flash it)");
+    frames(20);
+    check(mv.layer == MVL_STEPS && !strcmp(mv.lay_lab[0], "C3") && (mv.lay_fl[5] & RF_TIE) && (mv.lay_fl[4] & RF_ACC) &&
+          !strcmp(mv.k[1].label, "DIV") && mv.k[1].value[0] && mv.k[3].value[0],
+          "SEQ held: STEPS, the 16 steps as a grid (note, tie, accent), DIV / SWING / LENGTH with their values");
+    frames(100);
+    ppm("16-steps-held");
+    keyw(2);
+    check(step_on(&TSEL->step[2]), "... SEQ + key 3: step 3 written as before");
+    release(B_SEQ);
+    frames(2);
+    check(mv.layer == MVL_NONE && ctl.screen == SC_PLAY, "SEQ let go: back to the screen (no tap: it was used)");
+    TSEL->p[P_CHORD] = 1;
+    {
+        int16_t sc0 = key_ref()->p[P_SCALE];
+        uint32_t ok = 1;
+        press(B_SCL);
+        frames(20);
+        for (i = 0; i < 16u; i++)
+            ok &= mv.lay_lab[i][0] && ds_text_w(&DS_F12, mv.lay_lab[i]) <= LT_W - 6;
+        check(mv.layer == MVL_KEY && ok && !strcmp(mv.k[0].value, "TRIAD"),
+              "SEL held: KEY, the chord of every white key (each label fits), CHORD TRIAD");
+        turn(EN_K2, 2);
+        check(key_ref()->p[P_SCALE] == clamp(sc0 + 2, 0, NSCALES - 1), "... KNOB 2 turns the scale (two detents: two scales)");
+        turn(EN_K2, -2);
+        frames(100);
+        ppm("17-key-held");
+        release(B_SCL);
+        frames(2);
+    }
+    check(mv.layer == MVL_NONE && ctl.screen == SC_PLAY, "SEL let go: back to the screen");
+    TSEL->p[P_CHORD] = 0;
+    steps_clear(TSEL);
+    track_select(0);
+    press(B_SEQ);
+    frames(120);
+    check(mv.layer == MVL_STEPS && mv.lay_lab[0][0] == 0, "the drum track's STEPS: the lane's hits by level");
+    ppm("16b-steps-drums");
+    release(B_SEQ);
+    frames(2);
+
     /* clips: CLIPS held + keys launch on the next bar, scenes, the cursor's copy and clear */
     track_select(1);
     {

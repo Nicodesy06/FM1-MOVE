@@ -286,7 +286,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 <section class="chap" id="layers">
   <h2>Layers: hold a button, touch a key</h2>
   <p class="sub">While a function button is held, the 16 white keys and the four knobs do that button's job. Let go and the keys play notes again.
-    A button you held and used does not open its screen.</p>
+    A button you held and used does not open its screen. Holding <kbd>SEQ</kbd> or <kbd>SEL</kbd> shows its page over any screen, as on SLOOP:
+    <b>STEPS</b> and <b>KEY</b> (below).</p>
   <div class="tablewrap"><table>
     <tr><th>Hold</th><th>The keys</th><th>The knobs</th></tr>
     <tr><td>FX</td><td>16 punch-in effects on the whole mix, while the key is held</td><td>DJ FILTER · DUST · DUCK · TRACK FILTER</td></tr>
@@ -299,6 +300,15 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>GLO</td><td>keys 1–8 mute, 9–16 solo · black keys: C# fill while held, D# fill on the next bar, F# tap tempo</td><td>VOLUME · PAN · REVERB · DELAY of the selected track</td></tr>
     <tr><td>Any button</td><td>—</td><td>SELECT: the tempo, one BPM a detent</td></tr>
   </table></div>
+  <div class="screens">
+    <figure><img src="../ui/live/16-steps-held.png" alt="STEPS page, SEQ held" loading="lazy"><figcaption><b>SEQ held · STEPS</b> <span class="tag new">NEW</span>
+      The 16 steps of the page as a 4 × 4 grid, key 1 top left: a note filled with its name, a tie half filled, an accent capped, a lock or nudge dotted;
+      the playhead runs along the bottom, a step you hold is framed. Drum tracks show the chosen sound's hits by level. The knobs show their values
+      (NOTE · DIV · SWING · LENGTH; a step held: NOTE · LEVEL · RATCHET · NUDGE). Not on the SEQUENCER, where the steps are the screen.</figcaption></figure>
+    <figure><img src="../ui/live/17-key-held.png" alt="KEY page, SEL held" loading="lazy"><figcaption><b>SEL held · KEY</b> <span class="tag new">NEW</span>
+      The chips are keys 1–8 (the tracks); the grid shows what each white key plays — its chord in chord mode, else its note — with the root filled and the
+      scale's notes raised. CHORD · SCALE · KEYS · TRANSPOSE on the knobs, with their values.</figcaption></figure>
+  </div>
   <h4>GLO held</h4>
   <div class="keys16">
     <div class="a" style="--c:var(--t1)">M1</div><div class="a" style="--c:var(--t2)">M2</div><div class="a" style="--c:var(--t3)">M3</div><div class="a" style="--c:var(--t4)">M4</div>
@@ -405,7 +415,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h3>Chords and the key</h3>
   <p>Steps hold chords of up to four notes. Hold <kbd>SEL</kbd>: white keys 9–16 and the black keys set the key of the song; the knobs set chord mode (one key plays a
     triad, 7th, 9th, sus4 or power chord of the scale), the scale (16, from major and minor to blues and whole tone), key snapping (off, snap, scale on the white keys) and
-    transpose. In chord mode the black keys change the chord while it is held.</p>
+    transpose. In chord mode the black keys change the chord while it is held. While <kbd>SEL</kbd> is held the KEY page shows the chord every white key plays.</p>
 </section>
 
 <!-- ================================================================== RECORDING -->
@@ -615,6 +625,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li>Every engine, sound and sequencer feature of SLOOP 2.5 is still there; the panel is new and has eight tracks of any kind.</li>
     <li>SEL held + keys 1–8 now selects tracks (the song key moved to keys 9–16 and the black keys); GLO held: keys 1–8 mute, 9–16 solo, fill and tap tempo on black keys.</li>
     <li>SLOOP's song mode (sections A–D, chains, SONG REC) is gone; <a href="#clips">clips and scenes</a> replace it (six clips per track, six scenes, launched on the bar).</li>
+    <li>SLOOP's layer pages for <kbd>SEQ</kbd> (STEPS, 4 × 4) and <kbd>SEL</kbd> (the chords on the keys) are back: hold the button.</li>
     <li>SLOOP's STEP page is back as the SEQUENCER's <a href="#sequencer">STEP page</a> (<kbd>SEQ</kbd> again), with accent and slide.</li>
     <li>Sample slots: three (USR1–3). SLOOP's USR4 flash now holds FM1 Move's projects.</li>
     <li>The visualiser, colour palettes, zoom and the calibration page are gone from the panel.</li>

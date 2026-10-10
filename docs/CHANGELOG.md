@@ -2,6 +2,16 @@
 
 ## Unreleased (fm1-move/dev)
 
+### Layer pages: STEPS and KEY (host simulation)
+- SEQ held shows **STEPS** over any screen (SLOOP's layer page): the page's 16 steps as a 4 × 4 grid (note names,
+  ties, accents, lock / nudge dots, the playhead, the held step framed; drum tracks: the sound's hits by level), the
+  knobs with their values (NOTE · DIV · SWING · LENGTH; a step held: NOTE · LEVEL · RATCHET · NUDGE). Not on the
+  SEQUENCER. SEL held shows **KEY**: the track chips (keys 1–8) and the chord (chord mode) or note every white key
+  plays, root filled, scale raised; CHORD · SCALE · KEYS · TRANSP with values. Shown after 0.25 s held (a tap never
+  flashes them) or at once when a key / knob is used.
+- Fix: SEL held + KNOB 2 (SCALE) took track 1's scale as its base, a drum track in FM1 Move, so it moved one step at
+  most; it now follows the selected synth (or the first one).
+
 ### Clips, scenes, the STEP page (host simulation)
 - Flash (1d0f6f2): **2 project slots + the autosave** (was 4 + autosave), 3 chunks of 3 824 B each (`FMP_MAX`
   11 472 B, was 2 chunks): room for the clips. Same 80 KiB region at `0xE7000`, 10 objects × A/B; map slot 1 {0,1,2},

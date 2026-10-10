@@ -12,13 +12,13 @@ Status: **implemented** in `firmware/src/ui_move_ctl.c` (FM1MOVE build) and exer
 | SELECT | track 1–8; any function button held + SELECT: tempo (1 BPM a detent) |
 | PRESETS | sound of the selected track |
 | PLAY / REC | transport / record arm; REC + PLAY = capture |
-| SEL held + keys 1–8 | select track |
+| SEL held + keys 1–8 | select track; keys 9–16 and black keys: the key of the song. Held: the KEY page (the chord / note every white key plays, root filled, scale raised; CHORD · SCALE · KEYS · TRANSP with values) |
 | GLO held + keys 1–8 / 9–16 | mute / solo track 1–8; black keys C#, D#, F#: fill while held, fill next bar, tap tempo |
 | CLIPS (SAVE) held + white keys 1–6 | launch clip 1–6 of the selected track (playing: on the next bar; stopped: at once) |
 | CLIPS (SAVE) held + white keys 9–14 | scene 1–6: clip k on every track (a track whose clip k is empty goes quiet) |
 | FX held + keys 1–16 | punch-in effect while held |
 | ARP held + keys | note repeat (roll) at the GROOVE grid |
-| SEQ held + keys 1–16 | toggle steps of the shown page |
+| SEQ held + keys 1–16 | toggle steps of the shown page. Held: the STEPS page, a 4 × 4 grid of the page's steps (note, tie, accent, lock, playhead, held step), NOTE · DIV · SWING · LENGTH with values (not on the SEQUENCER) |
 | EDIT held + keys | erase that note / lane as it plays; EDIT + OCT−/OCT+ undo / redo |
 | HOME held | menu (PROJECT, SETTINGS) |
 

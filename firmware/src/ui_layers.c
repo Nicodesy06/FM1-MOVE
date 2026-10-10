@@ -25,6 +25,20 @@
 static const uint8_t LV_UP[4] = {LV_GHOST, LV_SOFT, LV_NORM, LV_HARD};
 static uint32_t lvl_rank(uint32_t lvl) { return lvl == LV_GHOST ? 0u : lvl == LV_SOFT ? 1u : lvl == LV_NORM ? 2u : 3u; }
 #endif
+#if FM1MOVE
+/* the track whose key and scale the SEL layer shows and turns: the selected one if it is a synth, else the first
+ * synth (every synth part shares the key: SEL + key sets them all) */
+static track_t *key_ref(void)
+{
+    uint32_t i;
+    if (is_synth(TSEL))
+        return TSEL;
+    for (i = 0; i < NTRK; i++)
+        if (is_synth(&trk[i]))
+            return &trk[i];
+    return TSEL;
+}
+#endif
 static const uint8_t LAYER_BTN[LY_COUNT] = {NB, B_FX, B_EDIT, B_ARP, B_SEQ, B_SCL, B_GLO, B_SAVE};
 static const char *const LAYER_NAME[LY_COUNT] = {"", "punch", "erase", "roll", "steps", "key", "mix", "song"};
 #if FELUCCA_ARRANGER
@@ -578,7 +592,11 @@ static void layer_knobs(uint32_t layer)
                     t->p[P_CHORD] = (int16_t)clamp(t->p[P_CHORD] + s, 0, 5);
             } else if (k == 1u) {
                 uint32_t i;
+#if FM1MOVE                                             /* (track 1 is a drum track here: the selected synth leads) */
+                int16_t v = (int16_t)clamp(key_ref()->p[P_SCALE] + s, 0, NSCALES - 1);
+#else
                 int16_t v = (int16_t)clamp(trk[0].p[P_SCALE] + s, 0, NSCALES - 1);
+#endif
                 for (i = 0; i < NTRK; i++)
                     if (is_synth(&trk[i]))
                         trk[i].p[P_SCALE] = v;

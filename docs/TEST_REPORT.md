@@ -119,3 +119,7 @@ except the known baseline `target cost … fm1_alnk0_irq` (+54 %, unchanged, pre
 CPU notes ("timed: a note, not a failure") came from a loaded machine. `node web/test_device.mjs`: all ok against the
 rebuilt wasm firmware. Host simulation only: nothing here ran on an FM-1.
 **No FM1 Move build has run on a physical FM-1.**
+
+
+### Layer pages (STEPS, KEY) — host simulation
+`tests/fm1move_ui_test.c`: SEQ just pressed shows nothing (no flash on a tap); held 0.3 s: STEPS with note / tie / accent marks and DIV · SWING · LENGTH values; SEQ + key still writes the step; let go: back to the screen; SEL held: KEY with a chord on every white key, each label fits its tile; KNOB 2 turns the scale two steps (the fixed base); the drum track's STEPS. All checks ok, also under ASan + UBSan. Not run on an FM-1.

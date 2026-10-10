@@ -884,9 +884,10 @@ static void ui_leds(void)
 }
 
 /* -------------------------------------------------------- the view model --- */
-static void mv_knob(uint32_t k)
+static void mv_knob_b(uint32_t k, kbind_t kb);
+static void mv_knob(uint32_t k) { mv_knob_b(k, ctl_bind(k)); }
+static void mv_knob_b(uint32_t k, kbind_t kb)
 {
-    kbind_t kb = ctl_bind(k);
     mv_knob_t *o = &mv.k[k];
     o->label = kb.label;
     o->value[0] = 0;
@@ -1022,6 +1023,129 @@ static uint32_t lvk(uint32_t lv)                         /* a step level -> the 
     return lv == LV_GHOST ? LVK_GHOST : lv == LV_SOFT ? LVK_SOFT : lv == LV_HARD ? LVK_HARD : LVK_NORM;
 }
 
+/* a layer held long enough (or used): SEQ shows STEPS, SEL shows KEY over the screen (SLOOP's layer pages). A tap
+ * (the button's own screen) never flashes it; on the SEQUENCER the steps are the screen already */
+#define CTL_LAYER_MS 250u
+static void mv_layer(void)
+{
+    const track_t *ts = TSEL;
+    uint32_t b = ui.layer == LY_STEP ? B_SEQ : ui.layer == LY_SCALE ? B_SCL : NB, i;
+    char *e;
+    if (b == NB || ctl.arm || (b == B_SEQ && !ctl.menu && ctl.screen == SC_SEQ) ||
+        (!ctl.used[b] && (!ctl.t0[b] || fm1_ms - (ctl.t0[b] & ~1u) < CTL_LAYER_MS)))
+        return;
+    mv.layer = (uint8_t)(b == B_SEQ ? MVL_STEPS : MVL_KEY);
+    if (b == B_SEQ) {
+        uint32_t len = trk_len(ts), base = (uint32_t)ui.step_page * 16u;
+        mv.lay_page = ui.step_page;
+        mv.lay_pages = (uint8_t)((len + 15u) / 16u);
+        mv.lay_held = ui.step_held;
+        mv.lay_ph = (uint8_t)(song.playing && ts->seq_idx / 16u == ui.step_page ? ts->seq_idx % 16u : 0xFFu);
+        e = mv.lay_ctx;
+        if (is_drum(ts)) {
+            e = ds_cat(e, LANE_NAME[pen_lane & 15u]);
+            e = ds_cat(e, "  ");
+        }
+        e = ds_cat(e, "LEN ");
+        ds_itoa(e, (int32_t)len);
+        for (i = 0; i < 16u && base + i < len; i++) {
+            const step_t *st = &ts->step[base + i];
+            uint32_t fl = step_locked(ts, base + i) || ts->micro[base + i] ? 8u : 0u;
+            if (!is_drum(ts)) {
+                if (step_on(st)) {
+                    note_name(mv.lay_lab[i], st->note[0]);
+                    if (st->n > 1u) {
+                        e = ds_cat(mv.lay_lab[i] + str_len(mv.lay_lab[i]), "+");
+                        ds_itoa(e, st->n - 1);
+                    }
+                    fl |= st->flags & SF_ACCENT ? RF_ACC : 0u;
+                } else if (st->time == ST_TIE) {
+                    fl |= RF_TIE;
+                }
+            }
+            mv.lay_fl[i] = (uint8_t)fl;
+        }
+        if (ui.step_held) {                              /* the first step held: its values */
+            uint32_t w, idx;
+            int32_t m;
+            for (w = 0; w < 16u && !((ui.step_held >> w) & 1u); w++)
+                ;
+            idx = (base + w) % NSTEP;
+            m = ts->micro[idx];
+            if (is_drum(ts)) {
+                static const char *const LVN[4] = {"GHOST", "SOFT", "NORM", "HARD"};
+                const dstep_t *d = &ts->dstep[idx];
+                mv.k[0].label = "SOUND";
+                str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
+                str_cpy(mv.k[1].value, dstep_has(d, pen_lane) ? LVN[lvl_rank(dstep_lvl(d, pen_lane))] : "--",
+                        sizeof mv.k[1].value);
+            } else {
+                const step_t *st = &ts->step[idx];
+                if (step_on(st))
+                    note_name(mv.k[0].value, st->note[0]);
+                else
+                    str_cpy(mv.k[0].value, "--", sizeof mv.k[0].value);
+                str_cpy(mv.k[1].value, (st->flags & SF_ACCENT) ? "ACCENT" : step_on(st) ? "NORMAL" : "--",
+                        sizeof mv.k[1].value);
+                e = ds_cat(mv.k[2].value, "X");
+                ds_itoa(e, (int32_t)(st->rat & 3u) + 1);
+            }
+            e = mv.k[3].value;
+            if (m > 0)
+                *e++ = '+';
+            ds_itoa(e, m);
+            mv.k[3].ratio = (int16_t)((m - MICRO_MIN) * 1000 / (MICRO_MAX - MICRO_MIN));
+            mv.k[3].bipolar = 1;
+        } else {
+            if (is_drum(ts))
+                mv.k[0].label = "SOUND", str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
+            else
+                note_name(mv.k[0].value, pen_note[0]);
+            mv_knob_b(1, (kbind_t){KB_TP, P_SDIV, "DIV"});
+            mv_knob_b(2, (kbind_t){KB_TP, P_SSWING, "SWING"});
+            mv_knob_b(3, (kbind_t){KB_TP, P_SLEN, "LENGTH"});
+        }
+    } else {
+        const track_t *kr = key_ref();
+        uint32_t root = (uint32_t)kr->p[P_ROOT] % 12u, sc = (uint32_t)clamp(kr->p[P_SCALE], 0, NSCALES - 1);
+        uint32_t mask = SCALE_MASK[sc], chord = !is_drum(ts) && ts->p[P_CHORD];
+        e = ds_cat(mv.lay_ctx, N_NOTE[root]);
+        e = ds_cat(e, " ");
+        e = ds_cat(e, N_SCALE[sc]);
+        if (chord) {
+            e = ds_cat(e, "  ");
+            ds_cat(e, N_CHORD[clamp(ts->p[P_CHORD], 0, 5)]);
+        }
+        mv.lay_pages = 1;
+        for (i = 0; i < 16u; i++) {
+            uint32_t k = key_of_white(i), pc = (53u + k) % 12u, in = (mask >> ((pc + 12u - root) % 12u)) & 1u;
+            str_cpy(mv.lay_lab[i], N_NOTE[pc], sizeof mv.lay_lab[i]);
+            if (chord) {                                 /* the chord this key plays */
+                uint8_t c[4];
+                uint32_t nt = kb_map(ts, k), m;
+                if (nt != KB_SILENT && (m = chord_notes(ts, nt, c)) != 0u) {
+                    uint32_t third = m > 1u ? (uint32_t)(c[1] - c[0]) : 4u;
+                    static const char *const Q[8] = {"", "", "5", " MIN", "", " SUS", "", "5"};
+                    pc = c[0] % 12u;
+                    in = 1;
+                    e = ds_cat(mv.lay_lab[i], N_NOTE[pc]);
+                    ds_cat(e, ts->p[P_CHORD] == 5 ? "5" : Q[third & 7u]);
+                }
+            }
+            mv.lay_st[i] = (uint8_t)(pc == root ? 2u : in ? 1u : 0u);
+        }
+        str_cpy(mv.k[0].value, is_drum(ts) ? "--" : N_CHORD[clamp(ts->p[P_CHORD], 0, 5)], sizeof mv.k[0].value);
+        mv.k[0].ratio = (int16_t)(is_drum(ts) ? -1 : ts->p[P_CHORD] * 200);
+        str_cpy(mv.k[1].value, N_SCALE[sc], sizeof mv.k[1].value);
+        mv.k[1].ratio = (int16_t)(sc * 1000u / (NSCALES - 1u));
+        str_cpy(mv.k[2].value, is_drum(ts) ? "--" : N_QUANT[clamp(ts->p[P_QUANT], 0, 2)], sizeof mv.k[2].value);
+        if (!is_drum(ts))
+            mv_knob_b(3, (kbind_t){KB_TP, P_TRANS, "TRANSP"});
+        else
+            str_cpy(mv.k[3].value, "--", sizeof mv.k[3].value);
+    }
+}
+
 static void mv_fill(void)
 {
     const track_t *ts = TSEL;
@@ -1087,7 +1211,7 @@ static void mv_fill(void)
         }
     }
     /* SEQUENCER */
-    if (ctl_roll())
+    if (ctl_roll() && ui.layer == LY_PLAY)
         ui.step_page = ui.bank;                          /* (the STEP page shows the cursor's 16 steps) */
     mv.len = (uint8_t)trk_len(ts);
     mv.spage = ui.step_page;
@@ -1157,6 +1281,7 @@ static void mv_fill(void)
         }
     }
 
+    mv_layer();
     /* GROOVE */
     {
         const groove_t *g = ts->gv.own ? &ts->gv : &song_groove;

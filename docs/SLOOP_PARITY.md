@@ -31,6 +31,7 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | Undo / redo | kept | EDIT + OCT− / OCT+ |
 | Drum grid with the keys (keys = steps of one lane) | kept | SEQ held + keys on a drum track (lane = the sound played last, or KNOB 1) |
 | Step pages beyond 16 | kept | SEQUENCER: ALGORITHM; SEQ held: OCT− / OCT+ or black keys |
+| Layer pages: SEQ held shows the steps (4 × 4), SEL held the chords on the keys | kept: STEPS and KEY pages in FM1 Move's style, over any screen (shown after 0.25 s held, or at once when a key or knob is used) |
 | Tap tempo | changed | GLO held + black key F# (SLOOP: the last white key) |
 | Set the tempo exactly | changed | any function button held + SELECT, one BPM a detent (as SLOOP's "inside a layer: tempo"); the web: GLOBAL › BPM |
 | REC screen: mode free / tempo, length 1-2-4 bars, start on note / count-in | **web** for none, **gone** from the panel | the REC button arms and records; the three REC options keep their stored value but no FM1 Move page sets them yet |

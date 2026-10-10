@@ -18,6 +18,7 @@ static const char *const SC_NAME[SC_COUNT] = {"PLAY", "TRACKS", "SEQUENCER", "GR
 enum { MK_SYNTH, MK_DRUM, MK_MIDI };
 enum { LVK_OFF, LVK_GHOST, LVK_SOFT, LVK_NORM, LVK_HARD };   /* a step's level as drawn */
 enum { RF_ACC = 1, RF_SLIDE = 2, RF_TIE = 4 };                 /* a STEP page step's marks */
+enum { MVL_NONE, MVL_STEPS, MVL_KEY };                        /* a layer held: its page over the screen */
 
 #define MV_NTRK 8
 #define MV_NSTEP 16                            /* steps on screen: one page */
@@ -78,6 +79,15 @@ typedef struct {
     uint8_t roll_nt[MV_NSTEP][4];
     uint8_t roll_fl[MV_NSTEP];                 /* RF_* */
     uint8_t roll_lo, roll_hi;                  /* the note range drawn (the whole pattern's) */
+    /* a layer held (SEQ: STEPS, SEL: KEY), drawn over the screen as SLOOP's layer pages */
+    uint8_t layer;                             /* MVL_* */
+    char lay_ctx[24];                          /* the title's context */
+    uint8_t lay_page, lay_pages;
+    uint8_t lay_ph;                            /* STEPS: the playhead in the page, 0xFF none */
+    uint16_t lay_held;                         /* STEPS: the step keys held */
+    uint8_t lay_fl[16];                        /* STEPS: RF_* marks, bit 3 a lock / nudge */
+    char lay_lab[16][8];                       /* STEPS: the step's note (synth); KEY: the key's chord / note */
+    uint8_t lay_st[16];                        /* KEY: 0 outside the scale, 1 in it, 2 the root */
     /* GROOVE */
     char tmpl[12];
     uint8_t swing, quant, gamount, human;      /* percent */
@@ -484,6 +494,89 @@ static void sc_roll(void)
     }
 }
 
+/* a layer page's title: its name, the context, page dots */
+static void lay_title(const char *name)
+{
+    ds_label(MX, Y_TITLE, 110, name, DS_TEXT2);
+    if (mv.lay_pages > 1) {
+        mv_dots(232, Y_TITLE - 7, mv.lay_pages, mv.lay_page);
+        ds_text_in(&DS_F12, 0, Y_TITLE, 232 - (int32_t)mv.lay_pages * 10 - 6, DS_R, mv.lay_ctx, DS_TEXT3);
+    } else {
+        ds_text_in(&DS_F12, 0, Y_TITLE, 232, DS_R, mv.lay_ctx, DS_TEXT3);
+    }
+}
+/* STEPS (SEQ held, SLOOP's layer page): the 16 steps of the page as a 4 x 4 grid, key 1 top left. A step that
+ * plays: filled in the track colour (drums: as high as its level) with its note; a tie: a half fill; empty: the
+ * step number. Accent: a cap; a lock or nudge: a dot; the playhead: a bar along the bottom; held: a white frame */
+#define LT_W 53
+static void sc_lay_steps(void)
+{
+    uint32_t i;
+    uint16_t c = MV_SELC;
+    lay_title("STEPS");
+    for (i = 0; i < 16u; i++) {
+        int32_t x = MX + (int32_t)(i % 4u) * (LT_W + 4), y = 47 + (int32_t)(i / 4u) * 32, h = 28;
+        uint32_t lv = mv.st_lvl[i], fl = mv.lay_fl[i];
+        char b[4];
+        if ((mv.lay_held >> i) & 1u)
+            ds_rframe(x - 2, y - 2, LT_W + 4, h + 4, 5, 2, DS_TEXT1, DS_BG);
+        if ((uint32_t)mv.lay_page * 16u + i >= mv.len) {
+            ds_rframe(x, y, LT_W, h, 3, 1, DS_SURF1, DS_BG);   /* past the pattern's LENGTH */
+            continue;
+        }
+        ds_rrect(x, y, LT_W, h, 3, DS_SURF2);
+        if (mv.t[mv.sel].kind == MK_DRUM && lv) {
+            static const uint8_t FH[5] = {0, 10, 16, 22, 28};
+            ds_rrect(x, y + h - FH[lv % 5u], LT_W, FH[lv % 5u], 3, c);
+        } else if (fl & RF_TIE) {
+            ds_rrect(x, y + h / 2, LT_W, h - h / 2, 3, DS_MID(c));
+        } else if (mv.lay_lab[i][0]) {
+            ds_rrect(x, y, LT_W, h, 3, c);
+        }
+        if (mv.lay_lab[i][0] && !(fl & RF_TIE)) {
+            ds_text_in(ds_fit(mv.lay_lab[i], LT_W - 6, &DS_F16, &DS_F12), x, y + 20, LT_W, DS_C, mv.lay_lab[i], DS_BG);
+        } else {
+            ds_itoa(b, (int32_t)mv.lay_page * 16 + (int32_t)i + 1);
+            ds_text_in(&DS_F12, x, y + 19, LT_W, DS_C, b, lv ? DS_BG : DS_TEXT3);
+        }
+        if (fl & RF_ACC)
+            ds_rect(x + 18, y + 3, LT_W - 36, 2, DS_BG);
+        if (fl & 8u)
+            ds_disc(x + LT_W - 8, y + 3, 5, DS_TEXT1);
+        if (i == mv.lay_ph)
+            ds_rect(x + 3, y + h - 3, LT_W - 6, 3, DS_TEXT1);
+    }
+}
+/* KEY (SEL held, SLOOP's chord page): keys 1..8 pick the track (the chips), the other keys set the key of the song;
+ * the grid shows what each of the 16 white keys plays: its chord in chord mode, else its note. The root filled, the
+ * scale's notes raised, the others dim */
+static void sc_lay_key(void)
+{
+    uint32_t i;
+    uint16_t c = MV_SELC;
+    char b[4];
+    lay_title("KEY");
+    for (i = 0; i < MV_NTRK; i++) {
+        int32_t x = MX + (int32_t)i * 28;
+        uint16_t tc = MV_TC(i);
+        ds_itoa(b, (int32_t)i + 1);
+        if (i == mv.sel) {
+            ds_rrect(x, 46, 24, 16, 3, tc);
+            ds_text_in(&DS_F12, x, 58, 24, DS_C, b, DS_BG);
+        } else {
+            ds_rframe(x, 46, 24, 16, 3, 1, DS_DIM(tc), DS_BG);
+            ds_text_in(&DS_F12, x, 58, 24, DS_C, b, tc);
+        }
+    }
+    for (i = 0; i < 16u; i++) {
+        int32_t x = MX + (int32_t)(i % 4u) * (LT_W + 4), y = 68 + (int32_t)(i / 4u) * 27, h = 24;
+        uint32_t st = mv.lay_st[i];
+        uint16_t bg = st == 2u ? c : st ? DS_SURF2 : DS_SURF1, fg = st == 2u ? DS_BG : st ? DS_TEXT1 : DS_TEXT3;
+        ds_rrect(x, y, LT_W, h, 3, bg);
+        ds_text_in(ds_fit(mv.lay_lab[i], LT_W - 6, &DS_F16, &DS_F12), x, y + 18, LT_W, DS_C, mv.lay_lab[i], fg);
+    }
+}
+
 /* GROOVE: the value in focus large, the other three beside it, the timing of two beats drawn as it plays */
 static void sc_groove(void)
 {
@@ -719,7 +812,9 @@ static void (*const SCENES[SC_COUNT])(void) = {sc_play, sc_tracks, sc_seq, sc_gr
 static void mv_scene(void)
 {
     mv_status();
-    if (mv.hot >= 0 && !mv.modal && !mv.nofocus && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
+    if (mv.layer && !mv.modal) {                     /* a layer held: its page (SLOOP's layer pages) */
+        mv.layer == MVL_STEPS ? sc_lay_steps() : sc_lay_key();
+    } else if (mv.hot >= 0 && !mv.modal && !mv.nofocus && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
         mv_title(0);
         mv_focus();
     } else {

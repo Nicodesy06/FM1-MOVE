@@ -162,6 +162,8 @@ triangles, thick lines, blended text.
 | TRACKS | eight cards (1–4, 5–8) | kind, MIDI ch, length, division | `02_tracks.png` |
 | SEQUENCER | the 16 steps of the page, one per white key | pattern overview (piano roll / 16 drum lanes), page bar | `03_sequencer.png`, `04_sequencer_drums.png` |
 | SEQUENCER · STEP (synth, SEQ again) | the cursor's 16 steps as a piano roll over the pattern's note range, title "STEP n / LEN" | the steps as cells (note / tie / rest, accent, slide); STEP · NOTE · TIME · FLAG | live: `ui/live/03b-sequencer-step.png` |
+| STEPS (SEQ held, any screen but SEQUENCER) | the page's 16 steps as a 4 × 4 grid of 53 × 28 tiles: note filled with its name (F16/F12), tie half filled, accent cap, lock dot, playhead bar, held step white frame | NOTE · DIV · SWING · LENGTH with values | live: `ui/live/16-steps-held.png`, `16b-steps-drums.png` |
+| KEY (SEL held) | track chips 1–8, then the 16 white keys as tiles: chord (chord mode) or note; root filled, in scale raised, outside dim | CHORD · SCALE · KEYS · TRANSP with values | live: `ui/live/17-key-held.png` |
 | GROOVE | the focused groove value at 64 px | the other three, the timing of two beats as it plays | `05_groove.png`, `06_groove_focus.png` |
 | CLIPS | 8 tracks × 6 clips (all six rows visible); title "SCENE n" when every track plays clip n | CLIP cursor; LAUNCH / COPY / CLEAR on their buttons | `07_clips.png`; live: `ui/live/07b-clips-live.png`, `07c-clips-queued.png` |
 | MIXER | eight strips | volume, pan, sends of the selected track | `08_mixer.png` |
