@@ -48,6 +48,16 @@
 - Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
 - `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.
 
+### Site check (all pages)
+- Device page: engine, sound, user-preset load / store and the parameter labels acted on the track selected **on the
+  FM-1**, which the panel can change: a change could land on another track. The page now selects its track on the
+  device before each of them (checked: with the panel moved to track 6, an engine change on the page changes track 2
+  only). A user preset's Load goes to the track chosen in the Store row. A tab opened while a job ran stayed empty: it
+  now loads after the job. Caches are cleared when another device connects.
+- Simulator and manual: PLAY / REC on Space / Enter (F11 / F12 belong to the browser).
+- Checked: every page loads without errors, no broken internal link or anchor, external links exist, layout audit
+  clean at 8 widths, device test and browser checks pass.
+
 ### Device page: connect fix (reported by testers)
 - Connect looked only for the "Felucca" MIDI port (SLOOP / FM1 Move), so an FM-1 on the official firmware got "No FM-1
   found" with a working cable. It now probes the ports the updater probes, asks the FM-1 its identity and says what to

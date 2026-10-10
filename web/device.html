@@ -283,12 +283,12 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
   <div class="card" data-body hidden>
     <h2>Store a sound</h2>
     <div class="row">
-      <span class="small">The sound of track</span><select id="p-track"></select>
+      <span class="small">Track</span><select id="p-track"></select>
       <span class="small">into slot</span><select id="p-slot"></select>
       <input type="text" id="p-name" maxlength="12" placeholder="Name (12 letters)" style="width:170px">
       <button class="btn primary small" id="p-store">Store</button>
     </div>
-    <p class="tiny" style="margin:8px 0 0">A user preset keeps a synth sound: the engine, every parameter and a 16-step pattern. On the FM-1 the PRESETS knob reaches
+    <p class="tiny" style="margin:8px 0 0">Store keeps the chosen track's sound; Load (in the list) puts a preset on that track. A user preset keeps a synth sound: the engine, every parameter and a 16-step pattern. On the FM-1 the PRESETS knob reaches
       them after the factory sounds.</p>
   </div>
   <div class="card" data-body hidden>
@@ -474,6 +474,7 @@ function setConnected() {
 }
 
 async function afterConnect() {
+  descCache.clear(); namesCache.clear(); kitNames = null; tracks = []; upList = null; fm6 = null;   /* (another device, maybe another firmware) */
   dev.info = parse[CMD.INFO](await rq(req.info(), { timeout: 800, retries: 2 }));
   dev.move = isMove(dev.info);
   setConnected();
@@ -483,8 +484,8 @@ async function afterConnect() {
   }
   say(dev.kind === "virtual" ? "Virtual FM1 on: the FM1 Move firmware compiled to WebAssembly. What you change stays in this browser." :
     `Connected: ${moveVersion(dev.info)}, ${dev.info.ntrk} tracks.`);
-  await loadTab(curTab === "install" ? "tracks" : curTab);
-  if (curTab === "install") showTab("tracks");
+  if (curTab === "install") showTab("tracks");       /* (first: loadTab loads only the tab on screen) */
+  await loadTab(curTab);
 }
 
 async function connectUsb() {
@@ -611,7 +612,8 @@ function showTab(name) {
 async function loadTab(name) {
   if (!dev || !dev.move) return;
   const fn = { tracks: loadTracks, presets: loadPresets, samples: loadSamples, fm6: loadFm6, projects: loadProjects }[name];
-  if (fn) await job(fn);
+  while (busy) await new Promise((r) => setTimeout(r, 100));   /* (a job still runs: this tab loads after it) */
+  if (fn && curTab === name && dev && dev.move) await job(fn);
 }
 $("tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-go]");
@@ -720,6 +722,9 @@ const PANEL_P = ["P_LEVEL", "P_PAN", "P_REV", "P_DLY", "P_SDIV", "P_SSWING", "P_
 const PANEL_G = ["G_FILT", "G_DUST", "G_DUCK", "G_ROLL", "G_SYNC", "G_MIDI", "G_ROUTE"].map((n) => PG.G[n]);
 const DRUM_GROUPS = ["FX", "FILTER", "SLICER", "PATTERN"];
 const HIDDEN_G = new Set([PG.G.G_INFO, PG.G.G_SLOT, PG.G.G_LOAD, PG.G.G_SAVE, PG.G.G_CLRSEQ, PG.G.G_INITSND, PG.G.G_NEWPRJ, PG.G.G_ENGSEL].filter((x) => x != null));
+/* ENGINE (G_ENGSEL), PRESET, DESC, UP_LOAD and UP_STORE act on the track selected on the FM-1, which the panel can change
+   at any time: select the page's track first, every time */
+const selectOnDevice = async (i) => { await rq(req.track(i)); selTrack = i; };
 async function loadTracks() {
   const tr = parse[CMD.TRACK](await rq(req.track()));
   tracks = trackRows(dev.info, tr);
@@ -738,7 +743,7 @@ async function presetNames(e) {
 }
 function renderTracks() {
   $("tracks").replaceChildren(...tracks.map((t) => el("button", { class: "trk" + (t.index === selTrack ? " sel" : ""), style: `--c:${TCOL[t.index]}`,
-    onclick: () => job(async () => { await rq(req.track(t.index)); selTrack = t.index; renderTracks(); await renderDetail(); }) },
+    onclick: () => job(async () => { await selectOnDevice(t.index); renderTracks(); await renderDetail(); }) },
     el("div", { class: "n" }, el("span", { class: "hide-s", text: "TRACK " }), `${t.index + 1} · ${t.kind === "drums" ? "DRUMS" : "SYNTH"}`),
     el("div", { class: "e", text: t.kind === "drums" ? kitName(t) : t.engine }),
     el("div", { class: "p", text: t.kind === "drums" ? "drum kit" + (kitNames ? "" : " " + (t.kitIndex + 1)) : t.presetName || "" }),
@@ -770,6 +775,7 @@ function paramRow(d, value, onset, panel) {
 async function renderDetail() {
   const t = tracks[selTrack];
   if (!t) return;
+  await selectOnDevice(selTrack);                      /* (DESC below reads the device's selected track) */
   $("d-title").textContent = `Track ${selTrack + 1}`;
   $("d-title").style.color = TCOL[selTrack];
   const dump = parse[CMD.TRACK_DUMP](await rq(req.trackDump(selTrack)), dev.info);
@@ -820,10 +826,12 @@ async function renderDetail() {
   $("ggroups").replaceChildren(...gout);
 }
 $("d-engine").addEventListener("change", () => job(async () => {
+  await selectOnDevice(selTrack);
   await rq(req.set(1, PG.G.G_ENGSEL, +$("d-engine").value));
   await loadTracks();
 }));
 $("d-preset").addEventListener("change", () => job(async () => {
+  await selectOnDevice(selTrack);
   await rq(req.preset(tracks[selTrack].engineIndex, +$("d-preset").value));
   await loadTracks();
 }));
@@ -846,8 +854,11 @@ async function loadPresets() {
   $("p-list").replaceChildren(...upList.slots.map((s) => el("tr", { class: s.used ? "" : "empty" },
     el("td", { text: s.slot + 1 }), el("td", { text: s.used ? s.name : "empty" }), el("td", { class: "hide-s", text: s.used ? dev.info.engines[s.engine] || "" : "" }),
     el("td", { class: "acts" }, ...(s.used ? [
-      el("button", { class: "btn small", text: "Load", title: "Into the selected track", onclick: () => job(async () => {
-        const rc = await bank.load(rq, s.slot); if (rc) throw new Error("load rc " + rc); }, `"${s.name}" loaded into track ${selTrack + 1}`) }), " ",
+      el("button", { class: "btn small", text: "Load", title: "Into the track chosen above", onclick: () => job(async () => {
+        const tk = +$("p-track").value;
+        await selectOnDevice(tk);
+        const rc = await bank.load(rq, s.slot); if (rc) throw new Error("load rc " + rc);
+        toast(`"${s.name}" loaded into track ${tk + 1}`); tracks = []; }) }), " ",
       el("button", { class: "btn small", text: "Rename", onclick: () => job(async () => {
         const n = prompt("New name (12 letters)", s.name); if (!n) return;
         const pt = await bank.get(rq, dev.info, s.slot); pt.name = n;
@@ -858,8 +869,7 @@ async function loadPresets() {
 $("p-store").addEventListener("click", () => job(async () => {
   const slot = +$("p-slot").value, used = upList.slots[slot] && upList.slots[slot].used;
   if (used && !confirm(`Slot ${slot + 1} holds "${upList.slots[slot].name}". Replace it?`)) return;
-  await rq(req.track(+$("p-track").value));
-  selTrack = +$("p-track").value;
+  await selectOnDevice(+$("p-track").value);
   const rc = await bank.store(rq, slot, $("p-name").value.trim());
   if (rc) throw new Error(rc === 3 ? "Stop the FM-1 first" : "store rc " + rc);
   $("p-name").value = "";
