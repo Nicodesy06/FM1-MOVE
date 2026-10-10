@@ -34,12 +34,16 @@ register access outside `hal/`, 64-bit divisions.
 | `firmware/src/params.c` | Parameter descriptors (`TP[]`, `GP[]`), pages (`PAGES[]`), formatting |
 | `firmware/src/project.c`, `storage.c`, `upreset.c` | Project formats FUN1–FUN5, autosave, A/B flash objects with CRC32, user presets, settings |
 | `firmware/src/arranger*.c` | Song sections A–D and the arrangement clock |
+| `firmware/src/projfmt.c` (FM1M) | FM1 Move project format: sparse stream in up to 3 chunks, two-pass load (`PROJECT_FORMAT.md`) |
+| `firmware/src/clip.c` (FM1M) | Clips: 8 tracks × 6 patterns in one packed 8 KiB `.pool` bank, launch on the next bar (`clip_bar` from `events_block`), scenes, copy / erase, the project's clip section; included by `projfmt.c` |
+| `firmware/src/groove.c` (FM1M) | Groove Engine (`GROOVE_ENGINE.md`) |
+| `firmware/src/ds.c`, `ui_move.c`, `ui_move_ctl.c` (FM1M) | FM1 Move design system, screens (incl. CLIPS grid, SEQUENCER STEP page) and panel controls / live view model (`UI_DESIGN_SYSTEM.md`, `UI_MAPPING.md`) |
 | `firmware/src/lcd.c`, `gfx.c` | ST7789 driver; strip canvas renderer (`cv_px` 240 × 124, 4-bit anti-aliased fonts) |
 | `firmware/src/ui*.c` | The SLOOP UI: state (`ui.c`), pages (`ui_draw.c`), the four-track "studio" screens (`ui_studio.c`), layers (`ui_layers.c`), menu, song, visualiser, input dispatch (`ui_input.c`) |
 | `firmware/src/usb.c`, `midi_uart.c` | USB-MIDI, UAC1 audio to host, CDC; TRS MIDI IN |
 | `firmware/src/editor*.c`, `console.c` | Web-editor SysEx protocol, serial console |
 | `firmware/src/ota.c`, `recovery.c`, `firmware/loader/` | M-UPGRADE update entry, USB rescue, update loader |
-| `tests/` | Host tests (gcc): sequencer, UI pages, projects, storage, soak/stress (ASan/UBSan), golden render hashes, CPU budget |
+| `tests/` | Host tests (gcc): sequencer, UI pages, projects, storage, soak/stress (ASan/UBSan), golden render hashes, CPU budget; FM1 Move: `eight_track_test`, `groove_test`, `projfmt_test`, `clip_test`, `fm1move_ui_test` |
 | `tools/` | Build, packaging, generators (fonts, tables, samples, kits), installer |
 | `web/` | Web installer and editor (Web MIDI) |
 
@@ -74,7 +78,7 @@ Structural assumptions, by kind:
 | `song.rec`, `song.solo`, `panic_req` are bit-per-track in `uint8_t` | `core.h`, `seq.c` | fits 8 bits; audit the shifts (`1u << NTRK`) |
 | MIDI channel map: ch 1–3 → parts, DRUMS ch → drum track | `seq.c trk_midi_ch, midi_track` | per-track MIDI channel parameter |
 | UI: four colours `TE_COL[4]`, `& 3u` indexing, "keys 1–4 mute, 5–8 solo" on GLO, four columns = four tracks | `ui_studio.c`, `ui_layers.c` | new UI (FM1 Move design system), 8 track colours |
-| project format: `proj_trk_t t[NTRK]` in one 3 840-byte flash object; 4 slots in `.noinit` | `project.c`, `storage.c` | format FM1M v1: sparse steps, multi-object; see `PROJECT_FORMAT.md` |
+| project format: `proj_trk_t t[NTRK]` in one 3 840-byte flash object; 4 slots in `.noinit` | `project.c`, `storage.c` | done: format FM1M (v2 with clips): sparse steps, up to 3 chunks, 2 slots + the autosave; see `PROJECT_FORMAT.md` |
 | undo holds one track's `step_t[64]` | `ui.c`, `seq.c` | unchanged (per selected track) |
 | editor SysEx addresses tracks 0..3 | `editor.c`, `web/` | extend with a protocol version bump |
 | arranger scenes hold 4 tracks' patterns | `arranger_scene.c`, `project.c` | sections hold 8 |

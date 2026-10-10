@@ -3088,15 +3088,15 @@ const DSYN_MOCK_KITS = "AAEAHwYMIwRhfAAAGgAALAB/AAAACIgBATYAAxQAPGA5XBZkAEMjUgAA
 
    FM1 Move speaks the same protocol (v10) with eight tracks. Its backup objects (firmware/src/editor.c):
      1 settings, 6..7 user preset banks, 8 FM6 patch bank, 9 SYN drum kits,
-     16 the working project, 17..20 projects 1..4 (FM1M streams, docs/PROJECT_FORMAT.md),
+     16 the working project, 17..18 projects 1..2 (FM1M streams, docs/PROJECT_FORMAT.md),
      32..34 the user sample slots USR1..USR3 (no USR4: its flash holds the FM1M projects). */
 
 const FM1 = {
   NTRK: 8,
   SLOTS: 3,                                        /* user sample slots USR1..USR3 */
-  WORK: 16, PROJ0: 17, NPROJ: 4,                   /* backup objects of the projects */
+  WORK: 16, PROJ0: 17, NPROJ: 2,                   /* backup objects of the projects (2 slots of 3 chunks: room for clips) */
   FORMAT: "fm1move-backup", VERSION: 1,
-  RESTORE: [6, 7, 8, 9, 17, 18, 19, 20, 16, 1],   /* banks, the projects, the working project, the settings */
+  RESTORE: [6, 7, 8, 9, 17, 18, 16, 1],           /* banks, the projects, the working project, the settings */
   SAMPLES: [32, 33, 34],
 };
 /* INFO -> is it FM1 Move (else SLOOP / Felucca or something older) */
@@ -3202,7 +3202,7 @@ async function projectSlots(rq) {
   const L = parse[CMD.BK_LIST](await rq(req.bkList(), { timeout: 5000, retries: 0 }));
   if (L.rc) throw new BackupError("bkRc" + L.rc, `LIST rc ${L.rc}`);
   const len = (id) => (L.items.find((x) => x.id === id) || { len: 0 }).len;
-  return { work: len(FM1.WORK), slots: [0, 1, 2, 3].map((k) => len(FM1.PROJ0 + k)) };
+  return { work: len(FM1.WORK), slots: Array.from({ length: FM1.NPROJ }, (_, k) => len(FM1.PROJ0 + k)) };
 }
 /* a single project as a file (.fm1m.json): the FM1M stream, base64 */
 async function projectExport(rq, info, slot) {        /* slot 0..3, or -1 = the working project */
@@ -3507,7 +3507,7 @@ class Updater {
 
 return { Updater, productOf, logicalImage, validateStockPackage, OUR_LOADER, sha256hex };
 })();
-const META = {"move": {"version": "0.1-dev", "label": "FM1 Move", "channel": "experimental", "product": "FM-1_900", "pkg": "../firmware/fm1move-0.1-dev.fwsc", "sha256": "187328945bdf0008be46039c03e51d64de9266d27e08a5981bd53835f11bd341", "size": 610019}, "sloop": {"version": "2.5", "label": "SLOOP", "channel": "stable", "product": "FM-1_900", "pkg": "../firmware/sloop-2.5.fwsc", "sha256": "b23f95c40ab9ba9e3f3a1dbfc30f7f693d7ebe323b613c0f87d7b433048c741f", "size": 610019}};
+const META = {"move": {"version": "0.2-dev", "label": "FM1 Move", "channel": "experimental", "product": "FM-1_900", "pkg": "../firmware/fm1move-0.2-dev.fwsc", "sha256": "46fa35e346885ce14b506bf5b322a4644d3fef14d7049b35d0181f167f1483d4", "size": 610019}, "sloop": {"version": "2.5", "label": "SLOOP", "channel": "stable", "product": "FM-1_900", "pkg": "../firmware/sloop-2.5.fwsc", "sha256": "b23f95c40ab9ba9e3f3a1dbfc30f7f693d7ebe323b613c0f87d7b433048c741f", "size": 610019}};
 const PG = {"groups": [{"name": "ENV", "fam": "env", "scope": 0, "engine": false, "ids": [1, 2, 3, 4]}, {"name": "ENV DEST", "fam": "env", "scope": 0, "engine": false, "ids": [5, 6, 7]}, {"name": "LFO", "fam": "lfo", "scope": 0, "engine": false, "ids": [9, 10, 11, 12]}, {"name": "LFO DEST", "fam": "lfo", "scope": 0, "engine": false, "ids": [13, 14, 15, 16]}, {"name": "FX", "fam": "fx", "scope": 0, "engine": false, "ids": [33, 34, 35, 36]}, {"name": "FILTER", "fam": "fx", "scope": 0, "engine": false, "ids": [50]}, {"name": "SLICER", "fam": "fx", "scope": 0, "engine": false, "ids": [45, 46, 47, 48]}, {"name": "DLY", "fam": "fx", "scope": 1, "engine": false, "ids": [4, 5, 6, 7]}, {"name": "REV/CHO", "fam": "fx", "scope": 1, "engine": false, "ids": [8, 9, 10, 11]}, {"name": "SEL", "fam": "scl", "scope": 0, "engine": false, "ids": [25, 26, 27, 49]}, {"name": "SEL 2", "fam": "scl", "scope": 0, "engine": false, "ids": [28, 51, 52]}, {"name": "EDIT 1", "fam": "edit", "scope": 0, "engine": true, "ids": [53, 54, 55, 56]}, {"name": "EDIT 2", "fam": "edit", "scope": 0, "engine": true, "ids": [57, 58, 59, 60]}, {"name": "VOICE", "fam": "edit", "scope": 0, "engine": false, "ids": [37, 38, 41, 42]}, {"name": "VOICE 2", "fam": "edit", "scope": 0, "engine": false, "ids": [43, 44, 39, 40]}, {"name": "GLOBAL", "fam": "glo", "scope": 1, "engine": false, "ids": [0, 1, 2, 3]}, {"name": "MASTER", "fam": "glo", "scope": 1, "engine": false, "ids": [27, 28, 29, 30]}, {"name": "SYSTEM", "fam": "glo", "scope": 1, "engine": false, "ids": [12, 13, 14, 15]}, {"name": "DRUMS", "fam": "glo", "scope": 1, "engine": false, "ids": [24, 25, 26, 32]}, {"name": "PROJECT", "fam": "save", "scope": 1, "engine": false, "ids": [16, 18, 19]}, {"name": "TOOLS", "fam": "save", "scope": 1, "engine": false, "ids": [22, 23, 31]}, {"name": "ARP", "fam": "arp", "scope": 0, "engine": false, "ids": [17, 18, 19, 20]}, {"name": "ARP 2", "fam": "arp", "scope": 0, "engine": false, "ids": [21, 22, 23, 24]}, {"name": "PATTERN", "fam": "seq", "scope": 0, "engine": false, "ids": [29, 30, 31, 32]}], "P": {"P_LEVEL": 0, "P_ATK": 1, "P_DEC": 2, "P_SUS": 3, "P_REL": 4, "P_ED_FLT": 5, "P_ED_PIT": 6, "P_ED_SHP": 7, "P_ED_FX": 8, "P_LRATE": 9, "P_LWAVE": 10, "P_LPHASE": 11, "P_LFADE": 12, "P_LD_PIT": 13, "P_LD_FLT": 14, "P_LD_SHP": 15, "P_LD_AMP": 16, "P_AMODE": 17, "P_ARATE": 18, "P_AOCT": 19, "P_AGATE": 20, "P_ASWING": 21, "P_APROB": 22, "P_AHOLD": 23, "P_AORDER": 24, "P_ROOT": 25, "P_SCALE": 26, "P_QUANT": 27, "P_TRANS": 28, "P_SLEN": 29, "P_SDIV": 30, "P_SSWING": 31, "P_SGATE": 32, "P_DIST": 33, "P_CHOR": 34, "P_DLY": 35, "P_REV": 36, "P_VOICE": 37, "P_GLIDE": 38, "P_PAN": 39, "P_MUTE": 40, "P_GLMODE": 41, "P_PRIO": 42, "P_ALLOC": 43, "P_DETUNE": 44, "P_SLCR": 45, "P_SLPAT": 46, "P_SLRATE": 47, "P_SLDEPTH": 48, "P_CHORD": 49, "P_TFLT": 50, "P_STRUM": 51, "P_VLEAD": 52, "P_E0": 53, "P_E1": 54, "P_E2": 55, "P_E3": 56, "P_E4": 57, "P_E5": 58, "P_E6": 59, "P_E7": 60, "P_COUNT": 61}, "G": {"G_BPM": 0, "G_SWING": 1, "G_CLOCK": 2, "G_TUNE": 3, "G_DTIME": 4, "G_DFDBK": 5, "G_DCOLOR": 6, "G_DMIX": 7, "G_RSIZE": 8, "G_RDAMP": 9, "G_CRATE": 10, "G_CDEPTH": 11, "G_MIDI": 12, "G_SYNC": 13, "G_ROUTE": 14, "G_INFO": 15, "G_SLOT": 16, "G_NAME": 17, "G_LOAD": 18, "G_SAVE": 19, "G_ENGSEL": 20, "G_ENGGO": 21, "G_CLRSEQ": 22, "G_INITSND": 23, "G_DRCH": 24, "G_DRLVL": 25, "G_DRREV": 26, "G_DUST": 27, "G_DUCK": 28, "G_FILT": 29, "G_ROLL": 30, "G_NEWPRJ": 31, "G_DRDLY": 32, "G_COUNT": 33}};
 
 /* ------------------------------------------------------------------ basics --- */

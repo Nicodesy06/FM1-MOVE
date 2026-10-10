@@ -29,7 +29,8 @@ always say where you are.
 ```
 
 - Every screen is **one press** away; pressing the button of the current screen again goes to its next page
-  (SOUND: PRESET → ENV → LFO → SENDS; SETTINGS: MIDI → SYNC → SYSTEM).
+  (SOUND: PRESET → ENV → LFO → SENDS; SEQUENCER on a synth track: grid → STEP; SETTINGS: MIDI → SYNC → SYSTEM).
+  On CLIPS, CLIPS again launches the clip under the cursor instead.
 - PROJECT and SETTINGS (rare, non-musical) live behind **HOME held** (≥ 0.5 s), as SLOOP's menu does.
 - No screen is deeper than two levels (screen → page). There are no nested menus for musical functions.
 
@@ -39,12 +40,13 @@ always say where you are.
 | --- | --- |
 | SELECT | select track 1–8 (one detent each, no wrap); with any function button held: the tempo, one BPM a detent (as SLOOP) |
 | PRESETS | browse the selected track's sounds (preset, kit, or MIDI program) |
-| ALGORITHM | the screen's navigator: step page, clip row, list row, envelope stage, groove template |
+| ALGORITHM | the screen's navigator: step page, STEP cursor, clip row, list row, envelope stage, groove template |
 | KNOB 1–4 | the four parameters in the knob strip |
 | PLAY | start / stop |
 | REC | arm / disarm recording (count-in per settings) |
 | SEL held + white key 1–8 | select that track directly (fastest track change) |
 | GLO held + key 1–8 / 9–16 | mute / solo tracks 1–8 |
+| CLIPS held + white key 1–6 / 9–14 | launch clip 1–6 of the selected track / scene 1–6 (next bar while playing) |
 | EDIT + OCT− / OCT+ | undo / redo |
 | OCT− / OCT+ | octave (synth tracks); ghost / hard hits held (drum tracks) |
 
@@ -55,14 +57,15 @@ always say where you are.
 | select a track | SELECT one detent, or SEL + key |
 | mute / solo | GLO held + key |
 | change swing | ARP (GROOVE) → KNOB 1 |
-| change pattern / clip | SAVE held + key 1–8 (launch scene, quantised — M3, not yet implemented) |
+| change pattern / clip | CLIPS held + white key 1–6 (clip) or 9–14 (scene), launched on the next bar |
 | record | REC (armed) → PLAY |
+| enter steps one by one | SEQ → SEQ (STEP page) → keys; KNOB 2–4 for note, tie / rest, accent / slide |
 | capture what you just played | REC + PLAY together (M3, not yet implemented) |
-| duplicate a clip | CLIPS: EDIT + key of the target slot (M3, not yet implemented) |
+| duplicate a clip | CLIPS screen: ALGORITHM to the target slot → EDIT (copies the clip playing; EDIT again if it replaces one) |
 | apply an effect | FX held + key |
 | change the sound | PRESETS, or KNOB 1–4 on PLAY (macros) |
 
 ## Destructive actions
 
-Clear track, clear pattern, delete project, overwrite project, groove commit: a modal states the consequence;
+Clear track, clear pattern, delete project, overwrite project, groove commit, replace or clear a clip: a modal states the consequence;
 **the same button again confirms**, any other button cancels, nothing happens after 4 s.

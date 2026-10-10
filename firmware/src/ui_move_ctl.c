@@ -1349,7 +1349,7 @@ static void fm1move_splash_scene(void)
     ds_track = 1;
     ds_text_in(&DS_F12, 0, 162, DS_W, DS_C, "8-TRACK GROOVEBOX", DS_TEXT2);
     ds_track = 0;
-    ds_text_in(&DS_F12, 0, 226, DS_W, DS_C, "0.1  BASED ON SLOOP + FELUCCA", DS_TEXT3);
+    ds_text_in(&DS_F12, 0, 226, DS_W, DS_C, "0.2  BASED ON SLOOP + FELUCCA", DS_TEXT3);
 }
 static void fm1move_splash(void)
 {

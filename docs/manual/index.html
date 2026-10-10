@@ -212,7 +212,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <div class="rowlbl" style="margin-top:16px">BOTTOM ROW · TIME &amp; ARRANGE</div>
     <div class="prow">
       <div class="pbtn"><div class="k">HOME</div><div class="f">PLAY</div><div class="h">hold: PROJECT · SETTINGS</div></div>
-      <div class="pbtn"><div class="k">SAVE</div><div class="f">CLIPS</div><div class="h">preview</div></div>
+      <div class="pbtn"><div class="k">SAVE</div><div class="f">CLIPS</div><div class="h">hold: clips · scenes</div></div>
       <div class="pbtn"><div class="k">ARP</div><div class="f">GROOVE</div><div class="h">hold: note repeat</div></div>
       <div class="pbtn"><div class="k">SEQ</div><div class="f">SEQUENCER</div><div class="h">hold: steps</div></div>
       <div class="pbtn"><div class="k">PLAY</div><div class="f">TRANSPORT</div><div class="h">start / stop</div></div>
@@ -233,8 +233,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><th>Control</th><th>What it does</th></tr>
     <tr><td>SELECT</td><td>Selects track 1–8, one detent each (no wrap). With any function button held: the tempo, one BPM a detent.</td></tr>
     <tr><td>PRESETS</td><td>The selected track's sound — factory sounds, then your user presets. On a drum track: the kit.</td></tr>
-    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, groove template, engine, list row.</td></tr>
-    <tr><td>KNOB 1–4</td><td>The four values at the bottom of the screen. Turning one shows it large for a moment (the focus overlay). Fast turns go further.</td></tr>
+    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, STEP cursor, clip row, groove template, engine, list row.</td></tr>
+    <tr><td>KNOB 1–4</td><td>The four values at the bottom of the screen. Turning one shows it large for a moment (the focus overlay; not on CLIPS and the STEP page, where what you edit stays in view). Fast turns go further.</td></tr>
     <tr><td>OCT− / OCT+</td><td>Octave of the keys (both together: back to 0). On a drum track, held while playing: ghost / hard hits.</td></tr>
     <tr><td>PLAY · REC</td><td>Start / stop all eight tracks · record (see <a href="#recording">Recording</a>).</td></tr>
     <tr><td>EDIT + OCT− / OCT+</td><td>Undo / redo.</td></tr>
@@ -252,12 +252,13 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <figure><img src="../ui/live/01-play.png" alt="PLAY screen" loading="lazy"><figcaption><b>PLAY · HOME</b>The selected track, the eight meters, the sound's four macros on the knobs.</figcaption></figure>
     <figure><img src="../ui/live/02-tracks.png" alt="TRACKS screen" loading="lazy"><figcaption><b>TRACKS · SEL</b>Kind (synth / drums), transpose, length and division of the track.</figcaption></figure>
     <figure><img src="../ui/live/03-sequencer.png" alt="SEQUENCER screen" loading="lazy"><figcaption><b>SEQUENCER · SEQ</b>The steps of the page, the playhead, DIV · SWING · LENGTH · SHIFT.</figcaption></figure>
+    <figure><img src="../ui/live/03b-sequencer-step.png" alt="SEQUENCER STEP page" loading="lazy"><figcaption><b>STEP · SEQ again</b> <span class="tag new">NEW</span> Synth tracks: a cursor over a piano roll, STEP · NOTE · TIME · FLAG.</figcaption></figure>
     <figure><img src="../ui/live/05-groove.png" alt="GROOVE screen" loading="lazy"><figcaption><b>GROOVE · ARP</b>Template, swing, quantize strength, groove amount, humanize.</figcaption></figure>
-    <figure><img src="../ui/live/07-clips.png" alt="CLIPS screen" loading="lazy"><figcaption><b>CLIPS · SAVE</b> <span class="tag soon">PREVIEW</span> The clip grid; clips and scenes are the next milestone.</figcaption></figure>
+    <figure><img src="../ui/live/07b-clips-live.png" alt="CLIPS screen" loading="lazy"><figcaption><b>CLIPS · SAVE</b> <span class="tag new">NEW</span> Eight tracks × six clips: what plays, what is queued, the cursor.</figcaption></figure>
     <figure><img src="../ui/live/08-mixer.png" alt="MIXER screen" loading="lazy"><figcaption><b>MIXER · GLO</b>Volume, pan, reverb and delay send of the selected track; eight meters.</figcaption></figure>
     <figure><img src="../ui/live/09-sound.png" alt="SOUND screen" loading="lazy"><figcaption><b>SOUND · EDIT</b>Pages PRESET → ENV → LFO → SENDS (EDIT again turns them).</figcaption></figure>
     <figure><img src="../ui/live/11-perform.png" alt="PERFORM screen" loading="lazy"><figcaption><b>PERFORM · FX</b>DJ filter, dust, duck, track filter; hold FX for the effects.</figcaption></figure>
-    <figure><img src="../ui/live/12-project-live.png" alt="PROJECT screen" loading="lazy"><figcaption><b>PROJECT · HOME held</b>Four project slots: save, load, delete.</figcaption></figure>
+    <figure><img src="../ui/live/12-project-live.png" alt="PROJECT screen" loading="lazy"><figcaption><b>PROJECT · HOME held</b>Two project slots: save, load, delete.</figcaption></figure>
     <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Clock, MIDI, lights, USB audio, version.</figcaption></figure>
   </div>
   <h3>The knobs on each screen</h3>
@@ -267,14 +268,16 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>PLAY (drums)</td><td>—</td><td>KIT</td><td>LEVEL</td><td>PAN</td><td>FILTER</td></tr>
     <tr><td>TRACKS</td><td>—</td><td>TYPE (asks; SEL confirms)</td><td>TRANSPOSE</td><td>LENGTH</td><td>DIV</td></tr>
     <tr><td>SEQUENCER</td><td>step page</td><td>DIV</td><td>SWING</td><td>LENGTH</td><td>SHIFT</td></tr>
+    <tr><td>SEQUENCER · STEP</td><td>cursor</td><td>STEP (cursor)</td><td>NOTE</td><td>TIME: NOTE / TIE / REST</td><td>FLAG: – / ACC / SLIDE / A+S</td></tr>
     <tr><td>GROOVE</td><td>template</td><td>SWING</td><td>QUANTIZE strength</td><td>GROOVE amount</td><td>HUMANIZE</td></tr>
+    <tr><td>CLIPS</td><td>clip cursor</td><td>CLIP (cursor)</td><td colspan="3">buttons: CLIPS launch · EDIT copy · REC clear (copy over a clip and clear ask first)</td></tr>
     <tr><td>MIXER</td><td>—</td><td>VOLUME</td><td>PAN</td><td>REVERB</td><td>DELAY</td></tr>
     <tr><td>SOUND · PRESET</td><td>engine</td><td colspan="4">the four macros</td></tr>
     <tr><td>SOUND · ENV</td><td>—</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
     <tr><td>SOUND · LFO</td><td>—</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
     <tr><td>SOUND · SENDS</td><td>—</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
     <tr><td>PERFORM</td><td>—</td><td>DJ FILTER</td><td>DUST</td><td>DUCK</td><td>TRACK FILTER</td></tr>
-    <tr><td>PROJECT</td><td>slot 1–4</td><td colspan="4">buttons: SAVE save · EDIT load · REC delete (each asks when it would lose something)</td></tr>
+    <tr><td>PROJECT</td><td>slot 1–2</td><td colspan="4">buttons: SAVE save · EDIT load · REC delete (each asks when it would lose something)</td></tr>
     <tr><td>SETTINGS</td><td>row</td><td>VALUE</td><td colspan="3">—</td></tr>
   </table></div>
 </section>
@@ -291,6 +294,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>SEQ + a step key held</td><td>—</td><td>NOTE / sound · LEVEL · RATCHET · NUDGE; PRESETS: lock value; ALGORITHM: lock parameter; OCT+: fill condition; OCT−: clear nudge, locks, condition</td></tr>
     <tr><td>EDIT</td><td>erase that note / drum sound as the loop plays (stopped: from the whole pattern)</td><td>SHIFT · LENGTH ×2 / ½ · TRANSPOSE; OCT− undo, OCT+ redo</td></tr>
     <tr><td>ARP</td><td>note repeat (roll) at the rate, recorded as ratchets</td><td>KNOB 1: RATE 1/8 … 1/64</td></tr>
+    <tr><td>SAVE (CLIPS)</td><td>white keys 1–6: launch clip 1–6 of the selected track · keys 9–14: scene 1–6 (clip <i>n</i> on every track). Playing: on the next bar</td><td>—</td></tr>
     <tr><td>SEL</td><td>white keys 1–8: select track · keys 9–16 and black keys: the key (root) of the song</td><td>CHORD · SCALE · KEYS (snap) · TRANSPOSE</td></tr>
     <tr><td>GLO</td><td>keys 1–8 mute, 9–16 solo · black keys: C# fill while held, D# fill on the next bar, F# tap tempo</td><td>VOLUME · PAN · REVERB · DELAY of the selected track</td></tr>
     <tr><td>Any button</td><td>—</td><td>SELECT: the tempo, one BPM a detent</td></tr>
@@ -300,6 +304,12 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <div class="a" style="--c:var(--t1)">M1</div><div class="a" style="--c:var(--t2)">M2</div><div class="a" style="--c:var(--t3)">M3</div><div class="a" style="--c:var(--t4)">M4</div>
     <div class="a" style="--c:var(--t5)">M5</div><div class="a" style="--c:var(--t6)">M6</div><div class="a" style="--c:var(--t7)">M7</div><div class="a" style="--c:var(--t8)">M8</div>
     <div>S1</div><div>S2</div><div>S3</div><div>S4</div><div>S5</div><div>S6</div><div>S7</div><div>S8</div>
+  </div>
+  <h4>SAVE (CLIPS) held</h4>
+  <div class="keys16">
+    <div class="a">C1</div><div class="a">C2</div><div class="a">C3</div><div class="a">C4</div><div class="a">C5</div><div class="a">C6</div><div></div><div></div>
+    <div class="a" style="--c:var(--t5)">S1</div><div class="a" style="--c:var(--t5)">S2</div><div class="a" style="--c:var(--t5)">S3</div><div class="a" style="--c:var(--t5)">S4</div>
+    <div class="a" style="--c:var(--t5)">S5</div><div class="a" style="--c:var(--t5)">S6</div><div></div><div></div>
   </div>
   <h4>The 16 punch-in effects (FX held, white keys 1–16)</h4>
   <div class="keys16">
@@ -323,7 +333,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   </div>
   <p class="small" style="color:var(--text-3)">The new-project layout above; change anything.</p>
   <h3>Change a track's kind</h3>
-  <p>On TRACKS (<kbd>SEL</kbd>), turn <kbd>KNOB 1</kbd>: the screen asks "TRACK 2 TO DRUMS? — its pattern is cleared". Press <kbd>SEL</kbd> to confirm, anything else to cancel.</p>
+  <p>On TRACKS (<kbd>SEL</kbd>), turn <kbd>KNOB 1</kbd>: the screen asks "TRACK 2 TO DRUMS? — its pattern is cleared". Press <kbd>SEL</kbd> to confirm, anything else to cancel.
+    All six of the track's <a href="#clips">clips</a> are emptied too (synth steps and drum lanes do not convert).</p>
   <h3>Heavy engines</h3>
   <p>The GRAIN, FM6 and PHYS engines each need a big memory area; three are available. A fourth heavy engine is refused with a message ("HEAVY ENGINES ALL IN USE")
     until one of them changes engine; a project that asks for more loads them as ANALOG and says "HEAVY ENGINES: 3 MAX".</p>
@@ -360,6 +371,27 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>OCT+</td><td>Fill condition: normal → fill only → no fill</td></tr>
     <tr><td>OCT−</td><td>Clear the step's nudge, locks and fill condition</td></tr>
   </table></div>
+  <h3>The STEP page <span class="tag new">NEW</span></h3>
+  <p>SLOOP's step editor, back: on the SEQUENCER screen of a synth track, press <kbd>SEQ</kbd> again (the page dots show page 2; <kbd>SEQ</kbd> once more goes back).
+    The drum track keeps its grid only.</p>
+  <div class="shot"><img src="../ui/live/03b-sequencer-step.png" alt="SEQUENCER STEP page" loading="lazy">
+    <div>
+      <p style="margin-top:0">The top shows the cursor's 16 steps as a piano roll over the pattern's note range (black-key rows, a line on every C), the cursor as a raised column
+        with a white ▲, the playhead tinted. Under it, one cell per step: a note is filled, a tie is a half bar, a rest is empty, an accent is a cap, a slide is a ramp to the
+        next note. The title reads "STEP <i>n</i> / <i>length</i>".</p>
+      <div class="tablewrap"><table>
+        <tr><th>Control</th><th>STEP page</th></tr>
+        <tr><td>KNOB 1 · ALGORITHM</td><td>STEP: moves the cursor</td></tr>
+        <tr><td>KNOB 2</td><td>NOTE: transposes the step (an empty step gets the last note entered)</td></tr>
+        <tr><td>KNOB 3</td><td>TIME: NOTE / TIE / REST</td></tr>
+        <tr><td>KNOB 4</td><td>FLAG: – / ACC (accent) / SLIDE / A+S</td></tr>
+        <tr><td>Keys</td><td>The keys you press together become the cursor's step (a chord of up to 4 notes; mono voice mode: the last key; chord mode: the chord as it sounds). Let go of every key and the cursor moves on.</td></tr>
+        <tr><td>EDIT</td><td>Clears the cursor's step and moves on</td></tr>
+        <tr><td>EDIT + OCT−</td><td>Undo: one entry, or one step's knob edits, at a time</td></tr>
+      </table></div>
+    </div>
+  </div>
+  <div class="note">While recording or armed the keys record live as usual, not into the cursor's step: disarm <kbd>REC</kbd> to enter steps one by one.</div>
   <h3>Pattern tools</h3>
   <ul>
     <li><b>Length and division:</b> SEQUENCER <kbd>KNOB 3</kbd> (1–64 steps) and <kbd>KNOB 1</kbd> (1/32 to 2 bars, triplets included).</li>
@@ -389,6 +421,56 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   </ul>
   <div class="note">The REC screen options of SLOOP (free tempo, length, count-in) keep their stored values but have no FM1 Move page yet, and holding REC to clear
     a track is gone — use <kbd>EDIT</kbd> held + keys while stopped, or undo.</div>
+</section>
+
+<!-- ================================================================== CLIPS -->
+<section class="chap" id="clips">
+  <h2>Clips and scenes <span class="tag new">NEW</span></h2>
+  <p class="sub">Each track keeps six patterns, its clips; the one it plays is the pattern you see and edit. Change clips — or all eight tracks at once with a scene — on the
+    next bar, without stopping.</p>
+  <div class="shot"><img src="../ui/live/07b-clips-live.png" alt="CLIPS screen">
+    <div>
+      <h3 style="margin-top:0">Launch</h3>
+      <ul>
+        <li><b>A clip:</b> hold <kbd>SAVE</kbd> (CLIPS) and press white key 1–6: clip 1–6 of the selected track.</li>
+        <li><b>A scene:</b> hold <kbd>SAVE</kbd> and press white key 9–14: scene 1–6 puts every track on its clip 1–6. A track whose clip is empty goes quiet.</li>
+        <li><b>When:</b> while playing, the new clip starts at the start of the next bar on its first step, whatever its length and division; stopped, at once.
+          Press <kbd>PLAY</kbd> to stop before the bar and the queued clip is there at once.</li>
+      </ul>
+      <p>While <kbd>SAVE</kbd> is held the key lights show the clips: keys 1–6 <b>lit</b> = playing, <b>blinking</b> = queued for the next bar, <b>dim</b> = holds a pattern,
+        off = empty; keys 9–14 lit = that scene plays (every track on that clip), dim = some track holds that clip.</p>
+    </div>
+  </div>
+  <h3>The CLIPS screen</h3>
+  <p>Tap <kbd>SAVE</kbd>. A grid of eight tracks (columns, in their colours) by six clips (rows). The cursor is a white frame on the selected track's column;
+    <kbd>ALGORITHM</kbd> or <kbd>KNOB 1</kbd> (CLIP) moves it up and down, <kbd>SELECT</kbd> changes the track. The title reads "SCENE <i>n</i>" when every track plays clip <i>n</i>.</p>
+  <div class="grid2">
+    <figure><img src="../ui/live/07b-clips-live.png" alt="CLIPS screen while playing" loading="lazy"><figcaption><b>Playing</b>Filled cell with ▶: the clip each track plays.</figcaption></figure>
+    <figure><img src="../ui/live/07c-clips-queued.png" alt="CLIPS screen with a queued clip" loading="lazy"><figcaption><b>Queued</b>Outline with a blinking ▶: starts on the next bar.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table>
+    <tr><th>Cell</th><th>Means</th></tr>
+    <tr><td>Filled + ▶</td><td>Playing (the ▶ shows while the transport runs). An outline instead: the current clip, still empty.</td></tr>
+    <tr><td>Outline + blinking ▶</td><td>Queued: starts on the next bar</td></tr>
+    <tr><td>Dim with a bar</td><td>Holds a pattern</td></tr>
+    <tr><td>Dark</td><td>Empty</td></tr>
+  </table></div>
+  <div class="tablewrap"><table>
+    <tr><th>On CLIPS</th><th>What it does</th></tr>
+    <tr><td>SAVE (again)</td><td>Launches the clip under the cursor</td></tr>
+    <tr><td>EDIT</td><td>Copies the clip playing into the cursor's slot. If that slot holds a pattern it asks first: <kbd>EDIT</kbd> again replaces, any other button cancels.</td></tr>
+    <tr><td>REC</td><td>Clears the cursor's clip (asks: <kbd>REC</kbd> again clears). On this screen REC does not arm recording — record from the other screens.</td></tr>
+  </table></div>
+  <h3>How clips keep your work</h3>
+  <ul>
+    <li>Everything that writes a pattern — <kbd>SEQ</kbd> + keys, recording, <kbd>EDIT</kbd>, the STEP page, the groove, the device page — writes the clip playing. Switching
+      clips first keeps what the outgoing clip got, so nothing is lost.</li>
+    <li>Clips are saved with the project and the autosave.</li>
+    <li>The clips share 8 KB of memory; a 16-step pattern takes about 100–300 bytes. When it is full the panel says <b>CLIP MEMORY FULL</b>: the clip keeps its last stored
+      version, and the pattern playing is still saved with the project. Clear clips you no longer need to make room.</li>
+    <li>Changing a track between synth and drums empties its clips.</li>
+  </ul>
+  <span class="tag soon">NEXT</span> <span style="color:var(--text-2)">Capture (keep what you just played without recording) and follow actions.</span>
 </section>
 
 <!-- ================================================================== GROOVE -->
@@ -445,9 +527,11 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h2>Projects and saving</h2>
   <ul>
     <li><b>Autosave:</b> stop and leave the FM-1 alone for 2.5 s: the working project is kept in flash (at most every 20 s). At power-on FM1 Move comes back exactly as you left it.</li>
-    <li><b>Four project slots:</b> hold <kbd>HOME</kbd> for PROJECT. <kbd>ALGORITHM</kbd> picks the slot; <kbd>SAVE</kbd> saves (asks before overwriting), <kbd>EDIT</kbd> loads
+    <li><b>Two project slots:</b> hold <kbd>HOME</kbd> for PROJECT. <kbd>ALGORITHM</kbd> picks the slot; <kbd>SAVE</kbd> saves (asks before overwriting), <kbd>EDIT</kbd> loads
       (asks, the working project is replaced), <kbd>REC</kbd> deletes (asks). Stop the transport first.</li>
-    <li><b>Format:</b> FM1M — eight tracks, every parameter, the steps that hold anything, locks, nudges, fills and the groove. A save cut off by power loss leaves the previous version intact.</li>
+    <li><b>Format:</b> FM1M — eight tracks and their six clips each, every parameter, the steps that hold anything, locks, nudges, fills and the groove. A save cut off by power loss leaves the previous version intact.</li>
+    <li><b>From an earlier FM1 Move build with four slots</b> (before clips): project 1 and the autosave still load (each track's pattern becomes its clip 1); projects 2–4 do not carry over
+      (slot 2 shows empty). Before updating, export the projects you want to keep from the <a href="../device/">device page</a>.</li>
     <li><b>From SLOOP:</b> at the first start, SLOOP's working project is imported onto tracks 1–4. SLOOP's four saved slots are not imported yet.</li>
     <li><b>On the computer:</b> the <a href="../device/">device page</a> exports and imports single projects (<code>.fm1m.json</code>) and makes a full backup.</li>
   </ul>
@@ -466,7 +550,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>LIGHTS</td><td>OFF · LOW · MID · HIGH</td><td>Every button glows for playing in the dark; what is active stays fully lit</td></tr>
     <tr><td>KEY LIGHTS</td><td>OFF · C KEYS · WHITE · ALL</td><td>Which keys glow too</td></tr>
     <tr><td>USB AUDIO</td><td>MAIN · FULL</td><td>The USB audio level follows MASTER, or a fixed full level</td></tr>
-    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.1</td></tr>
+    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.2</td></tr>
   </table></div>
 </section>
 
@@ -530,7 +614,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <ul>
     <li>Every engine, sound and sequencer feature of SLOOP 2.5 is still there; the panel is new and has eight tracks of any kind.</li>
     <li>SEL held + keys 1–8 now selects tracks (the song key moved to keys 9–16 and the black keys); GLO held: keys 1–8 mute, 9–16 solo, fill and tap tempo on black keys.</li>
-    <li>SLOOP's song mode (sections A–D, chains, SONG REC) is gone; clips and scenes replace it in the next milestone.</li>
+    <li>SLOOP's song mode (sections A–D, chains, SONG REC) is gone; <a href="#clips">clips and scenes</a> replace it (six clips per track, six scenes, launched on the bar).</li>
+    <li>SLOOP's STEP page is back as the SEQUENCER's <a href="#sequencer">STEP page</a> (<kbd>SEQ</kbd> again), with accent and slide.</li>
     <li>Sample slots: three (USR1–3). SLOOP's USR4 flash now holds FM1 Move's projects.</li>
     <li>The visualiser, colour palettes, zoom and the calibration page are gone from the panel.</li>
   </ul>
@@ -546,6 +631,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <p>Hold any function button and turn <kbd>SELECT</kbd> (one BPM a detent), or tap the tempo with <kbd>GLO</kbd> held + F#, or set BPM on the device page.</p>
   <h3>Why does a fourth GRAIN / FM6 / PHYS track not get its engine?</h3>
   <p>Three heavy engines can run at once; change one of them to free its memory.</p>
+  <h3>How do I switch between patterns while playing?</h3>
+  <p>Hold <kbd>SAVE</kbd> and press white key 1–6 (a clip of the selected track) or 9–14 (a scene, every track): it changes on the next bar — see <a href="#clips">Clips and scenes</a>.</p>
   <h3>Where are my SLOOP projects?</h3>
   <p>The working one is imported at the first start. The four saved slots stay in flash, untouched; importing them is planned.</p>
   <h3>Does the device page send my files anywhere?</h3>

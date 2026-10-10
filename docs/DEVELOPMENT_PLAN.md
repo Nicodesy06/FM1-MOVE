@@ -66,9 +66,27 @@ so early events (negative offsets) fire before the grid step, across the pattern
 
 ## M3 — Workflow (clips, scenes, capture, locks)
 
-Clip = a pattern slot per track (count bounded by flash/RAM: target 8 per track, sparse). Scene = one clip per
-track; launch quantised to the bar. Capture = ring buffer of the last N key events (target 512 events ≈ 16 bars of
-dense playing; exact numbers documented with the implementation).
+Clip = a pattern slot per track (6 per track, sparse). Scene = one clip per track; launch quantised to the bar. Capture = ring buffer of
+the last N key events (target 512 events ≈ 16 bars of dense playing; exact numbers documented with the
+implementation).
+
+Status: clips, scenes, quantised launch and the STEP page done and verified **in host simulation only**
+(`tests/clip_test.c`, `tests/fm1move_ui_test.c`); not yet run on an FM-1.
+
+- [x] Flash layout for clips: 2 project slots + the autosave, 3 chunks each (`FMP_MAX` 11 472 B); FM1 Move 0.1's
+  project 1 and autosave still load (`PROJECT_FORMAT.md`).
+- [x] Clips: 8 tracks × 6 clips (`firmware/src/clip.c`), one 8 KiB packed bank in `.pool`; everything that writes a
+  pattern writes the clip playing; full bank refused with "CLIP MEMORY FULL", nothing playing lost.
+- [x] Scenes: clip k on every track (an empty clip: that track goes quiet).
+- [x] Launch quantised to the bar: in the audio interrupt at the start of the bar, the new clip on its step 0;
+  stopped, at once.
+- [x] Project stream version 2 carries the clips; version 1 projects load (pattern → clip 1).
+- [x] Panel: CLIPS held + white keys 1–6 / 9–14, CLIPS screen (8 × 6 grid, cursor, launch, copy, clear), key LEDs.
+- [x] SEQUENCER STEP page (SLOOP's step editor restored): piano roll, STEP / NOTE / TIME / FLAG, acid-style key entry;
+  accent and slide editable from the panel again.
+- [ ] Capture (ring buffer of the last key events).
+- [ ] Follow actions, a launch quantise other than the bar (once planned on the CLIPS knob strip).
+- [ ] Hardware: launch timing, LEDs, CLIPS screen on a device [TEST-HW].
 
 ## M4 — Premium UI (starts now, in parallel)
 
@@ -91,7 +109,7 @@ experimental build that never ships; see `DUAL_CORE_RESEARCH.md` when it exists.
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Flash: 16 KiB free | new UI / features do not fit | replace old UI code, glyph subsets, RLE fonts; trim CC0 sample sets only as a documented last resort |
-| RAM: 13 KiB free | 8 tracks + clips | sparse project, band renderer, arena pool |
+| RAM: 13 KiB free | 8 tracks + clips | sparse project, band renderer, arena pool; clip bank 8 KiB in `.pool` (10 992 B pool spare) |
 | CPU with 8 tracks | dropouts | voice budget stays global (8 synth voices); per-track insert cost measured; shedding policy unchanged |
 | No hardware in the loop | regressions only visible on device | keep platform code untouched; ask the owner to test builds; never flash without permission |
 | UI rewrite breaks the tested input logic | usability regressions | keep `ui_input.c` behaviour tests (`ui_pages_test.c`) green while the drawing layer changes |

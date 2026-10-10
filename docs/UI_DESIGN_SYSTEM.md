@@ -114,8 +114,9 @@ Grid: 240 × 240, side margin 8 px, **four 60 px columns** aligned with KNOB 1�
 | Knob cell | `mv_knobs` | label 12 px, value 22 px (fit), gauge 46 × 3 in the track colour; the turned knob's cell is **inverted** |
 | Focus overlay | `mv_focus` | label, the value in 64 px (36 px for words), unit, 200 px gauge; shown while a knob turns |
 | Gauge | `ds_gauge` | unipolar, or bipolar from the centre with a centre mark |
+| Step cell (STEP page) | `sc_seq` | note = filled, tie = half bar, rest = empty, accent = a cap, slide = a ramp to the next note; under a piano roll (black-key rows, C lines), cursor = raised column + white ▲, playhead tinted |
 | Step | `sc_seq` | 11 × 40, fill height = level (ghost 30 %, soft 55 %, normal 80 %, hard 100 %), lock = dot, nudge = tick, held = white frame, playhead = white fill + underline, empty beat marks |
-| Clip cell | `sc_clips` | empty (surface), exists (dim colour + bar), playing (filled + ▶), queued (outline + ▶), selected (white frame) |
+| Clip cell | `sc_clips` | empty (surface), holds a pattern (dim colour + bar), playing (filled + ▶ while the transport runs; current but empty = outline), queued for the next bar (outline + blinking ▶), cursor (white frame) |
 | Channel strip | `sc_mixer` | number chip, pan marker, fader + cap, activity, M and S chips (filled = on) |
 | Track card | `sc_tracks` | colour bar, number, name, sound, M/S/meter, armed dot, selected = white frame |
 | List row | `mv_list` | selected row inverted; loaded item marked with a dot |
@@ -139,12 +140,13 @@ triangles, thick lines, blended text.
 | recording | red disc in the status bar; armed: red ring; track armed: red dot on its card |
 | playing | green ▶ in the status bar, white playhead on steps, filled clip with ▶ |
 | count-in | amber chip with the beats left, in place of ▶ |
-| queued | outlined clip with ▶ |
+| queued | outlined clip with a blinking ▶ (starts on the next bar) |
 
 ## 7. Interaction patterns
 
 - **Turn = see.** Turning a knob makes its value the primary element (focus overlay) and inverts its cell; the overlay
-  closes ~1.2 s after the last detent. Values change by one detent = one step; fast turns accelerate (SLOOP's `accel`).
+  closes ~1.2 s after the last detent. Exceptions: CLIPS and the SEQUENCER STEP page, where the edited thing (the grid,
+  the step) stays visible and only the cell inverts. Values change by one detent = one step; fast turns accelerate (SLOOP's `accel`).
 - **Hold + touch.** A function button held turns the keys into its layer (SLOOP's model): the screen shows the
   layer's mapping, the key LEDs show what is set.
 - **Confirm destructive actions** by pressing the same button again (no encoder push on the FM-1); anything else
@@ -159,8 +161,9 @@ triangles, thick lines, blended text.
 | PLAY | the selected track's name and sound; the bar as a 16-step clock | the eight tracks' activity, macros | `01_play.png` |
 | TRACKS | eight cards (1–4, 5–8) | kind, MIDI ch, length, division | `02_tracks.png` |
 | SEQUENCER | the 16 steps of the page, one per white key | pattern overview (piano roll / 16 drum lanes), page bar | `03_sequencer.png`, `04_sequencer_drums.png` |
+| SEQUENCER · STEP (synth, SEQ again) | the cursor's 16 steps as a piano roll over the pattern's note range, title "STEP n / LEN" | the steps as cells (note / tie / rest, accent, slide); STEP · NOTE · TIME · FLAG | live: `ui/live/03b-sequencer-step.png` |
 | GROOVE | the focused groove value at 64 px | the other three, the timing of two beats as it plays | `05_groove.png`, `06_groove_focus.png` |
-| CLIPS | 8 tracks × 4 visible slots | scene, launch quantise, clip length | `07_clips.png` |
+| CLIPS | 8 tracks × 6 clips (all six rows visible); title "SCENE n" when every track plays clip n | CLIP cursor; LAUNCH / COPY / CLEAR on their buttons | `07_clips.png`; live: `ui/live/07b-clips-live.png`, `07c-clips-queued.png` |
 | MIXER | eight strips | volume, pan, sends of the selected track | `08_mixer.png` |
 | SOUND | the preset (browser with previous / next), or the envelope | engine, category, macros | `09_sound.png`, `10_sound_env.png` |
 | PERFORM | the 16 punch-in effects as the keys | master filter, dust, duck, track filter | `11_perform.png` |
@@ -199,6 +202,7 @@ python3 tools/gen_dsfont.py OUT.h --preview fonts.png
 | Contrast and label-fit checks | done (automatic) |
 | Live adapter (track/song state → view model) | done (`ui_move_ctl.c mv_fill`) |
 | Replace SLOOP's drawing code on the device (`FM1MOVE=1`), measure flash | done: image 518 836 B (−49 KB vs SLOOP), canvas 240 × 60 (−30 KB pool) |
-| Navigation on simulated controls | done: `tests/fm1move_ui_test.c` (36 checks + 12 000-frame fuzz, ASan) |
+| Navigation on simulated controls | done: `tests/fm1move_ui_test.c` (checks incl. clips and the STEP page + 12 000-frame fuzz, ASan) |
+| CLIPS grid (6 rows, cursor, queued), STEP page | done (host): live renders `03b-sequencer-step.png`, `07b-clips-live.png`, `07c-clips-queued.png` |
 | Navigation on the real controls, frame time on the device | [TEST-HW] |
 | Readability on the real panel | [TEST-HW] |

@@ -4,7 +4,7 @@
  * every element remembers what it last drew and is redrawn only on change. */
 #ifndef FELUCCA_VERSION
 #if FM1MOVE
-#define FELUCCA_VERSION "FM1 MOVE 0.1"   /* the editor's INFO and the SETTINGS page say it */
+#define FELUCCA_VERSION "FM1 MOVE 0.2"   /* the editor's INFO and the SETTINGS page say it */
 #else
 #define FELUCCA_VERSION "SLOOP 2.5"  /* the beat machine firmware for the FM-1 (based on Felucca) */
 #endif

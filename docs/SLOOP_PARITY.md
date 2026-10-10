@@ -2,7 +2,7 @@
 
 FM1 Move is built on SLOOP 2.5. The sound and sequencer code is shared, not rewritten: **every engine and every
 sequencer feature of SLOOP still runs in FM1 Move**. What changed is the panel (a new interface), the number of
-tracks (eight, any kind), the projects (a new format) and the song arranger (removed, to be replaced by clips and
+tracks (eight, any kind), the projects (a new format) and the song arranger (removed, replaced by clips and
 scenes). This page lists it feature by feature, from the code (`firmware/src/felucca.c` build switches,
 `ui_move_ctl.c`, `ui_layers.c`, `seq.c`, `editor.c`), not from memory.
 
@@ -16,8 +16,9 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | --- | --- | --- |
 | Step entry without recording (stopped or playing) | kept | SEQ held + white keys 1–16 write / clear steps: synth tracks the last note or chord played (or SEQ held + KNOB 1 picks the note), drum tracks the last sound played (or KNOB 1 picks the lane); a step key held: KNOB 1 note, 2 level, 3 ratchet, 4 nudge |
 | 64 steps per track, own length and division (polymeter, 1/32 … 2 bars) | kept (8 tracks) | SEQUENCER: KNOB 1 DIV, KNOB 3 LENGTH; SEQ held: KNOB 2–4 |
+| STEP page: a cursor over the pattern, acid-style entry (keys together = the cursor's step, letting go moves on) | kept | SEQ again on the SEQUENCER screen of a synth track: piano roll + step cells; KNOB 1 STEP (or ALGORITHM), 2 NOTE, 3 TIME (NOTE / TIE / REST), 4 FLAG; EDIT clears the step; not while recording or armed. The drum track keeps its grid only |
 | Chords up to 4 notes a step, ties | kept | recorded from the keys (several keys or chord mode: chords; a note held over steps: ties) |
-| Accent and slide flags on a step | kept in playback; **gone** from the panel | SLOOP set them on its STEP page; FM1 Move plays them (from user preset patterns, SLOOP projects) but no panel page or device-page editor sets them yet |
+| Accent and slide flags on a step | kept | STEP page: KNOB 4 FLAG (– / ACC / SLIDE / A+S), as on SLOOP's STEP page (the device page does not edit them yet) |
 | Step level (ghost/soft/norm/hard) and ratchet ×1–×4 | kept | SEQ held + step held: KNOB 2 LEVEL, KNOB 3 RATCHET; OCT− / OCT+ held while playing drums |
 | MPC swing 0–100 | kept | SEQUENCER KNOB 2 or GROOVE KNOB 1 |
 | Parameter locks (24 per track) | kept | SEQ held + step held: PRESETS value, ALGORITHM parameter |
@@ -68,9 +69,9 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 
 | SLOOP feature | FM1 Move |
 | --- | --- |
-| Sections A–D, quick chain, song mode, SONG REC, the song page (`FELUCCA_ARRANGER`) | **gone** — clips, scenes and capture replace them (milestone M3, not done yet) |
-| 4 project slots (SLOOP format FUN5) | **changed:** 4 slots in the FM1M format (eight tracks, groove) on HOME held › PROJECT, and on the device page |
-| Autosave and power-on resume | kept (FM1M, slot 4 internal) |
+| Sections A–D, quick chain, song mode, SONG REC, the song page (`FELUCCA_ARRANGER`) | **gone** — replaced by clips and scenes: 6 clips per track, 6 scenes, launched on the next bar (CLIPS held + white keys 1–6 / 9–14, CLIPS screen). No song chain and no capture yet |
+| 4 project slots (SLOOP format FUN5) | **changed:** 2 slots in the FM1M format (eight tracks, groove, clips) on HOME held › PROJECT, and on the device page |
+| Autosave and power-on resume | kept (FM1M, an internal third slot) |
 | SLOOP's working project at first start | imported (tracks 1–4) |
 | SLOOP's 4 saved project slots | not imported yet (still in flash, untouched) |
 | TOOLS: clear sequence, init sound, new project | **gone** from the panel |
@@ -101,5 +102,4 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 ## Where the gaps go
 
 The "web" rows are reachable today from the device page. Bringing the most used ones onto the panel (arpeggiator,
-voice mode, REC options, user preset store) and the clips / scenes / capture milestone are the next steps
-(`docs/DEVELOPMENT_PLAN.md`).
+voice mode, REC options, user preset store) and capture are the next steps (`docs/DEVELOPMENT_PLAN.md`).

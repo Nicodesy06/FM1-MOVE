@@ -51,6 +51,7 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Flam | PLAN | |
 | Gate length per step | PLAN | track gate exists (`P_SGATE`) |
 | Live record, overdub, step record, count-in, metronome | SLOOP | |
+| Step editor with cursor (piano roll, acid-style entry, accent / slide) | SLOOP + FM1M (host, ced992f) | SEQUENCER STEP page on synth tracks |
 | Undo / redo (one level, one track) | SLOOP | |
 | Copy / paste / shift / double / halve | PART | shift, length ×2/½ exist |
 | Polyrhythm (per-track length) | SLOOP | |
@@ -59,9 +60,9 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| Song sections A–D, quick chain, song mode | SLOOP | four sections |
-| Clips per track (several patterns per track) | PLAN (M3) | memory-bound: see MEMORY_BUDGET |
-| Scenes (one clip per track) and quantised launch | PART | sections ≈ scenes |
+| Song sections A–D, quick chain, song mode | SLOOP | four sections; left out of FM1 Move (clips and scenes replace them) |
+| Clips per track (several patterns per track) | FM1M (host, d50541f / 32fb841) | 6 per track, one 8 KiB packed bank (`clip.c`); full: "CLIP MEMORY FULL", the clip keeps its last version; copy / clear on the CLIPS screen |
+| Scenes (one clip per track) and quantised launch | FM1M (host, d50541f / 32fb841) | 6 scenes; launch on the next bar (clip on its step 0), stopped: at once; CLIPS held + white keys |
 | Retroactive capture | PLAN (M3) | ring of recent key events |
 
 ## Mixer, FX, performance
@@ -81,7 +82,7 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | USB MIDI in/out, TRS MIDI in, MIDI clock in | SLOOP | no TRS MIDI out (N/A without hardware) |
 | MIDI clock **out** | PLAN | |
 | Project save/load, CRC, A/B copies, autosave, migration of old formats | SLOOP | 4 tracks |
-| 8-track project format | FM1M (host) | `PROJECT_FORMAT.md`; firmware wiring and legacy import pending |
+| 8-track project format | FM1M (host) | `PROJECT_FORMAT.md` (stream v2 with clips); 2 slots + the autosave, 3 chunks each; import of SLOOP slots 1–4 pending (the SLOOP autosave is imported) |
 | USB update, rescue, return to official | SLOOP | kept unchanged |
 | Dual-core | PLAN (M6) research | unknown if possible |
 

@@ -97,3 +97,25 @@ Host suite: all groups pass except the known baseline `fm1_alnk0_irq` static cos
 too); 182 golden renders unchanged; `fm1move_ui_test` 39 checks (new: any button held + SELECT sets the tempo).
 **No FM1 Move build has run on a physical FM-1; the device page's USB path has not met a real FM-1.**
 
+
+### Clips, scenes, STEP page, 2-slot flash layout (2026-10-10)
+
+Commits 1d0f6f2 (flash layout), d50541f (clip engine), 32fb841 (clips UI), ced992f (STEP page).
+
+Build `FM1MOVE=1`: OK — image **545 160 B** of the 581 564 B app slot, RAM .data+.bss 93 168 / 98 304 B, pool
+333 072 / 344 064 B (10 992 B spare: the 8 KiB rule kept; the clip bank is 8 KiB of it).
+
+New and extended host tests (host simulation only):
+
+| Test | What it checks |
+| --- | --- |
+| `clip_test` (new, + ASan / UBSan; in `tests/run_tests.sh`) | 25 checks with the real sequencer, mixer, project format and storage: a pattern stored as the clip playing and launched back exactly (steps, LENGTH, DIV); stopped: a launch at once; playing: the old clip through the last block of the bar, the new one in the block that starts the bar with its step 0 sounding on time, also for a LENGTH 5 clip launched after some bars; a step written in the outgoing clip's last block is kept; scenes switch every track in the same block, empty clips go quiet; STOP before the bar starts the queued clip; copy, erase, a new kind empties the track's clips; project version 2 saves and loads every clip byte for byte; a full bank refuses the store, and the pattern playing still saves with the project and loads back exactly |
+| `projfmt_test` (extended) | FM1 Move 0.1 layout: project 1 and the autosave still load, a slot over other projects' chunks reads as empty; the densest project against the 3-chunk capacity |
+| `fm1move_ui_test` (extended) | CLIPS: CLIPS held + white keys launch on the bar, a written step lands in the clip playing, EDIT copies (asks before replacing; another button cancels), KNOB 1 moves the cursor, REC asks then clears one clip and does not record, CLIPS held + key 9 launches scene 1, CLIPS tapped launches the cursor's clip, STOP before the bar starts it; STEP page: SEQ again opens it (drum track: grid only), key entry and chords, letting go moves on, STEP / NOTE / TIME / FLAG, ALGORITHM, EDIT clears a step |
+| `web/test_device.mjs` (extended) | 2 project slots; a 7.8 KB three-chunk restore |
+
+Full suite run (`SOAK_MIN=2 SKIP_CPU_VALGRIND=1 sh tests/run_tests.sh`, SLOOP-layout `build/`, host PC): every test passes
+except the known baseline `target cost … fm1_alnk0_irq` (+54 %, unchanged, present on untouched SLOOP 2.5). The timed
+CPU notes ("timed: a note, not a failure") came from a loaded machine. `node web/test_device.mjs`: all ok against the
+rebuilt wasm firmware. Host simulation only: nothing here ran on an FM-1.
+**No FM1 Move build has run on a physical FM-1.**

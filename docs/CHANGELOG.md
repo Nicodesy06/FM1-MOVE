@@ -2,6 +2,35 @@
 
 ## Unreleased (fm1-move/dev)
 
+### Clips, scenes, the STEP page (host simulation)
+- Flash (1d0f6f2): **2 project slots + the autosave** (was 4 + autosave), 3 chunks of 3 824 B each (`FMP_MAX`
+  11 472 B, was 2 chunks): room for the clips. Same 80 KiB region at `0xE7000`, 10 objects × A/B; map slot 1 {0,1,2},
+  slot 2 {3,4,5}, autosave {8,9,7}, object 6 spare. FM1 Move 0.1's project 1 and autosave still load; its projects
+  2–4 are not carried over (slot 2 reads as empty). PROJECT page, editor (objects 16–18) and device page: 2 slots; a
+  restore of up to 3 chunks is staged as `fmp_save` writes.
+- `firmware/src/clip.c` (d50541f): 8 tracks × 6 clips in one packed 8 KiB `.pool` bank (a 16-step pattern ~100–300
+  B). Everything that writes a pattern writes the clip playing; the main loop stores it every 10 ms; a switch stores
+  the outgoing clip first. Launch: playing, in the audio interrupt at the start of the next bar, the new clip on its
+  step 0 whatever its LENGTH / DIV; stopped, at once; STOP before the bar starts the queued clip at once. Scenes:
+  clip k on every track. Full bank: the store is refused ("CLIP MEMORY FULL"), the clip keeps its last version, the
+  pattern playing still saves in its track record. A kind change empties the track's clips.
+- FM1M stream **version 2**: a clip section after the tracks ('C', count, per track the clip playing and each clip's
+  length + 'K', LENGTH, DIV, the pattern); version 1 projects load with each pattern as clip 1.
+- Clips UI (32fb841): CLIPS (SAVE) held + white keys 1–6 launch the selected track's clips, 9–14 scenes 1–6; key
+  LEDs show playing / queued (blinking) / holds / empty. CLIPS screen: 8 × 6 grid, all rows visible, cursor
+  (ALGORITHM or KNOB 1), title "SCENE n"; CLIPS again launches, EDIT copies the clip playing into the cursor's slot,
+  REC clears it (both ask first when a pattern would go). No focus overlay on CLIPS.
+- SEQUENCER STEP page (ced992f, SLOOP's STEP page back): SEQ again on a synth track; piano roll + step cells, title
+  "STEP n / LEN"; KNOB STEP / NOTE / TIME / FLAG (accent, slide: settable from the panel again); acid-style key
+  entry (chords up to 4), EDIT clears a step, EDIT + OCT− undoes one entry. The drum track keeps its grid.
+- Version **FM1 MOVE 0.2** (the project layout changed); the device page offers `docs/firmware/fm1move-0.2-dev.fwsc`
+  (the 0.1-dev package is removed). Experimental: built and simulated on the host, never run on an FM-1.
+- `tests/clip_test.c` (25 checks, + ASan / UBSan) in `tests/run_tests.sh`; `fm1move_ui_test` gained clips and STEP
+  page checks; `projfmt_test` the 0.1-layout checks. Live renders `docs/ui/live/03b-sequencer-step.png`,
+  `07b-clips-live.png`, `07c-clips-queued.png`.
+- FM1MOVE build: image 545 160 B, RAM 93 168 / 98 304 B, pool 333 072 / 344 064 B (10 992 B spare). All verified in
+  host simulation only; not run on an FM-1.
+
 ### M0 — foundation
 - Baseline: SLOOP 2.5 imported with history (`master`).
 - Audit docs: hardware, codebase map, feature matrix, memory budget, development plan, test report; `CLAUDE.md`.

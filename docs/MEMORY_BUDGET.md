@@ -20,6 +20,23 @@ Legend: **[BUILD]** measured, **[EST]** estimate with stated uncertainty.
 Per-track cost today: `track_t` = 1 940 B, of which `voice_t v[8]` = 672 B (84 B each), steps 640 B,
 micro 64 B, locks 96 B + lock state 120 B.
 
+## 1b. FM1MOVE build (eight tracks, the new UI, FM1M projects with clips)
+
+Measured by `FM1MOVE=1 sh build.sh` after the clips and the STEP page (ced992f) [BUILD]:
+
+| Region | Capacity | Used | Free |
+| --- | --- | --- | --- |
+| Flash app slot (image) | 581 564 | 545 160 | 36 404 |
+| RAM .data+.bss | 98 304 | 93 168 | 5 136 |
+| POOL | 344 064 | 333 072 | **10 992** (≥ 8 192 must stay spare: kept) |
+
+Clips (`clip.c`): the bank `clip_mem` 8 192 B + offset / length tables 2 × 8 × 6 × 2 = 192 B, all in `.pool`; the
+per-track state (clip playing, clip asked for, hash, flags) ~60 B of RAM. The bank is packed: a 16-step pattern
+takes ~100–300 B, so 6 clips × 8 tracks of dense patterns do not all fit; a store that finds no room is refused
+("CLIP MEMORY FULL") and the clip keeps its last stored version. The project stream (`FMP_MAX` 11 472 B, 3 chunks)
+is sized for the tracks plus a full bank. Flash: 2 project slots + the autosave × 3 chunks (+1 spare object) × A/B =
+20 sectors, 80 KiB at `0xE7000` (SLOOP's USR4 sample slot).
+
 ## 2. What eight tracks cost
 
 | Item | Four tracks | Eight tracks | Delta | Notes |
