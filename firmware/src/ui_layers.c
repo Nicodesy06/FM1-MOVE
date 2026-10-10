@@ -341,8 +341,9 @@ static void layer_key(uint32_t layer, uint32_t k, uint32_t down)
         return;
     case LY_SCALE: {                                    /* the key of the song: every synth part */
         uint32_t i, root = (53u + k) % 12u;
-        for (i = 0; i < NPART; i++)
-            trk[i].p[P_ROOT] = (int16_t)root;
+        for (i = 0; i < NTRK; i++)
+            if (is_synth(&trk[i]))
+                trk[i].p[P_ROOT] = (int16_t)root;
         ui_say("KEY ", N_NOTE[root]);
         return;
     }
@@ -530,8 +531,9 @@ static void layer_knobs(uint32_t layer)
             } else if (k == 1u) {
                 uint32_t i;
                 int16_t v = (int16_t)clamp(trk[0].p[P_SCALE] + s, 0, NSCALES - 1);
-                for (i = 0; i < NPART; i++)
-                    trk[i].p[P_SCALE] = v;
+                for (i = 0; i < NTRK; i++)
+                    if (is_synth(&trk[i]))
+                        trk[i].p[P_SCALE] = v;
             } else if (k == 2u) {
                 if (!is_drum(t))
                     t->p[P_QUANT] = (int16_t)clamp(t->p[P_QUANT] + s, 0, 2);

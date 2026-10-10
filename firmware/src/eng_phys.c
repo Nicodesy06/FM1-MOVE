@@ -101,6 +101,8 @@ static phys_slot_t *phys_slot_of(track_t *t, voice_t *v)
     if (i >= phys_poly(t))
         return 0;
     a = (uint8_t *)eng_arena_of(t, ENGI_PHYS);
+    if (!a)
+        return 0;                                /* (no arena: eng_heavy_ok prevents it) */
     sz = big ? PHYS_SLOT_BIG : PHYS_SLOT_SMALL;
     if (phys_lay[p] != big + 1u) {                       /* the other layout: every slot starts over */
         for (k = 0; k < phys_poly(t); k++)

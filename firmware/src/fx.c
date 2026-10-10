@@ -475,7 +475,7 @@ static void djf_process(int32_t *l, int32_t *r, uint32_t n)
 
 #include "punch.c"            /* PUNCH-IN FX on the whole mix (FX held + a white key) */
 static int32_t master_cur = -1;                        /* the volume knob, ramped per sample (no zipper) */
-static void mix_block(int32_t *out, uint32_t n)
+static void __attribute__((noinline)) mix_block(int32_t *out, uint32_t n)   /* (out of line: the ISR stays small, tests/target_budget.py) */
 {
     uint32_t i;
     int32_t m0, m1;
@@ -483,8 +483,9 @@ static void mix_block(int32_t *out, uint32_t n)
         send_c[i] = send_d[i] = send_r[i] = mix_l[i] = mix_r[i] = 0;
     events_block(n);
     duck_block(n * (uint32_t)song.g[G_BPM]);
-    for (i = 0; i < NPART; i++)
-        mix_part(&trk[i], n);
+    for (i = 0; i < NTRK; i++)
+        if (is_synth(&trk[i]))
+            mix_part(&trk[i], n);
     drums.a0 = TDRUM->att;                              /* the drum track's mute / solo fade */
     drums.a1 = 32767 - gain_next(TDRUM);
     {

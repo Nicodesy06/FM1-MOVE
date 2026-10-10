@@ -8,9 +8,20 @@
 #include <stdint.h>
 #define NVOICE 8                 /* voices per part, and the budget shared by all parts */
 #define NPOLY 8
-#define NPART 3                  /* synth parts: tracks 1..3 */
-#define NTRK 4                   /* + the drum track */
-#define TRK_DRUM 3
+/* FM1 Move: eight tracks, each of a kind (synth, drums, MIDI out), no fixed roles. FM1MOVE=0 builds SLOOP's
+ * four-track layout (three synth parts, the drum track 4) for SLOOP's UI and its tests. */
+#ifndef FM1MOVE
+#define FM1MOVE 0
+#endif
+#if FM1MOVE
+#define NTRK 8
+#define TRK_DRUM 0               /* the default drum track (a new project): track 1 */
+#else
+#define NTRK 4
+#define TRK_DRUM 3               /* SLOOP: track 4 is the drum track */
+#endif
+#define NPART NTRK               /* per-track synth state is sized for every track (any may be a synth) */
+enum { TK_SYNTH, TK_DRUM, TK_MIDI, TK_COUNT };
 enum { V_POLY, V_MONO, V_LEGATO, V_UNISON };   /* P_VOICE */
 #define NSTEP 64
 #define HALF_FRAMES 256          /* I2S half buffer: 5.8 ms at 44.1 kHz */
@@ -200,6 +211,7 @@ typedef struct track {
     uint8_t engine, preset;      /* engine: what the audio ISR renders */
     uint8_t eng_req;             /* engine the UI asked for (the ISR switches at a block start) */
     uint8_t user;                /* user preset slot + 1 the sound came from (UI), 0 = none */
+    uint8_t kind;                /* FM1 Move: TK_* + 1; 0 = the slot's default (trk_kind) */
     voice_t v[NVOICE];
     /* LFO */
     uint32_t lfo_ph;
@@ -321,8 +333,14 @@ static uint32_t div_samples(uint32_t div) { return div_units(div) / (uint32_t)so
 /* length of the delay's TIME (N_DLY order) in samples at the song tempo (rounded down) */
 static uint32_t dly_samples(uint32_t d) { return dly_units(d) / (uint32_t)song.g[G_BPM]; }
 #define TSEL (&trk[song.sel])    /* the selected track */
-#define TDRUM (&trk[TRK_DRUM])
-static int is_drum(const track_t *t) { return t == TDRUM; }
+#define TDRUM (&trk[TRK_DRUM])   /* SLOOP's UI: the drum track (FM1 Move: the default one) */
+/* a track's kind: as set, else the slot's default (zeroed memory = SLOOP's layout, or FM1 Move's new project) */
+static uint32_t trk_kind(const track_t *t)
+{
+    return t->kind ? (uint32_t)t->kind - 1u : t == TDRUM ? TK_DRUM : TK_SYNTH;
+}
+static int is_drum(const track_t *t) { return trk_kind(t) == TK_DRUM; }
+static int is_synth(const track_t *t) { return trk_kind(t) == TK_SYNTH; }
 /* silent: MUTE, or another track is soloed */
 static int trk_silent(const track_t *t)
 {

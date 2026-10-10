@@ -55,7 +55,7 @@ static uint32_t trk_index(const track_t *t) { return (uint32_t)(t - trk); }
 
 static uint32_t trk_midi_ch(uint32_t i)    /* MIDI channel 0..15 of track i (keys -> MIDI out) */
 {
-    if (i < NPART)
+    if (!is_drum(&trk[i % NTRK]))
         return i;
     return song.g[G_DRCH] ? (uint32_t)song.g[G_DRCH] - 1u : 9u;
 }
@@ -1996,7 +1996,7 @@ static track_t *midi_track(uint32_t ch)
 {
     if (song.g[G_DRCH] && ch + 1u == (uint32_t)song.g[G_DRCH])
         return TDRUM;
-    return ch < NPART ? &trk[ch] : TSEL;
+    return ch < NTRK && !is_drum(&trk[ch]) ? &trk[ch] : TSEL;
 }
 
 /* a channel that plays the selected track: its note-off goes to the track its note-on went to,
@@ -2005,7 +2005,7 @@ static uint8_t midi_sel_on[16][128];                  /* per channel and note: t
 static track_t *midi_route(uint32_t ch, uint32_t note, int on)
 {
     track_t *t = midi_track(ch);
-    if (ch < NPART || (song.g[G_DRCH] && ch + 1u == (uint32_t)song.g[G_DRCH]))
+    if ((ch < NTRK && !is_drum(&trk[ch])) || (song.g[G_DRCH] && ch + 1u == (uint32_t)song.g[G_DRCH]))
         return t;                                     /* a part's own channel, or the drum channel */
     if (on)
         midi_sel_on[ch & 15u][note & 127u] = (uint8_t)(song.sel + 1u);
@@ -2240,7 +2240,7 @@ static void events_block(uint32_t n)
             t->arp_phys = 0;
             t->arp_note = 0;
         }
-        if (i < NPART)
+        if (is_synth(t))
             engine_block(t);                          /* engine switch: fade, then switch (voice.c) */
         /* ARP turned off, or HOLD released with no key down: drop the latched chord */
         if ((t->armp && !t->p[P_AMODE]) || (t->aholdp && !t->p[P_AHOLD] && !t->arp_phys)) {
@@ -2292,8 +2292,9 @@ static void events_block(uint32_t n)
         seq_tick(&trk[i], adv);
     click_tick();
     roll_block(adv);
-    for (i = 0; i < NPART; i++)
-        arp_tick(&trk[i], adv);
+    for (i = 0; i < NTRK; i++)
+        if (is_synth(&trk[i]))
+            arp_tick(&trk[i], adv);
     if (song.playing) {
         song.tick++;
         clk_pos += adv;

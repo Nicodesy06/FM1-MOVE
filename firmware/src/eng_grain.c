@@ -349,6 +349,10 @@ static void grain_note_on(track_t *t, voice_t *v)
 {
     gr_part_t *P = (gr_part_t *)eng_arena_of(t, ENGI_GRAIN);
     uint32_t vi = (uint32_t)(v - t->v) % NVOICE, i;
+    if (!P) {                                       /* (no arena: eng_heavy_ok prevents it) */
+        v->active = 0;
+        return;
+    }
     v->s[0] = gr_find((uint32_t)t->p[P_E0] % SMP_NALL, v->note);
     v->s[1] = 0;                                    /* the first grain at once */
     if (!v->env) {                                  /* a fresh voice: no grains left from before */
@@ -365,6 +369,8 @@ static void grain_block(track_t *t)
 {
     gr_part_t *P = (gr_part_t *)eng_arena_of(t, ENGI_GRAIN);
     uint32_t src = (uint32_t)t->p[P_E0] % SMP_NALL, st = gr_stamp(src), i;
+    if (!P)
+        return;
     if (!P->rng)
         P->rng = 0x2545F491;
     if (P->src != src + 1u || P->stamp != st) {
@@ -387,6 +393,8 @@ static void grain_render(track_t *t, voice_t *v, int32_t *out, uint32_t n, const
     int32_t zl = v->s[0], acc[CTL], lp, y = v->s[2];
     if (n > CTL)
         n = CTL;
+    if (!P)
+        return;
     if (zl < 0 || zl >= P->nz || P->src != (uint32_t)p[P_E0] % SMP_NALL + 1u) {
         if (zl < 0)
             v->active = 0;                          /* a user slot key with no zone: silent */

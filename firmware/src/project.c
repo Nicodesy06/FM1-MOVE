@@ -334,7 +334,7 @@ static void proj_apply(const project_t *p, int all)
     for (k = 0; k < NTRK; k++) {
         track_t *t = &trk[k];
         const proj_trk_t *s = &p->t[k];
-        uint32_t e = k < NPART ? s->engine % NENGINES : 0u;
+        uint32_t e = is_synth(t) ? s->engine % NENGINES : 0u;
         t->eng_req = (uint8_t)e;
         t->user = 0;                                    /* (no user preset slot is saved) */
         t->lk_n = 0;                                    /* (the locks in force: the values come from the project) */
@@ -434,8 +434,8 @@ static void project_apply(const project_t *p)
     proj_apply(p, 1);
     song.sel = (uint8_t)(p->sel < NTRK ? p->sel : 0u);
     fm1_irq_on();
-    for (k = 0; k < NPART; k++)                         /* a format 1 project: the default sounds of tracks 2, 3 */
-        if (p->t[k].preset == 0xFFu) {
+    for (k = 0; k < NTRK; k++)                          /* a format 1 project: the default sounds of tracks 2, 3 */
+        if (is_synth(&trk[k]) && p->t[k].preset == 0xFFu) {
             apply_preset_to(&trk[k], TRK_DEF[k][1]);
             steps_clear(&trk[k]);
         }
@@ -513,8 +513,9 @@ static void autosave_resume(void)              /* power-on: the project as it wa
     autosave_hash = q->sum;
     proj_apply(q, 1);
     song.sel = (uint8_t)(q->sel < NTRK ? q->sel : 0u);
-    for (n = 0; n < NPART; n++)
-        trk[n].engine = trk[n].eng_req;        /* (nothing sounds yet: no fade) */
+    for (n = 0; n < NTRK; n++)
+        if (is_synth(&trk[n]))
+            trk[n].engine = trk[n].eng_req;        /* (nothing sounds yet: no fade) */
 #endif
 }
 

@@ -567,6 +567,8 @@ static void engine_block(track_t *t)
             v->env = v->env_out = 0;
         }
         t->engine = t->eng_req % NENGINES;
+        if (!eng_heavy(t->engine))
+            eng_arena_release(t);                       /* a light engine: the arena goes back to the pool */
         t->xf_on = 0;
         t->nmono = 0;
         t->mono_note = 0;

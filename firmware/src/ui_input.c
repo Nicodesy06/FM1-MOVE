@@ -338,7 +338,7 @@ static void project_new(void)
         undo_mark(t, (undo_sess += 4u) | 3u);
         fm1_irq_off();
         track_defaults(t);
-        if (i < NPART) {
+        if (is_synth(t)) {
             set_engine_of(t, TRK_DEF[i][0]);
             apply_preset_to(t, TRK_DEF[i][1]);
         }
