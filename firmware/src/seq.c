@@ -789,11 +789,10 @@ static void steps_clear(track_t *t)           /* an empty pattern (synth: REST s
  * Whatever it sounds stops at once (a drum track renders no synth voice and a synth track no drum voice: left
  * running they would hang), its heavy-engine arena goes back, and its pattern starts empty (synth steps and drum
  * lanes share the same bytes). */
-static void trk_set_kind(track_t *t, uint32_t kind)
+/* every voice of track t stops at once (synth and drum voices), nothing held, no arp or sequencer note left */
+static void trk_silence(track_t *t)
 {
     uint32_t i, ti = trk_index(t) % NTRK;
-    if (kind >= TK_COUNT || trk_kind(t) == kind)
-        return;
     seq_out_track_off(t);
     strum_cancel(t, 0, 1);
     for (i = 0; i < NVOICE; i++) {
@@ -810,6 +809,13 @@ static void trk_set_kind(track_t *t, uint32_t kind)
     t->xp_n = t->xf_on = 0;
     t->nheld = t->arp_phys = t->arp_note = 0;
     t->seq_n = t->seq_hold = 0;
+    t->pad_pend = 0;
+}
+static void trk_set_kind(track_t *t, uint32_t kind)
+{
+    if (kind >= TK_COUNT || trk_kind(t) == kind)
+        return;
+    trk_silence(t);
     eng_arena_release(t);
     if (eng_heavy(t->eng_req) || eng_heavy(t->engine))
         t->eng_req = t->engine = 0;                  /* (a heavy engine claims its arena again when chosen) */

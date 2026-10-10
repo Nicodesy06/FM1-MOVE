@@ -21,7 +21,18 @@
  * (upreset.c); the working project (autosave, project.c): copy A 0x9F000, copy B 0xFE000 (the two sectors
  * left: A/B needs no two neighbours); the FM6 patch bank (fm6_bank.c, SLOOP 2.4): 0xE5000 / 0xE6000, the first
  * two sectors of the free 0xE5000..0xFBFFF after the update staging (FL_FM6, fm1_flash.h) */
+/* FM1 Move adds the FM1M project chunks (projfmt.c): 4 slots and the autosave, 2 chunks each, A/B, in a region of
+ * their own (FMP_FLASH_BASE, 80 KiB); SLOOP's project objects stay where they were (read for import, never written) */
+#if FM1MOVE
+#ifndef FMP_FLASH_BASE
+#define FMP_FLASH_BASE 0xE7000u                /* the region of SLOOP's USR4 sample slot (no USR4 in FM1 Move) */
+#endif
+#define FMP_SLOTS 5u                           /* projects 0..3, the autosave 4 */
+enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_AUTOSAVE = OBJ_UPRESET0 + 2, OBJ_FM6BANK,
+       OBJ_FMP0, OBJ_COUNT = OBJ_FMP0 + 2 * FMP_SLOTS };
+#else
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_AUTOSAVE = OBJ_UPRESET0 + 2, OBJ_FM6BANK, OBJ_COUNT };
+#endif
 
 typedef struct {
     uint32_t magic;
@@ -51,6 +62,10 @@ static uint32_t st_crc32(const void *p, uint32_t n)   /* zlib CRC-32, 4 bits per
 
 static uint32_t st_sector(uint32_t obj, uint32_t copy)  /* flash offset of copy A (0) / B (1) */
 {
+#if FM1MOVE
+    if (obj >= OBJ_FMP0)
+        return FMP_FLASH_BASE + (obj - OBJ_FMP0) * 2u * ST_SECTOR + copy * ST_SECTOR;
+#endif
     if (obj == OBJ_SETTINGS)
         return 0xFC000u + copy * ST_SECTOR;
     if (obj == OBJ_AUTOSAVE)
@@ -165,3 +180,44 @@ static int st_save2(uint32_t obj, const void *src, uint32_t len, const void *src
     return 0;
 }
 static int st_save(uint32_t obj, const void *src, uint32_t len) { return st_save2(obj, src, len, 0, 0); }
+
+/* FM1 Move: save the len bytes already staged in st_buf (projfmt.c builds each chunk there in place). The copy to
+ * write is chosen from the headers alone: reading the current body, as st_save does, would overwrite st_buf */
+static int st_save_staged(uint32_t obj, uint32_t len)
+{
+    st_hdr_t a, b, h, chk;
+    int va, vb, rc;
+    uint32_t copy, seq, base, off;
+    if (obj >= OBJ_COUNT || len > ST_PAYLOAD_MAX)
+        return -1;
+    va = st_head(obj, 0, &a) == 0;
+    vb = st_head(obj, 1, &b) == 0;
+    if (vb && (!va || b.seq > a.seq)) {
+        copy = 0;
+        seq = b.seq;
+    } else {
+        copy = va ? 1u : 0u;
+        seq = va ? a.seq : 0u;
+    }
+    base = st_sector(obj, copy);
+    if ((rc = st_erase(base)) != 0)
+        return rc;
+    for (off = 0; off < len; off += 256u) {
+        uint32_t n = len - off > 256u ? 256u : len - off;
+        if ((rc = st_prog(base + ST_PAYLOAD_OFF + off, st_buf + off, n)) != 0)
+            return rc;
+    }
+    h.magic = ST_MAGIC;
+    h.type = (uint16_t)obj;
+    h.slot = (uint16_t)copy;
+    h.seq = seq + 1u;
+    h.len = len;
+    h.crc = st_crc32(st_buf, len);
+    h.rsv[0] = h.rsv[1] = 0xFFFFFFFFu;
+    h.hcrc = st_crc32(&h, sizeof h - 4u);
+    if ((rc = st_prog(base, &h, sizeof h)) != 0)       /* the commit record, last */
+        return rc;
+    if (st_head(obj, copy, &chk) || memcmp(&chk, &h, sizeof h) || st_body(obj, copy, &chk))   /* read back */
+        return -7;
+    return 0;
+}

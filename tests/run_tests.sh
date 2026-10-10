@@ -102,6 +102,13 @@ if $ASAN -o "$OUT/groove_asan" tests/groove_test.c -lm 2>/dev/null; then
     run "FM1 Move groove under ASan + UBSan" "$OUT/groove_asan"
 fi
 
+# FM1 Move project format FM1M over the storage layer: round trip, capacity, power loss at every write, damage
+$CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/projfmt_test" tests/projfmt_test.c -lm
+run "FM1 Move projects: eight tracks round trip, capacity, power loss at every write, damage, heavy limit" "$OUT/projfmt_test"
+if $ASAN -o "$OUT/projfmt_asan" tests/projfmt_test.c -lm 2>/dev/null; then
+    run "FM1 Move projects under ASan + UBSan" "$OUT/projfmt_asan"
+fi
+
 # FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
 python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
 $CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c

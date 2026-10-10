@@ -78,7 +78,7 @@ Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflo
 | USB MIDI in/out, TRS MIDI in, MIDI clock in | SLOOP | no TRS MIDI out (N/A without hardware) |
 | MIDI clock **out** | PLAN | |
 | Project save/load, CRC, A/B copies, autosave, migration of old formats | SLOOP | 4 tracks |
-| 8-track project format | PLAN (M1) | `PROJECT_FORMAT.md` |
+| 8-track project format | FM1M (host) | `PROJECT_FORMAT.md`; firmware wiring and legacy import pending |
 | USB update, rescue, return to official | SLOOP | kept unchanged |
 | Dual-core | PLAN (M6) research | unknown if possible |
 

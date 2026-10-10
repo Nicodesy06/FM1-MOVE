@@ -31,3 +31,11 @@
 - `seq.c`: groove-aware firing time and velocity, raw deviation recorded with latency compensation, late pads.
 - `tests/groove_test.c` (26 checks, + ASan/UBSan). SLOOP's 182 golden renders unchanged.
 - `docs/GROOVE_ENGINE.md`.
+
+### M1.4 — project format FM1M (host)
+- `firmware/src/projfmt.c`: sparse streaming format (kinds, non-default params, compact steps, locks, grooves, pads),
+  2 chunks of 3 824 B with generations, commit chunk last, two-pass validate-then-apply, no project-sized buffer.
+- `storage.c`: `st_save_staged` (save from st_buf in place), FM1M objects in their own 80 KiB region (FM1MOVE).
+- `seq.c`: `trk_silence` (shared by kind changes and loads).
+- `tests/projfmt_test.c` (+ ASan/UBSan): round trip, capacity, power loss at every write, damage, heavy limit.
+- `docs/PROJECT_FORMAT.md`.
