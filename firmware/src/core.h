@@ -16,6 +16,7 @@
 #if FM1MOVE
 #define FMP_NPROJ 2u             /* FM1M project slots 0..1 (3 chunks each: room for the clips); the autosave is slot 2 */
 #define FMP_AUTOSAVE 2u
+#define NCLIP 6u                 /* clips per track (clip.c): white keys 1..6 on the CLIPS screen */
 #define NTRK 8
 #define TRK_DRUM 0               /* the default drum track (a new project): track 1 */
 #else
@@ -251,6 +252,8 @@ typedef struct track {
     int16_t lk_base[NLOCK];
     int16_t lk_set[NLOCK];
     uint32_t seq_abs;            /* the step of the transport grid last played (seq.c trk_grid), SEQ_NONE */
+    uint32_t seq_org;            /* FM1 Move: the grid step where the pattern's step 0 is (0 from PLAY; a clip launched
+                                  * on a bar: that bar, so it starts from its step 0) */
     uint16_t seq_idx;            /* its index in the pattern */
     uint8_t seq_den;             /* the DIV it was played on (a DIV change waits for the next step) */
     uint8_t arp_den;             /* the same for the arp's RATE */

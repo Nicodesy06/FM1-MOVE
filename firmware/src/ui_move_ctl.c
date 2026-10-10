@@ -218,6 +218,16 @@ static void st_turn(uint32_t r, int32_t s)
 
 /* -------------------------------------------------------------- actions --- */
 static int fmp_used(uint32_t slot);                      /* project.c (FM1MOVE) */
+/* clip.c (included by projfmt.c, after this file) */
+static void clip_launch(uint32_t ti, uint32_t k);
+static void clip_scene(uint32_t k);
+static int clip_copy(uint32_t ti, uint32_t from, uint32_t to);
+static void clip_erase(uint32_t ti, uint32_t k);
+static void clip_reset_track(uint32_t ti);
+static void clip_init(void);
+static void clip_tick(void);
+static uint32_t clip_state(uint32_t ti, uint32_t k);
+static uint8_t clip_full;
 static int project_save_fmp(uint32_t slot);
 static int project_load_fmp(uint32_t slot);
 static void project_delete_fmp(uint32_t slot);
@@ -234,6 +244,7 @@ static void ctl_do(uint32_t act, uint32_t arg)
             set_engine_of(&trk[arg % NTRK], 0);
         if (ctl.kind_req == TK_DRUM)
             trk[arg % NTRK].p[P_E0] = DRUM_DEFAULT_KIT;
+        clip_reset_track(arg % NTRK);                    /* (its clips were of the other kind) */
         ctl.kind_req = TK_COUNT;
         ctl_toast("TRACK ", b);
         break;
@@ -325,9 +336,14 @@ static void ui_input(void)
     int32_t s;
     static uint32_t home_t0;
     static uint8_t home_hold_done;
+    static uint32_t clip_ms;
     enc_hold = 0;
     if (pressed || notes)
         ui_input_ms = fm1_ms;
+    if (fm1_ms - clip_ms >= 10u) {                       /* the clips follow their patterns (clip.c) */
+        clip_ms = fm1_ms;
+        clip_tick();
+    }
     fm6_poll();
     ctl_messages();
     if (ctl.arm && fm1_ms - ctl.arm_ms > CTL_ARM_MS)
@@ -1069,4 +1085,5 @@ static void project_default_tracks(void)
         steps_clear(t);
     }
     memset(&song_groove, 0, sizeof song_groove);
+    clip_init();                                         /* (every clip empty, clip 1 playing) */
 }

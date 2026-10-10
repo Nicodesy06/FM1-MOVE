@@ -382,6 +382,13 @@ static uint32_t trk_grid(const track_t *t, uint32_t *into, uint32_t *len)
     return grid_at(div, swings(div) ? swing_units(t->p[P_SSWING] + song.g[G_SWING], div_units(div)) : 0u, into, len);
 }
 static uint32_t trk_len(const track_t *t) { return t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u; }
+/* the pattern step of grid step abs: counted from seq_org, the grid step the pattern last started on (0, or the
+ * bar a clip was launched on: it starts on its step 0 whatever its length) */
+static uint32_t trk_pidx(const track_t *t, uint32_t abs)
+{
+    int32_t l = (int32_t)trk_len(t), d = (int32_t)(abs - t->seq_org) % l;
+    return (uint32_t)(d < 0 ? d + l : d);
+}
 /* FM1 Move: the groove template's sixteenth for step idx of track t's pattern. Pattern-relative (not the bar's):
  * a polymetric pattern keeps its feel every pass, and a groove commit bakes exactly what plays */
 static uint32_t trk_slot(const track_t *t, uint32_t idx)
@@ -476,7 +483,7 @@ static void step_add(track_t *t, uint32_t idx, uint32_t note, uint32_t vel, uint
  * step ends the hold before (the step model ties the notes of one step only). */
 static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int hold)
 {
-    uint32_t len = trk_len(t), later, abs = rec_target(t, &later), idx = abs % len, k;
+    uint32_t later, abs = rec_target(t, &later), idx = trk_pidx(t, abs), k;
     undo_mark(t, UNDO_REC(t));
     step_add(t, idx, note, vel, vel_lvl(vel), rat);
     t->roff[idx % NSTEP] = rec_dev64(t, abs);         /* the raw timing (played back by the quantize strength) */
@@ -506,8 +513,8 @@ static void rec_hit(track_t *t, uint32_t lane, uint32_t lvl, uint32_t rat)
 {
     uint32_t later, abs = rec_target(t, &later);
     undo_mark(t, UNDO_REC(t));
-    dstep_set(&t->dstep[abs % trk_len(t)], lane, lvl, rat);
-    t->roff[abs % trk_len(t) % NSTEP] = rec_dev64(t, abs);
+    dstep_set(&t->dstep[trk_pidx(t, abs)], lane, lvl, rat);
+    t->roff[trk_pidx(t, abs) % NSTEP] = rec_dev64(t, abs);
     t->seq_active = 1;
     if (later) {
         if (t->rskip_abs != abs)
@@ -764,6 +771,9 @@ static void step_fill_set(track_t *t, uint32_t idx, uint32_t v)
 }
 static volatile uint8_t fill_held;           /* GLO + key 9 down (the UI) */
 static volatile uint8_t fill_arm;            /* GLO + key 10: the next bar is a fill (the UI; the ISR clears it) */
+#if FM1MOVE
+static void (*clip_bar_fn)(void);           /* clip.c sets it: the clips launched start on a bar */
+#endif
 static uint8_t fill_bar_on;                  /* that bar, while it plays (the ISR) */
 static uint8_t fill_now;                     /* this block is a fill: fill_held || fill_bar_on, read once a block */
 static uint32_t fill_last_bar = 0xFFFFFFFFu; /* clk_beat / 4 of the last bar seen (events_block) */
@@ -1745,6 +1755,7 @@ static void seq_reset_tracks(uint32_t pos)
     for (i = 0; i < NTRK; i++) {
         track_t *t = &trk[i];
         t->seq_abs = SEQ_NONE;
+        t->seq_org = 0;
         t->seq_idx = 0;
         t->rskip_n = 0;
         t->rskip_lanes = 0;
@@ -2000,7 +2011,7 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
  * (micro >= 0), or how far before its step (micro < 0, as a negative number) */
 static int32_t micro_units(const track_t *t, uint32_t abs, uint32_t slen)
 {
-    uint32_t idx = abs % trk_len(t) % NSTEP;
+    uint32_t idx = trk_pidx(t, abs) % NSTEP;
     int32_t m = t->micro[idx], pad = is_drum(t) ? pad_lead(t, &t->dstep[idx]) : 0;
     if (!pad && !groove_active(&t->gv, &song_groove))
         return (int32_t)(slen / 64u) * m;            /* |m| <= 32: fits (SLOOP's nudge, exactly) */
@@ -2101,7 +2112,7 @@ static void seq_tick(track_t *t, uint32_t adv)
     }
     if (fire) {                                      /* a new step: one a block at most */
         t->seq_abs = nabs;
-        idx = nabs % len;
+        idx = trk_pidx(t, nabs);
         t->seq_idx = (uint16_t)idx;
         t->rat_done[0] = t->rat_done[1] = t->rat_done[2] = t->rat_done[3] = 0;
         t->rat_lanes = 0;
@@ -2387,6 +2398,10 @@ static void events_block(uint32_t n)
         fill_last_bar = clk_beat >> 2;
         fill_bar_on = fill_arm;
         fill_arm = 0;
+#if FM1MOVE
+        if (clip_bar_fn)
+            clip_bar_fn();                          /* the clips asked for start (clip.c): before this block's steps */
+#endif
     }
     fill_now = (uint8_t)(fill_held || fill_bar_on);
     pr = panic_req;

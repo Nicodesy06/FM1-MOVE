@@ -109,6 +109,13 @@ if $ASAN -o "$OUT/projfmt_asan" tests/projfmt_test.c -lm 2>/dev/null; then
     run "FM1 Move projects under ASan + UBSan" "$OUT/projfmt_asan"
 fi
 
+# FM1 Move clips: 8 tracks x 6 clips in a sparse bank, launch on the next bar, scenes, tools, project version 2
+$CC -O1 -w -Ibuild/gen -Ifirmware/src -o "$OUT/clip_test" tests/clip_test.c -lm
+run "FM1 Move clips: bank, launch on the bar (step 0 on time), scenes, copy/erase, project v2, full bank" "$OUT/clip_test"
+if $ASAN -o "$OUT/clip_asan" tests/clip_test.c -lm 2>/dev/null; then
+    run "FM1 Move clips under ASan + UBSan" "$OUT/clip_asan"
+fi
+
 # FM1 Move on a virtual FM1: the real controls, layers, screens and engine (FM1MOVE=1), driven like a user, and a fuzz
 mkdir -p "$OUT/fm1ui"
 $CC -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/fm1move_ui_test" tests/fm1move_ui_test.c -lm

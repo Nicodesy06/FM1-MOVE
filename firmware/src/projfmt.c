@@ -17,7 +17,7 @@
  * steps_clear / trk_set_kind / locks; the caller provides fmp_obj(slot, chunk) (where the chunks live). */
 
 #define FMP_MAGIC 0x4D314D46u                  /* "FM1M" */
-#define FMP_VERSION 1u
+#define FMP_VERSION 2u                         /* 2: the clips (clip.c); 1 (FM1 Move 0.1) still reads */
 #define FMP_CMAGIC 0x4B504D46u                 /* "FMPK": a chunk */
 #define FMP_CHDR 16u                           /* chunk header bytes */
 #define FMP_DATA (ST_PAYLOAD_MAX - FMP_CHDR)   /* stream bytes per chunk */
@@ -103,18 +103,17 @@ static void fmp_put_params(fmp_w_t *w, const track_t *t, uint32_t first, uint32_
             fmp_put16(w, (uint16_t)t->p[first + i]);
 }
 
-static void fmp_put_track(fmp_w_t *w, const track_t *t)
+/* the pattern of track t (a clip, or a track's own pattern): a bitmap of the steps that hold anything and only those
+ * steps, then the locks in use. empty: an empty pattern (9 bytes), whatever t holds */
+static void fmp_put_pattern(fmp_w_t *w, const track_t *t, int empty)
 {
     uint32_t i, nl = 0;
     uint8_t bits[NSTEP / 8] = {0};
-    fmp_put(w, 'T');
-    fmp_put(w, trk_kind(t));
-    fmp_put(w, t->eng_req);
-    fmp_put(w, t->preset);
-    fmp_put_params(w, t, 0, P_E0);                    /* the common parameters, then the engine's eight */
-    fmp_put_params(w, t, P_E0, 8);
-    fmp_put_groove(w, &t->gv);
-    fmp_putn(w, t->pad_off, DRUM_LANES);
+    if (empty) {
+        fmp_putn(w, bits, sizeof bits);
+        fmp_put(w, 0);
+        return;
+    }
     for (i = 0; i < NSTEP; i++)
         if (fmp_step_used(t, i))
             bits[i / 8u] |= (uint8_t)(1u << (i % 8u));
@@ -154,6 +153,25 @@ static void fmp_put_track(fmp_w_t *w, const track_t *t)
         }
 }
 
+static int clip_in_bank(uint32_t ti);                 /* clip.c: the track's pattern is its current clip, stored */
+static void fmp_put_clips(fmp_w_t *w);
+static void clip_sync_all(void);
+
+/* a track: kind, engine, preset, parameters (common and engine, counted), groove, pad offsets, then its pattern
+ * (left empty when the clip bank holds it: the clip section carries it) */
+static void fmp_put_track(fmp_w_t *w, const track_t *t)
+{
+    fmp_put(w, 'T');
+    fmp_put(w, trk_kind(t));
+    fmp_put(w, t->eng_req);
+    fmp_put(w, t->preset);
+    fmp_put_params(w, t, 0, P_E0);                    /* the common parameters, then the engine's eight */
+    fmp_put_params(w, t, P_E0, 8);
+    fmp_put_groove(w, &t->gv);
+    fmp_putn(w, t->pad_off, DRUM_LANES);
+    fmp_put_pattern(w, t, clip_in_bank((uint32_t)(t - trk)));
+}
+
 /* the project as it is now, as a stream (through the window of w) */
 static void fmp_stream(fmp_w_t *w)
 {
@@ -168,13 +186,16 @@ static void fmp_stream(fmp_w_t *w)
     fmp_put_groove(w, &song_groove);
     for (i = 0; i < NTRK; i++)
         fmp_put_track(w, &trk[i]);
+    fmp_put_clips(w);                                 /* (version 2: the clips) */
     fmp_put(w, 'E');
 }
 
-/* the stream's length and hash, nothing written (autosave: did the project change?) */
+/* the stream's length and hash, nothing written (autosave: did the project change?). The playing patterns are put
+ * into their clips first (clip.c): the stream is what plays */
 static uint32_t fmp_measure(uint32_t *hash)
 {
     fmp_w_t w = {0, 0, 0, 0, 2166136261u};
+    clip_sync_all();
     fmp_stream(&w);
     if (hash)
         *hash = w.hash;
@@ -321,13 +342,15 @@ static const param_desc_t *fmp_desc(const track_t *t, uint32_t e, uint32_t id)
 }
 
 /* one track from the stream into t (apply), or only checked (t == 0); returns 0 when it is well formed */
-static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_refused)
+static int fmp_get_pattern(fmp_r_t *r, track_t *t, uint32_t kind);
+static int fmp_get_clips(fmp_r_t *r, int apply, const uint8_t *kinds, uint32_t ntr);   /* clip.c */
+static void clip_from_tracks(void);
+static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_refused, uint8_t *kinds)
 {
-    uint32_t kind, e, pre, nc, ne, i, nl;
+    uint32_t kind, e, pre, nc, ne, i;
     int16_t p[P_COUNT];
     groove_t g;
     int8_t pad[DRUM_LANES];
-    uint8_t bits[NSTEP / 8];
     if (fmp_get(r) != 'T')
         return -1;
     kind = fmp_get(r);
@@ -354,8 +377,6 @@ static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_re
     fmp_get_groove(r, &g);
     for (i = 0; i < DRUM_LANES; i++)
         pad[i] = (int8_t)fmp_get(r);
-    for (i = 0; i < sizeof bits; i++)
-        bits[i] = (uint8_t)fmp_get(r);
     if (r->err)
         return -1;
     if (t) {                                          /* apply: silence it, its kind, then the rest */
@@ -380,6 +401,24 @@ static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_re
         t->gv = g;
         for (i = 0; i < DRUM_LANES; i++)
             t->pad_off[i] = (int8_t)clamp(pad[i], MICRO_MIN, MICRO_MAX);
+    }
+    if (fmp_get_pattern(r, t, kind))
+        return -1;
+    if (kinds)
+        kinds[ti % NTRK] = (uint8_t)kind;
+    return r->err ? -1 : 0;
+}
+
+/* a pattern (fmp_put_pattern) into track t (0: only checked) of the given kind; t's pattern is cleared first */
+static int fmp_get_pattern(fmp_r_t *r, track_t *t, uint32_t kind)
+{
+    uint32_t i, nl;
+    uint8_t bits[NSTEP / 8];
+    for (i = 0; i < sizeof bits; i++)
+        bits[i] = (uint8_t)fmp_get(r);
+    if (r->err)
+        return -1;
+    if (t) {
         steps_clear(t);
         memset(t->micro, 0, sizeof t->micro);
     }
@@ -453,8 +492,12 @@ static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_re
 static int fmp_parse_r(fmp_r_t *rp, int apply, uint32_t *refused)
 {
 #define r (*rp)
-    uint32_t ntr, ng, i, sel;
-    if (fmp_get32(&r) != FMP_MAGIC || fmp_get(&r) != FMP_VERSION)
+    uint32_t ntr, ng, i, sel, ver;
+    uint8_t kinds[NTRK] = {0};
+    if (fmp_get32(&r) != FMP_MAGIC)
+        return -1;
+    ver = fmp_get(&r);
+    if (ver < 1u || ver > FMP_VERSION)
         return -1;
     ntr = fmp_get(&r);
     sel = fmp_get(&r);
@@ -481,12 +524,18 @@ static int fmp_parse_r(fmp_r_t *rp, int apply, uint32_t *refused)
     }
     for (i = 0; i < ntr; i++) {
         track_t *t = apply && i < NTRK ? &trk[i] : 0;
-        if (fmp_get_track(&r, t, i, refused))
+        if (fmp_get_track(&r, t, i, refused, kinds))
             return -1;
     }
     for (i = ntr; apply && i < NTRK; i++) {           /* a project of fewer tracks: the others empty synths */
         trk_set_kind(&trk[i], TK_SYNTH);
         steps_clear(&trk[i]);
+    }
+    if (ver >= 2u) {                                  /* the clips (clip.c), checked whole in pass 1 */
+        if (fmp_get_clips(&r, apply, kinds, ntr))
+            return -1;
+    } else if (apply) {
+        clip_from_tracks();                           /* (version 1: each track's pattern becomes its clip 1) */
     }
     if (fmp_get(&r) != 'E' || r.err || r.pos != r.len)
         return -1;
@@ -510,6 +559,8 @@ static int fmp_load(uint32_t slot, uint32_t *refused)
     fm1_irq_on();
     return 0;
 }
+
+#include "clip.c"                                 /* the clips: a bank of patterns per track (FM1 Move) */
 
 /* ---------------------------------------------------------------- saving --- */
 /* the next generation of a slot: one more than any chunk copy holds, so every save attempt has its own (two torn
