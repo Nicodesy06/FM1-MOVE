@@ -84,6 +84,8 @@ Status: clips, scenes, quantised launch and the STEP page done and verified **in
 - [x] Panel: CLIPS held + white keys 1–6 / 9–14, CLIPS screen (8 × 6 grid, cursor, launch, copy, clear), key LEDs.
 - [x] SEQUENCER STEP page (SLOOP's step editor restored): piano roll, STEP / NOTE / TIME / FLAG, acid-style key entry;
   accent and slide editable from the panel again.
+- [x] Layer pages as on SLOOP (a125cb0): STEPS (SEQ held, 4 × 4 steps) and KEY (SEL held, the chord / note of
+  every white key), knob values shown.
 - [ ] Capture (ring buffer of the last key events).
 - [ ] Follow actions, a launch quantise other than the bar (once planned on the CLIPS knob strip).
 - [ ] Hardware: launch timing, LEDs, CLIPS screen on a device [TEST-HW].

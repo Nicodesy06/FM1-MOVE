@@ -482,6 +482,9 @@ int main(int argc, char **argv)
     frames(2);
     check(mv.layer == MVL_NONE && ctl.screen == SC_PLAY, "SEQ let go: back to the screen (no tap: it was used)");
     TSEL->p[P_CHORD] = 1;
+    for (i = 0; i < NTRK; i++)
+        if (is_synth(&trk[i]))
+            trk[i].p[P_SCALE] = 2, trk[i].p[P_ROOT] = 0;   /* (C minor, for the picture) */
     {
         int16_t sc0 = key_ref()->p[P_SCALE];
         uint32_t ok = 1;

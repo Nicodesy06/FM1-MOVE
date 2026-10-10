@@ -38,8 +38,8 @@ def font(name, size):
 
 
 def readme_sheet():
-    names = ["01-play", "02-tracks", "03-sequencer", "03b-sequencer-step",
-             "07c-clips-queued", "05-groove", "08-mixer", "09-sound"]
+    names = ["01-play", "03-sequencer", "03b-sequencer-step", "16-steps-held",
+             "07c-clips-queued", "05-groove", "17-key-held", "08-mixer"]
     s, gap = 480, 24
     out = Image.new("RGB", (4 * s + 5 * gap, 2 * s + 3 * gap), BG)
     for i, n in enumerate(names):
@@ -71,17 +71,19 @@ def promo_clips():
     d = ImageDraw.Draw(out)
     d.text((110, 70), "NEW IN 0.2", font=font("Inter-Bold.otf", 28), fill=AMBER)
     d.text((108, 112), "Clips, scenes and step editing", font=font("InterDisplay-Bold.otf", 72), fill=TEXT1)
-    d.text((112, 206), "8 tracks × 6 clips, launched on the next bar · SLOOP's step editor is back",
+    d.text((112, 206), "8 tracks × 6 clips launched on the next bar · SLOOP's step editor and layer pages are back",
            font=font("Inter-SemiBold.otf", 32), fill=TEXT2)
-    s = 480
-    cols = [("07c-clips-queued", "CLIPS held + keys 1–6: the track's clips", "keys 9–14: scenes"),
-            ("07b-clips-live", "CLIPS screen: copy, clear, launch", "all 48 clips at a glance"),
-            ("03b-sequencer-step", "STEP page: play keys to write steps", "chords, ties, accent, slide")]
+    s, gx = 300, 47
+    cols = [("07c-clips-queued", "CLIPS held + keys", "launch clips · scenes"),
+            ("07b-clips-live", "CLIPS screen", "copy · clear · launch"),
+            ("03b-sequencer-step", "STEP page", "chords · ties · accent · slide"),
+            ("16-steps-held", "SEQ held: STEPS", "the steps, from any screen"),
+            ("17-key-held", "SEL held: KEY", "the chord on every key")]
     for i, (n, a, b) in enumerate(cols):
-        x = 110 + i * (s + 90)
-        card(out, shot(n, 8), x, 300)
-        d.text((x, 812), a, font=font("Inter-Bold.otf", 28), fill=TEXT1)
-        d.text((x, 852), b, font=font("Inter-SemiBold.otf", 26), fill=TEXT3)
+        x = 110 + i * (s + gx)
+        card(out, shot(n, 5), x, 330)
+        d.text((x, 660), a, font=font("Inter-Bold.otf", 26), fill=TEXT1)
+        d.text((x, 698), b, font=font("Inter-SemiBold.otf", 23), fill=TEXT3)
     d.text((110, 970), "Experimental · simulated on a computer, not yet tested on an FM-1 · nicodesy06.github.io/FM1-MOVE",
            font=font("Inter-SemiBold.otf", 26), fill=TEXT3)
     out.save(ROOT / "promo/7-clips-step.png", optimize=True)

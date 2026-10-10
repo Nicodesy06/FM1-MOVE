@@ -52,6 +52,7 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Gate length per step | PLAN | track gate exists (`P_SGATE`) |
 | Live record, overdub, step record, count-in, metronome | SLOOP | |
 | Step editor with cursor (piano roll, acid-style entry, accent / slide) | SLOOP + FM1M (host, ced992f) | SEQUENCER STEP page on synth tracks |
+| Layer pages: steps while SEQ held, chords on the keys while SEL held | SLOOP + FM1M (host, a125cb0) | STEPS (4 × 4) and KEY pages over any screen |
 | Undo / redo (one level, one track) | SLOOP | |
 | Copy / paste / shift / double / halve | PART | shift, length ×2/½ exist |
 | Polyrhythm (per-track length) | SLOOP | |

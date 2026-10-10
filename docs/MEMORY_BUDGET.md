@@ -22,12 +22,12 @@ micro 64 B, locks 96 B + lock state 120 B.
 
 ## 1b. FM1MOVE build (eight tracks, the new UI, FM1M projects with clips)
 
-Measured by `FM1MOVE=1 sh build.sh` after the clips and the STEP page (ced992f) [BUILD]:
+Measured by `FM1MOVE=1 sh build.sh` after the clips, the STEP page and the layer pages (a125cb0) [BUILD]:
 
 | Region | Capacity | Used | Free |
 | --- | --- | --- | --- |
-| Flash app slot (image) | 581 564 | 545 160 | 36 404 |
-| RAM .data+.bss | 98 304 | 93 168 | 5 136 |
+| Flash app slot (image) | 581 564 | 548 248 | 33 316 |
+| RAM .data+.bss | 98 304 | 93 360 | 4 944 |
 | POOL | 344 064 | 333 072 | **10 992** (≥ 8 192 must stay spare: kept) |
 
 Clips (`clip.c`): the bank `clip_mem` 8 192 B + offset / length tables 2 × 8 × 6 × 2 = 192 B, all in `.pool`; the

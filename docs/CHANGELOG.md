@@ -9,6 +9,7 @@
   SEQUENCER. SEL held shows **KEY**: the track chips (keys 1–8) and the chord (chord mode) or note every white key
   plays, root filled, scale raised; CHORD · SCALE · KEYS · TRANSP with values. Shown after 0.25 s held (a tap never
   flashes them) or at once when a key / knob is used.
+- FM1MOVE build: image 548 248 B, RAM 93 360 / 98 304 B, pool 333 072 / 344 064 B (unchanged).
 - Fix: SEL held + KNOB 2 (SCALE) took track 1's scale as its base, a drum track in FM1 Move, so it moved one step at
   most; it now follows the selected synth (or the first one).
 

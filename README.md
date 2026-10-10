@@ -55,6 +55,8 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 - Clips are written with the usual tools (step entry, live recording, erase, groove) and saved with the project.
 - **STEP page** (SLOOP's step editor, back): a piano roll with a cursor; play keys to write the step (chords too),
   release to move on; STEP / NOTE / TIME / FLAG (accent, slide) on the knobs.
+- **Layer pages** as on SLOOP: hold SEQ to see and write the page's steps as a 4 × 4 grid from any screen, hold SEL
+  to see the chord every key plays (chord mode) with the key and scale.
 
 ### Groove Engine
 - **Non-destructive quantize** with strength 0–100 %: the recorded timing is kept, `q = raw + s · (grid − raw)`.
@@ -94,8 +96,8 @@ arrangement**. Every screen is one press away.
 | Button | Tap | Hold + keys / knobs |
 | --- | --- | --- |
 | **HOME** | PLAY | (held) PROJECT and SETTINGS |
-| **SEL** | TRACKS | keys 1–8 select a track |
-| **SEQ** | SEQUENCER (again: the STEP page) | the 16 white keys are the steps |
+| **SEL** | TRACKS | keys 1–8 select a track; the KEY page shows the chord on every key |
+| **SEQ** | SEQUENCER (again: the STEP page) | the 16 white keys are the steps, shown as a 4 × 4 STEPS page |
 | **SAVE** | CLIPS | keys 1–6 launch clips, 9–14 scenes (on the next bar) |
 | **ARP** | GROOVE | note repeat |
 | **GLO** | MIXER | keys 1–8 mute, 9–16 solo |

@@ -102,7 +102,7 @@ too); 182 golden renders unchanged; `fm1move_ui_test` 39 checks (new: any button
 
 Commits 1d0f6f2 (flash layout), d50541f (clip engine), 32fb841 (clips UI), ced992f (STEP page).
 
-Build `FM1MOVE=1`: OK — image **545 160 B** of the 581 564 B app slot, RAM .data+.bss 93 168 / 98 304 B, pool
+Build `FM1MOVE=1`: OK — image **548 248 B** of the 581 564 B app slot (after the layer pages, a125cb0), RAM .data+.bss 93 360 / 98 304 B, pool
 333 072 / 344 064 B (10 992 B spare: the 8 KiB rule kept; the clip bank is 8 KiB of it).
 
 New and extended host tests (host simulation only):

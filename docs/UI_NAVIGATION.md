@@ -44,7 +44,8 @@ always say where you are.
 | KNOB 1–4 | the four parameters in the knob strip |
 | PLAY | start / stop |
 | REC | arm / disarm recording (count-in per settings) |
-| SEL held + white key 1–8 | select that track directly (fastest track change) |
+| SEL held + white key 1–8 | select that track directly (fastest track change); held, the KEY page shows the chord / note on every white key |
+| SEQ held | the STEPS page over the screen (the page's 16 steps, 4 × 4): write steps from any screen and see them |
 | GLO held + key 1–8 / 9–16 | mute / solo tracks 1–8 |
 | CLIPS held + white key 1–6 / 9–14 | launch clip 1–6 of the selected track / scene 1–6 (next bar while playing) |
 | EDIT + OCT− / OCT+ | undo / redo |
