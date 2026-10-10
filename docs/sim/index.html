@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FM1 Move Simulator</title>
+<meta name="description" content="FM1 Move, the eight-track groovebox firmware for the M-VAVE FM-1, running in the browser: the firmware's own code compiled to WebAssembly.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0b0c; --panel: #1b1b1e; --panel-2: #232327; --edge: #303035;
+  --text-1: #f4f3ee; --text-2: #a6a59e; --text-3: #706f6a;
+  --btn: #2c2c31; --btn-top: #36363c; --led: #ffb840; --led-dim: rgba(255,184,64,.28);
+  --rec: #ff4038; --play: #5cdc8c; --key-w: #e9e8e3; --key-w-down: #c9c8c2; --key-b: #17171a; --key-b-down: #3a3a40;
+  --accent: #fac454;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text-1); font-family: Inter, system-ui, sans-serif; }
+body { padding: 0 16px 48px; }
+a { color: var(--accent); }
+header { max-width: 1180px; margin: 0 auto; padding: 22px 0 18px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: baseline; }
+header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: .02em; }
+header .sub { color: var(--text-2); font-size: 14px; }
+header .pill { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: #0b0b0c; background: var(--led); padding: 3px 8px; border-radius: 99px; }
+header nav { margin-left: auto; font-size: 14px; display: flex; gap: 16px; }
+
+.device { max-width: 1180px; margin: 0 auto; background: linear-gradient(#202024, #18181b); border: 1px solid var(--edge);
+  border-radius: 22px; padding: 22px; box-shadow: 0 30px 80px rgba(0,0,0,.5); }
+.top { display: grid; grid-template-columns: 150px auto 1fr; gap: 26px; align-items: start; }
+.col-left { display: grid; gap: 14px; justify-items: center; padding-top: 6px; }
+.screen-wrap { background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #000; box-shadow: inset 0 0 0 1px #2a2a2e; }
+canvas#screen { display: block; width: 480px; height: 480px; image-rendering: pixelated; image-rendering: crisp-edges; background: #000; }
+.col-right { display: grid; gap: 22px; min-width: 0; }
+.knobs4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; justify-items: center; }
+.btn-rows { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px 10px; }
+
+.knob { display: grid; justify-items: center; gap: 7px; user-select: none; touch-action: none; }
+.knob .cap { width: 58px; height: 58px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a4a52, #26262b 60%, #1c1c20);
+  border: 1px solid #0f0f11; box-shadow: 0 4px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.08); position: relative; cursor: ns-resize; }
+.knob .cap::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 14px; margin-left: -1.5px; background: var(--text-1); border-radius: 2px;
+  transform-origin: 50% 23px; transform: rotate(var(--a, 0deg)); }
+.knob.small .cap { width: 48px; height: 48px; }
+.knob.small .cap::after { transform-origin: 50% 18px; height: 11px; }
+.knob .lab { font-size: 10px; font-weight: 700; letter-spacing: .1em; color: var(--text-2); }
+.knob .fn { font-size: 10px; font-weight: 600; color: var(--text-3); margin-top: -5px; }
+
+.btn { display: grid; justify-items: center; gap: 5px; user-select: none; touch-action: none; }
+.btn .key { width: 100%; max-width: 76px; height: 38px; border-radius: 8px; background: linear-gradient(var(--btn-top), var(--btn)); border: 1px solid #111114;
+  box-shadow: 0 3px 0 #111114; position: relative; cursor: pointer; font-size: 12px; font-weight: 800; letter-spacing: .06em; color: var(--text-1);
+  display: grid; place-items: center; }
+.btn .key::before { content: ""; position: absolute; top: 6px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: #3b3b40; }
+.btn.dim .key::before { background: var(--led-dim); }
+.btn.lit .key::before { background: var(--led); box-shadow: 0 0 8px var(--led); }
+.btn.rec.lit .key::before { background: var(--rec); box-shadow: 0 0 8px var(--rec); }
+.btn.play.lit .key::before { background: var(--play); box-shadow: 0 0 8px var(--play); }
+.btn.down .key { transform: translateY(2px); box-shadow: 0 1px 0 #111114; background: var(--btn); }
+.btn .fn { font-size: 10px; font-weight: 600; color: var(--text-3); letter-spacing: .04em; text-align: center; }
+
+.bottom { display: grid; grid-template-columns: 150px 1fr; gap: 26px; margin-top: 22px; align-items: end; }
+.oct { display: flex; gap: 10px; justify-content: center; }
+.oct .btn .key { width: 62px; }
+.keybed { position: relative; height: 150px; user-select: none; touch-action: none; }
+.keybed .w, .keybed .b { position: absolute; top: 0; border-radius: 0 0 6px 6px; cursor: pointer; }
+.keybed .w { height: 150px; background: var(--key-w); border: 1px solid #9a998f; }
+.keybed .w.down { background: var(--key-w-down); }
+.keybed .b { height: 92px; background: var(--key-b); border: 1px solid #000; z-index: 2; }
+.keybed .b.down { background: var(--key-b-down); }
+.keybed .w.lit { box-shadow: inset 0 -16px 0 -8px var(--led); }
+.keybed .b.lit { box-shadow: inset 0 -12px 0 -6px var(--led); }
+.keybed .w.dimlit { box-shadow: inset 0 -16px 0 -8px var(--led-dim); }
+.keybed .w span { position: absolute; bottom: 8px; width: 100%; text-align: center; font-size: 10px; font-weight: 700; color: #77766f; }
+
+.below { max-width: 1180px; margin: 22px auto 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--edge); border-radius: 14px; padding: 16px 18px; font-size: 14px; color: var(--text-2); line-height: 1.5; }
+.card h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .1em; color: var(--text-1); }
+.card kbd { font: 600 12px Inter, sans-serif; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 5px; padding: 1px 6px; color: var(--text-1); }
+.card table { border-collapse: collapse; width: 100%; }
+.card td { padding: 3px 0; vertical-align: top; }
+.card td:first-child { color: var(--text-1); white-space: nowrap; padding-right: 10px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+button.act { font: 700 13px Inter, sans-serif; color: #0b0b0c; background: var(--accent); border: 0; border-radius: 9px; padding: 9px 14px; cursor: pointer; }
+button.act.ghost { background: transparent; color: var(--text-1); border: 1px solid var(--edge); }
+#power { position: fixed; inset: 0; background: rgba(5,5,6,.86); display: grid; place-items: center; z-index: 10; }
+#power .box { text-align: center; max-width: 420px; padding: 24px; }
+#power h2 { font-size: 34px; font-weight: 800; margin: 0 0 6px; }
+#power p { color: var(--text-2); margin: 0 0 18px; }
+.err { color: var(--rec); }
+
+@media (max-width: 1100px) {
+  .top { grid-template-columns: 1fr; justify-items: center; }
+  .col-left { grid-template-columns: repeat(4, auto); gap: 18px; }
+  .col-right { width: 100%; }
+  .bottom { grid-template-columns: 1fr; }
+  .below { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  canvas#screen { width: min(100%, 480px); height: auto; aspect-ratio: 1; }
+  .screen-wrap { width: 100%; }
+  .btn .key { height: 34px; font-size: 10px; }
+  .btn-rows { gap: 10px 5px; } .btn .fn { font-size: 8px; letter-spacing: 0; line-height: 1.15; }
+  .keybed { height: 120px; } .keybed .w { height: 120px; } .keybed .b { height: 72px; }
+  .knob .cap { width: 46px; height: 46px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>FM1 MOVE</h1>
+  <span class="sub">Browser test view — the firmware's own code, compiled to WebAssembly</span>
+  <span class="pill">SIMULATION</span>
+  <nav><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
+</header>
+
+<div class="device">
+  <div class="top">
+    <div class="col-left" id="left"></div>
+    <div class="screen-wrap"><canvas id="screen" width="240" height="240" aria-label="FM1 Move screen"></canvas></div>
+    <div class="col-right">
+      <div class="knobs4" id="knobs4"></div>
+      <div class="btn-rows" id="btns"></div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="oct" id="oct"></div>
+    <div class="keybed" id="keybed"></div>
+  </div>
+</div>
+
+<div class="below">
+  <div class="card">
+    <h2>START</h2>
+    Press <b>PLAY</b> after loading the demo, or play the keys. <b>SELECT</b> picks the track, the top row of
+    buttons opens the sound and mix screens, the bottom row the time and arrangement ones.
+    <div class="actions">
+      <button class="act" id="demo">Load demo pattern</button>
+      <button class="act ghost" id="reset">Reset (new project)</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>KEYBOARD</h2>
+    <table>
+      <tr><td><kbd>Z</kbd>…<kbd>M</kbd>, <kbd>Q</kbd>…<kbd>U</kbd></td><td>the keys (two octaves, chromatic)</td></tr>
+      <tr><td><kbd>F1</kbd>…<kbd>F6</kbd></td><td>FX · SEL · ENV · LFO · EDIT · GLO</td></tr>
+      <tr><td><kbd>F7</kbd>…<kbd>F12</kbd></td><td>HOME · SAVE · ARP · SEQ · PLAY · REC</td></tr>
+      <tr><td><kbd>Space</kbd> <kbd>Enter</kbd></td><td>PLAY · REC</td></tr>
+      <tr><td><kbd>←</kbd> <kbd>→</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>SELECT (track) / ALGORITHM</td></tr>
+      <tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>OCT− · OCT+</td></tr>
+    </table>
+    Knobs: drag up / down or use the wheel. Hold a button and press keys for its layer.
+  </div>
+  <div class="card">
+    <h2>WHAT THIS IS</h2>
+    The FM1 Move firmware (eight-track engine, Groove Engine, controls, screens, projects) running unchanged on a
+    simulated panel. Saved projects stay in this browser. It is <b>not</b> the hardware: timing, audio load and the
+    screen's speed differ, and nothing here has been tested on an FM-1 yet.
+    <div id="status" style="margin-top:8px;color:var(--text-3)"></div>
+  </div>
+</div>
+
+<div id="power"><div class="box">
+  <h2>FM1 MOVE</h2>
+  <p>Eight-track groovebox firmware for the M-VAVE FM-1, simulated in your browser. Sound on.</p>
+  <button class="act" id="on">Switch on</button>
+  <p id="powererr" class="err"></p>
+</div></div>
+
+<script>
+"use strict";
+// panel model: labels in the firmware's order (panel.c B_*, EN_*)
+const B = { FX:0, SEL:1, ENV:2, LFO:3, EDIT:4, GLO:5, HOME:6, SAVE:7, ARP:8, SEQ:9, PLAY:10, REC:11, OCTDN:12, OCTUP:13 };
+const FN = { FX:"PERFORM", SEL:"TRACKS", ENV:"SOUND·\u200bENV", LFO:"SOUND·\u200bLFO", EDIT:"SOUND", GLO:"MIXER",
+             HOME:"PLAY", SAVE:"CLIPS", ARP:"GROOVE", SEQ:"SEQUEN\u00adCER", PLAY:"transport", REC:"record", OCTDN:"octave", OCTUP:"octave" };
+const EN = { SELECT:0, ALGO:1, PRESET:2, K1:3, K2:4, K3:5, K4:6 };
+const FS = 44100;
+
+let X = null, mem = null, held = 0, heldNotes = 0, ptrButtons = 0, ptrNotes = 0, kbButtons = 0, kbNotes = 0;
+let audio = null, gain = null, t0 = performance.now(), lastUi = 0;
+const btnEls = {}, keyEls = [];
+
+function setInputs() {
+  const b = ptrButtons | kbButtons, n = ptrNotes | kbNotes;
+  if (X && (b !== held || n !== heldNotes)) { held = b; heldNotes = n; X.sim_set(b >>> 0, n >>> 0); }
+}
+
+// ---- building the panel
+function mkKnob(parent, label, fn, role, small) {
+  const el = document.createElement("div");
+  el.className = "knob" + (small ? " small" : "");
+  el.innerHTML = `<div class="cap" role="slider" aria-label="${label}" tabindex="0"></div><div class="lab">${label}</div><div class="fn">${fn}</div>`;
+  const cap = el.querySelector(".cap");
+  let angle = 0, acc = 0, lastY = 0, drag = false;
+  const step = s => { angle += s * 18; cap.style.setProperty("--a", angle + "deg"); if (role === "MASTER") { setMaster(s); } else if (X) X.sim_turn(EN[role], s); };
+  cap.addEventListener("pointerdown", e => { drag = true; lastY = e.clientY; acc = 0; cap.setPointerCapture(e.pointerId); });
+  cap.addEventListener("pointermove", e => { if (!drag) return; acc += lastY - e.clientY; lastY = e.clientY; while (Math.abs(acc) >= 9) { const s = Math.sign(acc); acc -= s * 9; step(s); } });
+  cap.addEventListener("pointerup", () => drag = false);
+  cap.addEventListener("pointercancel", () => drag = false);
+  cap.addEventListener("wheel", e => { e.preventDefault(); step(e.deltaY < 0 ? 1 : -1); }, { passive: false });
+  cap.addEventListener("keydown", e => { if (e.key === "ArrowUp" || e.key === "ArrowRight") { step(1); e.preventDefault(); } if (e.key === "ArrowDown" || e.key === "ArrowLeft") { step(-1); e.preventDefault(); } });
+  parent.appendChild(el);
+}
+function mkBtn(parent, name) {
+  const el = document.createElement("div");
+  el.className = "btn" + (name === "REC" ? " rec" : name === "PLAY" ? " play" : "");
+  const printed = name === "OCTDN" ? "OCT−" : name === "OCTUP" ? "OCT+" : name;
+  el.innerHTML = `<div class="key" role="button" aria-label="${printed}">${printed}</div><div class="fn">${FN[name]}</div>`;
+  const k = el.querySelector(".key"), bit = 1 << B[name];
+  const down = e => { e.preventDefault(); k.setPointerCapture && k.setPointerCapture(e.pointerId); ptrButtons |= bit; el.classList.add("down"); setInputs(); };
+  const up = () => { ptrButtons &= ~bit; el.classList.remove("down"); setInputs(); };
+  k.addEventListener("pointerdown", down); k.addEventListener("pointerup", up); k.addEventListener("pointercancel", up);
+  parent.appendChild(el);
+  btnEls[B[name]] = el;
+}
+function buildPanel() {
+  const left = document.getElementById("left");
+  mkKnob(left, "MASTER", "volume", "MASTER", true);
+  mkKnob(left, "SELECT", "track", "SELECT", true);
+  mkKnob(left, "PRESETS", "sound", "PRESET", true);
+  mkKnob(left, "ALGORITHM", "navigate", "ALGO", true);
+  const k4 = document.getElementById("knobs4");
+  ["K1", "K2", "K3", "K4"].forEach((r, i) => mkKnob(k4, "KNOB " + (i + 1), "screen value", r));
+  const bt = document.getElementById("btns");
+  ["FX", "SEL", "ENV", "LFO", "EDIT", "GLO", "HOME", "SAVE", "ARP", "SEQ", "PLAY", "REC"].forEach(n => mkBtn(bt, n));
+  const oct = document.getElementById("oct");
+  mkBtn(oct, "OCTDN"); mkBtn(oct, "OCTUP");
+  layoutKeys();
+}
+function layoutKeys() {
+  const bed = document.getElementById("keybed");
+  bed.innerHTML = ""; keyEls.length = 0;
+  const W = bed.clientWidth || 900, white = [], names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  for (let k = 0; k < 27; k++) { const pc = (53 + k) % 12; if (![1, 3, 6, 8, 10].includes(pc)) white.push(k); }
+  const ww = W / white.length;
+  for (let k = 0; k < 27; k++) {
+    const pc = (53 + k) % 12, isB = [1, 3, 6, 8, 10].includes(pc), el = document.createElement("div");
+    el.className = isB ? "b" : "w";
+    if (isB) { const wi = white.indexOf(k - 1); el.style.left = (wi + 1) * ww - ww * 0.3 + "px"; el.style.width = ww * 0.6 + "px"; }
+    else { const wi = white.indexOf(k); el.style.left = wi * ww + "px"; el.style.width = ww + "px"; if (pc === 0) el.innerHTML = `<span>C${Math.floor((53 + k) / 12) - 1}</span>`; }
+    const bit = 1 << k;
+    const down = e => { e.preventDefault(); el.setPointerCapture && el.setPointerCapture(e.pointerId); ptrNotes |= bit; el.classList.add("down"); setInputs(); };
+    const up = () => { ptrNotes &= ~bit; el.classList.remove("down"); setInputs(); };
+    el.addEventListener("pointerdown", down); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+    bed.appendChild(el); keyEls[k] = el;
+  }
+}
+
+// ---- keyboard
+const NOTE_KEYS = "zsxdcvgbhnjmq2w3er5t6y7u";   // chromatic from F3
+const FKEYS = { F1: "FX", F2: "SEL", F3: "ENV", F4: "LFO", F5: "EDIT", F6: "GLO", F7: "HOME", F8: "SAVE", F9: "ARP", F10: "SEQ", F11: "PLAY", F12: "REC",
+                " ": "PLAY", Enter: "REC", "[": "OCTDN", "]": "OCTUP" };
+function keyEvent(e, isDown) {
+  if (e.defaultPrevented || (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA"))) return;
+  if (FKEYS[e.key] !== undefined) {
+    e.preventDefault(); if (e.repeat) return;
+    const bit = 1 << B[FKEYS[e.key]];
+    kbButtons = isDown ? kbButtons | bit : kbButtons & ~bit; setInputs(); return;
+  }
+  if (isDown && !e.repeat && X) {
+    if (e.key === "ArrowRight") { X.sim_turn(EN.SELECT, 1); e.preventDefault(); return; }
+    if (e.key === "ArrowLeft") { X.sim_turn(EN.SELECT, -1); e.preventDefault(); return; }
+    if (e.key === "ArrowUp") { X.sim_turn(EN.ALGO, 1); e.preventDefault(); return; }
+    if (e.key === "ArrowDown") { X.sim_turn(EN.ALGO, -1); e.preventDefault(); return; }
+  }
+  const i = NOTE_KEYS.indexOf(e.key.toLowerCase());
+  if (i >= 0 && i < 27 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.repeat) return;
+    kbNotes = isDown ? kbNotes | (1 << i) : kbNotes & ~(1 << i); setInputs();
+  }
+}
+addEventListener("keydown", e => keyEvent(e, true));
+addEventListener("keyup", e => keyEvent(e, false));
+addEventListener("blur", () => { kbButtons = kbNotes = ptrButtons = ptrNotes = 0; setInputs(); });
+
+// ---- the screen and the LEDs
+const cv = document.getElementById("screen"), cx = cv.getContext("2d"), img = cx.createImageData(240, 240);
+function drawScreen() {
+  const fb = new Uint16Array(mem.buffer, X.sim_fb(), 240 * 240), d = img.data;
+  for (let i = 0, j = 0; i < 57600; i++, j += 4) {
+    const p = fb[i];
+    d[j] = ((p >> 11) * 527 + 23) >> 6; d[j + 1] = (((p >> 5) & 63) * 259 + 33) >> 6; d[j + 2] = ((p & 31) * 527 + 23) >> 6; d[j + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+}
+function drawLeds() {
+  for (const id in btnEls) { const v = X.sim_led(+id), el = btnEls[id]; el.classList.toggle("lit", v === 2); el.classList.toggle("dim", v === 1); }
+  for (let k = 0; k < 27; k++) { const v = X.sim_led(100 + k), el = keyEls[k]; if (!el) continue; el.classList.toggle("lit", v === 2); el.classList.toggle("dimlit", v === 1); }
+}
+
+// ---- flash: the project region lives in localStorage
+const STORE = "fm1move-sim-projects-v1";
+function saveFlash() {
+  try {
+    const u = new Uint8Array(mem.buffer, X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size());
+    let s = ""; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192));
+    localStorage.setItem(STORE, btoa(s));
+  } catch (e) { /* private mode, quota: projects last for this visit only */ }
+}
+function loadFlash() {
+  try {
+    const s = localStorage.getItem(STORE); if (!s) return false;
+    const b = atob(s), u = new Uint8Array(mem.buffer, X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size());
+    if (b.length !== u.length) return false;
+    for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
+    return true;
+  } catch (e) { return false; }
+}
+
+// ---- audio: the firmware renders 44.1 kHz; resampled when the device runs another rate
+let resPos = 0, resBuf = new Float32Array(0), resL = 0;
+function setMaster(s) { if (!gain) return; gain.gain.value = Math.min(1.5, Math.max(0, gain.gain.value + s * 0.05)); }
+function startAudio() {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  try { audio = new AC({ sampleRate: FS }); } catch (e) { audio = new AC(); }
+  gain = audio.createGain(); gain.gain.value = 0.8; gain.connect(audio.destination);
+  const N = 2048, node = audio.createScriptProcessor(N, 0, 2), ratio = FS / audio.sampleRate;
+  node.onaudioprocess = ev => {
+    const L = ev.outputBuffer.getChannelData(0), R = ev.outputBuffer.getChannelData(1);
+    if (ratio === 1) {
+      const n = X.sim_audio(N), pcm = new Int16Array(mem.buffer, X.sim_pcm_ptr(), n * 2);
+      for (let i = 0; i < N; i++) { L[i] = (pcm[2 * i] || 0) / 32768; R[i] = (pcm[2 * i + 1] || 0) / 32768; }
+      return;
+    }
+    for (let i = 0; i < N; i++) {           // linear resampling from a small FIFO of firmware frames
+      while (resPos + 1 >= resL) {
+        const n = X.sim_audio(1024), pcm = new Int16Array(mem.buffer, X.sim_pcm_ptr(), n * 2), keep = resL - Math.floor(resPos);
+        const nb = new Float32Array((keep + n) * 2); nb.set(resBuf.subarray(Math.floor(resPos) * 2, resL * 2));
+        for (let k = 0; k < n * 2; k++) nb[keep * 2 + k] = pcm[k] / 32768;
+        resBuf = nb; resL = keep + n; resPos -= Math.floor(resPos);
+      }
+      const p = Math.floor(resPos), f = resPos - p;
+      L[i] = resBuf[2 * p] * (1 - f) + resBuf[2 * p + 2] * f; R[i] = resBuf[2 * p + 1] * (1 - f) + resBuf[2 * p + 3] * f;
+      resPos += ratio;
+    }
+  };
+  node.connect(gain);
+  document.getElementById("status").textContent = `Audio ${audio.sampleRate} Hz${ratio !== 1 ? " (resampled from 44.1 kHz)" : ""}.`;
+}
+
+// ---- the UI loop
+function frame() {
+  const now = performance.now() - t0;
+  if (now - lastUi >= 15) {
+    lastUi = now;
+    if (X.sim_ui(now >>> 0)) drawScreen();
+    drawLeds();
+    if (X.sim_flash_dirty()) saveFlash();
+  }
+  requestAnimationFrame(frame);
+}
+
+async function boot() {
+  buildPanel();
+  addEventListener("resize", layoutKeys);
+  try {
+    const r = await fetch("fm1sim.wasm");
+    const { instance } = await WebAssembly.instantiate(await r.arrayBuffer(), {});
+    X = instance.exports; mem = X.memory;
+    X.sim_init();
+    if (loadFlash()) X.sim_resume();
+    X.sim_ui(0); drawScreen(); drawLeds();
+  } catch (e) {
+    document.getElementById("powererr").textContent = "Could not load the simulator: " + e;
+    return;
+  }
+  document.getElementById("on").onclick = () => {
+    document.getElementById("power").remove();
+    startAudio();
+    t0 = performance.now(); lastUi = -100;
+    requestAnimationFrame(frame);
+  };
+  document.getElementById("demo").onclick = () => X && X.sim_demo();
+  document.getElementById("reset").onclick = () => { if (X && confirm("Start a new empty project? (saved projects stay)")) { X.sim_init(); loadFlash(); } };
+}
+boot();
+</script>
+</body>
+</html>

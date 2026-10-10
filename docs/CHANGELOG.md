@@ -47,3 +47,11 @@
 - Default project: drums (808), ACID 303, RHODES, SUPERSAW, WARM PAD, 8BIT ARP, a second drum kit, M1 PIANO.
 - Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
 - `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.
+
+### Browser test view (simulation)
+- `web/sim/fm1sim.c` + `tools/build_sim.sh`: the FM1MOVE firmware sources (engines, sequencer, Groove Engine,
+  project format, design system, controller) compiled freestanding to WebAssembly with stubbed LCD, encoders,
+  LEDs and flash; no imports. Projects persist in the browser (localStorage holds the project flash region).
+- `docs/sim/index.html`: simulated FM-1 panel (7 knobs, 12 buttons, OCT−/OCT+, 27 keys; mouse, touch, computer
+  keyboard), 240 x 240 screen, audio via Web Audio. Checked in headless Chromium (render, transport, LEDs, autosave
+  + reload, 390 px phone layout). Not a hardware test: timing, CPU load and the display bus differ.

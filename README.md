@@ -6,6 +6,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 </p>
 
 <p align="center">
+<a href="https://nicodesy06.github.io/FM1-MOVE/sim/"><b>▶ Try it in your browser</b></a> ·
 <a href="#status">Status</a> ·
 <a href="#features">Features</a> ·
 <a href="#the-interface">Interface</a> ·
@@ -29,6 +30,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 | --- | --- |
 | Firmware build (`FM1MOVE=1`) | ✅ compiles and links — 518 836 B of 581 564 B, RAM 92.6 / 96 KiB |
 | Host tests | ✅ all FM1 Move suites pass (also under ASan + UBSan); SLOOP's 182 reference renders unchanged |
+| Browser test view | ▶ [nicodesy06.github.io/FM1-MOVE/sim](https://nicodesy06.github.io/FM1-MOVE/sim/) — the firmware compiled to WebAssembly on a simulated panel (simulation, not the device) |
 | Hardware | ⏳ not tested yet |
 | Branch | [`fm1-move/dev`](../../tree/fm1-move/dev) — `master` is the untouched SLOOP 2.5 baseline |
 
