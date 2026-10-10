@@ -100,7 +100,7 @@ ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && 
   ok(slots.work > 0 && slots.slots[1] > 0 && slots.slots[0] === 0, `projects: working ${slots.work} B, slot 2 ${slots.slots[1]} B, slot 1 empty`);
   const file = await E.moveBackupCapture(rq, info);
   const ids = file.objects.map((o) => o.id);
-  ok(file.format === "fm1move-backup" && [1, 6, 7, 8, 9, 16, 17, 18, 19, 20, 32, 33, 34].every((i) => ids.includes(i)) && !ids.includes(35) && !ids.includes(0),
+  ok(file.format === "fm1move-backup" && [1, 6, 7, 8, 9, 16, 17, 18, 32, 33, 34].every((i) => ids.includes(i)) && ![0, 19, 20, 35].some((i) => ids.includes(i)),
     `backup: ${file.objects.length} objects, ${file.objects.reduce((s, o) => s + o.len, 0)} B (no USR4, no SLOOP projects)`);
 
   /* the working project changes (track 2's level, track 4 becomes empty of its arp), a preset is erased */
@@ -119,12 +119,12 @@ ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && 
   const si = E.parse[E.CMD.SMP_INFO](await rq(E.req.smpInfo()));
   ok(si.slots[1].name === "TESTKIT", "restore: USR2 back");
 
-  /* a project file: export slot 2, import it into slot 4, load slot 4 */
+  /* a project file: export slot 2, import it into slot 1, load slot 1 */
   const pf = await E.projectExport(rq, info, 1);
-  await E.projectImport(rq, pf, 3);
+  await E.projectImport(rq, pf, 0);
   const s3 = await E.projectSlots(rq);
-  p = await E.projectOp(rq, 0, 3);
-  ok(s3.slots[3] === pf.len && !p.busy, `project file: slot 2 exported (${pf.len} B), imported into slot 4, loaded`);
+  p = await E.projectOp(rq, 0, 0);
+  ok(s3.slots[0] === pf.len && !p.busy, `project file: slot 2 exported (${pf.len} B), imported into slot 1, loaded`);
 
   /* a damaged stream is refused whole: nothing written */
   const bad = Uint8Array.from(atob(pf.data), (c) => c.charCodeAt(0));
@@ -132,12 +132,12 @@ ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && 
   let refused = false;
   try { await E.projectImport(rq, { ...pf, data: Buffer.from(bad).toString("base64"), crc: E.crc32(bad) }, 0); } catch (e) { refused = e.code === "bkBad"; }
   const s4 = await E.projectSlots(rq);
-  ok(refused && s4.slots[0] === 0, "project file: a damaged stream is refused, slot 1 untouched");
+  ok(refused && s4.slots[0] === pf.len, "project file: a damaged stream is refused, slot 1 untouched");
   refused = false;
   const cut = bad.slice(0, bad.length - 1);
   cut[0] ^= 0x55;                                   /* (the magic right again, the end mark gone) */
   try { await E.projectImport(rq, { ...pf, data: Buffer.from(cut).toString("base64"), len: cut.length, crc: E.crc32(cut) }, 0); } catch (e) { refused = e.code === "bkBad"; }
-  ok(refused && (await E.projectSlots(rq)).slots[0] === 0, "project file: a truncated stream is refused too");
+  ok(refused && (await E.projectSlots(rq)).slots[0] === pf.len, "project file: a truncated stream is refused too");
 
   /* a SLOOP backup is not taken for an FM1 Move one */
   let sloop = false;
@@ -154,20 +154,26 @@ ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && 
     for (let i = 0; i < 64; i++)
       await rq(E.req.trackStep(t, i, { n: 4, notes: [48 + (i % 12), 52 + (i % 7), 55 + t, 60 + (i % 5)], time: 0, flags: i & 3, vel: 64 + i, lvl: i & 3, rat: (i >> 2) & 3 }));
   }
+  for (const t of [0, 6]) {                         /* the two drum tracks: every lane on every step (DRUM_STEP: the selected one) */
+    await rq(E.req.track(t));
+    await rq(E.req.trackParam(t, slen, 64));
+    for (let i = 0; i < 64; i++)
+      await rq(E.req.drumStep(i, { on: 0xFFFF, lvl: Array.from({ length: 16 }, (_, l) => (l + i) & 3), rat: Array.from({ length: 16 }, (_, l) => (l * i) & 3) }));
+  }
   const big = await E.projectExport(rq, info, -1);
-  let p = await E.projectOp(rq, 1, 2);
+  let p = await E.projectOp(rq, 1, 0);
   const s = await E.projectSlots(rq);
-  ok(big.len > 3824 && s.slots[2] === big.len, `dense project: ${big.len} B (two chunks) saved into slot 3`);
+  ok(big.len > 2 * 3824 && s.slots[0] === big.len, `dense project: ${big.len} B (three chunks) saved into slot 1`);
   const file = await E.moveBackupCapture(rq, info);
   await E.projectOp(rq, 0, 1);                      /* load the small slot 2: the working project changes */
   const small = await E.projectSlots(rq);
   await E.moveBackupRestore(rq, file);
-  const back = await E.projectExport(rq, info, -1), s3 = await E.projectExport(rq, info, 2);
+  const back = await E.projectExport(rq, info, -1), s3 = await E.projectExport(rq, info, 0);
   ok(small.work < 3824 && back.crc === big.crc && back.len === big.len, "dense project: restored as the working project, byte for byte");
-  ok(s3.crc === big.crc, "dense project: slot 3 restored byte for byte");
-  await E.projectImport(rq, big, 0);
-  const s1 = await E.projectExport(rq, info, 0);
-  ok(s1.crc === big.crc, "dense project: imported into slot 1 as a project file");
+  ok(s3.crc === big.crc, "dense project: slot 1 restored byte for byte");
+  await E.projectImport(rq, big, 1);
+  const s1 = await E.projectExport(rq, info, 1);
+  ok(s1.crc === big.crc, "dense project: imported into slot 2 as a project file");
 }
 
 /* PROJECT while playing: refused, nothing done */

@@ -6,15 +6,15 @@
 
    FM1 Move speaks the same protocol (v10) with eight tracks. Its backup objects (firmware/src/editor.c):
      1 settings, 6..7 user preset banks, 8 FM6 patch bank, 9 SYN drum kits,
-     16 the working project, 17..20 projects 1..4 (FM1M streams, docs/PROJECT_FORMAT.md),
+     16 the working project, 17..18 projects 1..2 (FM1M streams, docs/PROJECT_FORMAT.md),
      32..34 the user sample slots USR1..USR3 (no USR4: its flash holds the FM1M projects). */
 
 const FM1 = {
   NTRK: 8,
   SLOTS: 3,                                        /* user sample slots USR1..USR3 */
-  WORK: 16, PROJ0: 17, NPROJ: 4,                   /* backup objects of the projects */
+  WORK: 16, PROJ0: 17, NPROJ: 2,                   /* backup objects of the projects (2 slots of 3 chunks: room for clips) */
   FORMAT: "fm1move-backup", VERSION: 1,
-  RESTORE: [6, 7, 8, 9, 17, 18, 19, 20, 16, 1],   /* banks, the projects, the working project, the settings */
+  RESTORE: [6, 7, 8, 9, 17, 18, 16, 1],           /* banks, the projects, the working project, the settings */
   SAMPLES: [32, 33, 34],
 };
 /* INFO -> is it FM1 Move (else SLOOP / Felucca or something older) */
@@ -120,7 +120,7 @@ async function projectSlots(rq) {
   const L = parse[CMD.BK_LIST](await rq(req.bkList(), { timeout: 5000, retries: 0 }));
   if (L.rc) throw new BackupError("bkRc" + L.rc, `LIST rc ${L.rc}`);
   const len = (id) => (L.items.find((x) => x.id === id) || { len: 0 }).len;
-  return { work: len(FM1.WORK), slots: [0, 1, 2, 3].map((k) => len(FM1.PROJ0 + k)) };
+  return { work: len(FM1.WORK), slots: Array.from({ length: FM1.NPROJ }, (_, k) => len(FM1.PROJ0 + k)) };
 }
 /* a single project as a file (.fm1m.json): the FM1M stream, base64 */
 async function projectExport(rq, info, slot) {        /* slot 0..3, or -1 = the working project */

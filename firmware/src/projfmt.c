@@ -21,8 +21,8 @@
 #define FMP_CMAGIC 0x4B504D46u                 /* "FMPK": a chunk */
 #define FMP_CHDR 16u                           /* chunk header bytes */
 #define FMP_DATA (ST_PAYLOAD_MAX - FMP_CHDR)   /* stream bytes per chunk */
-#define FMP_NCHUNK 2u
-#define FMP_MAX (FMP_DATA * FMP_NCHUNK)        /* the largest stream (7 648 B: eight dense tracks fit) */
+#define FMP_NCHUNK 3u
+#define FMP_MAX (FMP_DATA * FMP_NCHUNK)        /* the largest stream (11 472 B: eight tracks and their clips) */
 static uint32_t fmp_obj(uint32_t slot, uint32_t chunk);   /* the storage object of a slot's chunk (caller) */
 
 /* ---------------------------------------------------------------- writer --- */
@@ -187,7 +187,8 @@ typedef struct {
     uint32_t pos;                              /* stream bytes read */
     uint32_t chunk;                            /* the chunk in st_buf, 0xFF = none */
     int err;
-    const uint8_t *ram[FMP_NCHUNK];            /* a stream in RAM instead (a restore, checked before it is written) */
+    const uint8_t *ram0;                       /* chunk 0's data in RAM (a restore before its commit, a clip): the later
+                                                * chunks come from the flash (slot, gen) */
 } fmp_r_t;
 
 /* the chunk header fields of what st_buf holds */
@@ -222,13 +223,8 @@ static uint32_t fmp_get(fmp_r_t *r)
         return 0;
     }
     k = r->pos / FMP_DATA;
-    if (r->ram[0]) {                                  /* (a stream in RAM: its chunks' data, side by side) */
-        if (k >= r->n || !r->ram[k]) {
-            r->err = 2;
-            return 0;
-        }
-        return r->ram[k][r->pos++ % FMP_DATA];
-    }
+    if (k == 0u && r->ram0)                           /* (chunk 0 in RAM) */
+        return r->ram0[r->pos++];
     if (k != r->chunk) {
         if (k >= r->n || fmp_chunk_load(fmp_obj(r->slot, k), r->gen, k)) {
             r->err = 2;                               /* a chunk of this generation is missing or damaged */
@@ -267,15 +263,28 @@ static int fmp_open(fmp_r_t *r, uint32_t slot)
     return 0;
 }
 
-/* a stream of len bytes held in RAM, chunk k's data at c[k] (a restore: parsed before anything is written) */
-static int fmp_open_ram(fmp_r_t *r, const uint8_t *c0, const uint8_t *c1, uint32_t len)
+/* a stream of len bytes (at most one chunk) held in RAM: a clip */
+static int fmp_open_ram(fmp_r_t *r, const uint8_t *buf, uint32_t len)
 {
     memset(r, 0, sizeof *r);
-    r->ram[0] = c0;
-    r->ram[1] = c1;
+    r->ram0 = buf;
+    r->len = len;
+    r->n = 1;
+    r->chunk = 0xFFu;
+    return !buf || !len || len > FMP_DATA ? -1 : 0;
+}
+/* a restore being staged into slot: chunk 0's data in RAM (c0), chunks 1.. already written as generation gen
+ * (fmp_put_chunk as they came); parsed whole before chunk 0, the commit, is written (fmp_restore_commit) */
+static int fmp_open_staged(fmp_r_t *r, uint32_t slot, uint32_t gen, const uint8_t *c0, uint32_t len)
+{
+    memset(r, 0, sizeof *r);
+    r->slot = slot;
+    r->gen = gen;
+    r->ram0 = c0;
     r->len = len;
     r->n = (len + FMP_DATA - 1u) / FMP_DATA;
-    return !c0 || !len || len > FMP_MAX || (r->n > 1u && !c1) ? -1 : 0;
+    r->chunk = 0xFFu;
+    return !c0 || !len || len > FMP_MAX ? -1 : 0;
 }
 
 static void fmp_get_groove(fmp_r_t *r, groove_t *g)
@@ -562,17 +571,13 @@ static int fmp_save(uint32_t slot)
     return 0;
 }
 
-/* a restored stream into slot (backup / restore, editor.c): chunk 1's data already staged at st_buf + FMP_CHDR,
- * chunk 0's at c0; the caller parsed the whole stream first (fmp_open_ram + fmp_parse_r) and took gen from
- * fmp_next_gen before staging (it reads into st_buf). As fmp_save: chunk 1, then chunk 0 commits */
-static int fmp_restore(uint32_t slot, uint32_t gen, const uint8_t *c0, uint32_t len)
+/* a staged restore's commit (editor.c): chunk 0 (its data at c0), written last as fmp_save writes it; the caller wrote
+ * chunks 1.. (fmp_put_chunk) and parsed the whole stream (fmp_open_staged + fmp_parse_r) first */
+static int fmp_restore_commit(uint32_t slot, uint32_t gen, const uint8_t *c0, uint32_t len)
 {
     uint32_t n = (len + FMP_DATA - 1u) / FMP_DATA;
-    int rc;
     if (!len || len > FMP_MAX)
         return -9;
-    if (n > 1u && (rc = fmp_put_chunk(slot, 1, n, gen, len, len - FMP_DATA)) != 0)
-        return rc;
     memcpy(st_buf + FMP_CHDR, c0, n > 1u ? FMP_DATA : len);
     return fmp_put_chunk(slot, 0, n, gen, len, n > 1u ? FMP_DATA : len);
 }

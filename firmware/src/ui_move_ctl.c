@@ -489,7 +489,7 @@ static void ui_input(void)
     if ((s = panel_enc(EN_ALGO)) != 0) {                 /* ALGORITHM: the screen's navigator */
         uint32_t sc = ctl.screen;
         if (ctl.menu) {
-            uint32_t n = sc == SC_PROJECT ? 4u : ST_COUNT;
+            uint32_t n = sc == SC_PROJECT ? FMP_NPROJ : ST_COUNT;
             ctl.row[sc] = (uint8_t)clamp((int32_t)ctl.row[sc] + s, 0, (int32_t)n - 1);
         } else if (sc == SC_SEQ) {
             uint32_t pages = (trk_len(TSEL) + 15u) / 16u;
@@ -898,13 +898,13 @@ static void mv_fill(void)
     mv.fx_on = (uint16_t)(punch.cur >= 0 ? 1u << punch.cur : 0u);
     /* PROJECT / SETTINGS */
     if (ctl.menu && ctl.screen == SC_PROJECT) {
-        for (i = 0; i < 4u; i++) {
+        for (i = 0; i < FMP_NPROJ; i++) {
             char *e = mv.row_l[i];
             *e++ = (char)('1' + i);
             str_cpy(e, fmp_used(i) ? "  PROJECT" : "  EMPTY", 14);
             str_cpy(mv.row_r[i], fmp_used(i) ? "SAVED" : "", 16);
         }
-        mv.nrows = 4;
+        mv.nrows = FMP_NPROJ;
         mv.row_sel = ctl.row[SC_PROJECT];
         mv.row_cur = 0xFF;
         mv.k[0].label = "SAVE", str_cpy(mv.k[0].value, "SAVE", 12);

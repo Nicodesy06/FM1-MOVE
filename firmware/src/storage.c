@@ -27,9 +27,18 @@
 #ifndef FMP_FLASH_BASE
 #define FMP_FLASH_BASE 0xE7000u                /* the region of SLOOP's USR4 sample slot (no USR4 in FM1 Move) */
 #endif
-#define FMP_SLOTS 5u                           /* projects 0..3, the autosave 4 */
+#define FMP_OBJS 10u                           /* the FM1M region's objects: 2 projects + the autosave, 3 chunks each (+1 spare) */
+/* where each FM1M slot's chunks live. FM1 Move 0.1 had 4 projects + the autosave of 2 chunks (objects 2s, 2s + 1, the
+ * autosave 8, 9): its project 1 (0, 1) and its autosave (8, 9) keep their objects, so they still load; a chunk left
+ * from the old layout under a new slot fails the chunk index / generation check (projfmt.c fmp_chunk_load) */
+#define FMP_OBJ_MAP {{0, 1, 2}, {3, 4, 5}, {8, 9, 7}}   /* (object 6: spare) */
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_AUTOSAVE = OBJ_UPRESET0 + 2, OBJ_FM6BANK,
-       OBJ_FMP0, OBJ_COUNT = OBJ_FMP0 + 2 * FMP_SLOTS };
+       OBJ_FMP0, OBJ_COUNT = OBJ_FMP0 + FMP_OBJS };
+static uint32_t fmp_obj(uint32_t slot, uint32_t chunk)
+{
+    static const uint8_t MAP[3][3] = FMP_OBJ_MAP;
+    return OBJ_FMP0 + MAP[slot % 3u][chunk % 3u];
+}
 #else
 enum { OBJ_SETTINGS, OBJ_PROJECT0, OBJ_UPRESET0 = OBJ_PROJECT0 + 4, OBJ_AUTOSAVE = OBJ_UPRESET0 + 2, OBJ_FM6BANK, OBJ_COUNT };
 #endif

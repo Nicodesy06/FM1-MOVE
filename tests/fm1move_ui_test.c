@@ -88,7 +88,6 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
     return 0;
 }
 #include "../firmware/src/storage.c"
-static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + (slot % FMP_SLOTS) * 2u + chunk % 2u; }
 #include "../firmware/src/projfmt.c"
 static int fmp_used(uint32_t slot) { fmp_r_t r; return !fmp_open(&r, slot); }
 static int project_save_fmp(uint32_t slot) { return fmp_save(slot); }

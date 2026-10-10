@@ -41,7 +41,6 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
     return 0;
 }
 #include "../firmware/src/storage.c"
-static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + slot * 2u + chunk; }
 #include "../firmware/src/projfmt.c"
 
 static int fails;
@@ -202,7 +201,7 @@ int main(void)
     len = fmp_measure(0);
     printf("projfmt: the densest stream: %u bytes of %u (%u chunks)\n", len, (unsigned)FMP_MAX, chunks_of(len));
     if (len <= FMP_MAX) {
-        check(fmp_save(1) == 0, "the densest eight-track project fits two chunks and saves");
+        check(fmp_save(1) == 0, "the densest eight-track project fits (3 chunks) and saves");
         blank();
         check(fmp_load(1, 0) == 0 && fingerprint() == b, "... and loads back exactly");
     } else {                                          /* beyond the capacity: refused, the slot keeps what it had */
@@ -294,18 +293,64 @@ int main(void)
                 put_step(&trk[k], i, 1, &n, ST_NOTE, 0);
             }
     }
-    fmp_save(3);
+    fmp_save(0);
     {
         st_hdr_t h0, h1;
-        uint32_t obj = fmp_obj(3, 1), c;
+        uint32_t obj = fmp_obj(0, 1), c;
         st_head(obj, 0, &h0);
         c = st_head(obj, 1, &h1) == 0 && (st_head(obj, 0, &h0) != 0 || h1.seq > h0.seq) ? 1u : 0u;
         nor[st_sector(obj, c) + ST_PAYLOAD_OFF + 100] ^= 0x5A;
     }
     session(4);
     a = fingerprint();
-    check(fmp_load(3, 0) != 0 && fingerprint() == a, "a damaged chunk: the load is refused, the working project untouched");
-    check(fmp_load(4, 0) != 0 && fingerprint() == a, "an empty slot: refused, untouched");
+    check(fmp_load(0, 0) != 0 && fingerprint() == a, "a damaged chunk: the load is refused, the working project untouched");
+    {
+        uint32_t k, c;
+        for (k = 0; k < FMP_NCHUNK; k++)
+            for (c = 0; c < 2u; c++)
+                st_erase(st_sector(fmp_obj(1, k), c));
+    }
+    check(fmp_load(1, 0) != 0 && fingerprint() == a, "an empty slot: refused, untouched");
+
+    /* the layout of FM1 Move 0.1 (4 projects + the autosave, 2 chunks each: objects 2s, 2s + 1, the autosave 8, 9):
+     * its project 1 and its autosave still load under the new map; its projects 2..4 read as empty, not as garbage */
+    {
+        uint32_t k, c, o, g;
+        uint64_t p1, as;
+        for (o = 0; o < FMP_OBJS; o++)
+            for (c = 0; c < 2u; c++)
+                st_erase(st_sector(OBJ_FMP0 + o, c));
+        session(6);
+        p1 = fingerprint();
+        g = 7;                                          /* old project 1 at objects 0, 1 (what slot 0 maps to: 0, 1, 2) */
+        for (k = 0; k < 2u; k++) {
+            fmp_w_t w = {0, k * FMP_DATA, (k + 1u) * FMP_DATA, st_buf + FMP_CHDR, 2166136261u};
+            uint32_t len = fmp_measure(0), n = (len + FMP_DATA - 1u) / FMP_DATA;
+            if (k >= n)
+                break;
+            fmp_stream(&w);
+            fmp_put_chunk(0, k, n, g, len, k + 1u < n ? FMP_DATA : len - k * FMP_DATA);
+        }
+        session(7);
+        as = fingerprint();
+        fmp_save(FMP_AUTOSAVE);                         /* old autosave objects 8, 9: the new map's autosave 8, 9, 7 */
+        session(8);                                     /* old project 2 at objects 2, 3: under the new map slot 0's
+                                                         * chunk 2 and slot 1's chunk 0 */
+        {
+            fmp_w_t w = {0, 0, FMP_DATA, st_buf + FMP_CHDR, 2166136261u};
+            uint32_t len = fmp_measure(0);
+            fmp_stream(&w);
+            st_buf[0] = (uint8_t)FMP_CMAGIC; st_buf[1] = (uint8_t)(FMP_CMAGIC >> 8);
+            st_buf[2] = (uint8_t)(FMP_CMAGIC >> 16); st_buf[3] = (uint8_t)(FMP_CMAGIC >> 24);
+            st_buf[4] = 3; st_buf[5] = st_buf[6] = st_buf[7] = 0;
+            st_buf[8] = 0; st_buf[9] = 1; st_buf[10] = (uint8_t)len; st_buf[11] = (uint8_t)(len >> 8);
+            st_buf[12] = st_buf[13] = st_buf[14] = st_buf[15] = 0;
+            st_save_staged(OBJ_FMP0 + 2u, FMP_CHDR + len);   /* (its chunk 0, index 0, in object 2) */
+        }
+        check(fmp_load(0, 0) == 0 && fingerprint() == p1, "old layout: project 1 still loads (the old project 2's chunk in object 2 is ignored)");
+        check(fmp_load(FMP_AUTOSAVE, 0) == 0 && fingerprint() == as, "old layout: the autosave still loads");
+        check(fmp_load(1, 0) != 0, "old layout: a slot over other projects' chunks reads as empty");
+    }
 
     /* four heavy engines asked for: the fourth gets ANALOG */
     session(5);

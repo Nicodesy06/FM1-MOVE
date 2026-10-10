@@ -14,6 +14,8 @@
 #define FM1MOVE 0
 #endif
 #if FM1MOVE
+#define FMP_NPROJ 2u             /* FM1M project slots 0..1 (3 chunks each: room for the clips); the autosave is slot 2 */
+#define FMP_AUTOSAVE 2u
 #define NTRK 8
 #define TRK_DRUM 0               /* the default drum track (a new project): track 1 */
 #else

@@ -297,7 +297,7 @@ uint16_t *sim_fb(void) { return sim_screen; }
 int16_t *sim_pcm_ptr(void) { return sim_pcm; }
 uint8_t *sim_nor(void) { return nor; }
 uint32_t sim_fmp_base(void) { return FMP_FLASH_BASE; }
-uint32_t sim_fmp_size(void) { return 2u * FMP_SLOTS * 2u * ST_SECTOR; }
+uint32_t sim_fmp_size(void) { return FMP_OBJS * 2u * ST_SECTOR; }
 uint32_t sim_store_base(void) { return 0x97000u; }   /* everything the firmware keeps: projects, presets, samples, */
 uint32_t sim_store_size(void) { return 0x100000u - 0x97000u; }   /* the FM6 bank, the settings */
 

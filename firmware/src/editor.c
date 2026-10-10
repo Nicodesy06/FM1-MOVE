@@ -428,15 +428,19 @@ static persist_t ed_bk_set;                             /* LIST's snapshot of th
 static uint8_t ed_bk_valid, ed_bk_put, ed_bk_id;
 static uint32_t ed_bk_len, ed_bk_crc, ed_bk_pos, ed_bk_ms;
 #if FM1MOVE
-/* FM1 Move: the projects are FM1M streams (projfmt.c). 16 the working project, 17..20 the projects 1..4; SLOOP's
+/* FM1 Move: the projects are FM1M streams (projfmt.c). 16 the working project, 17..18 the projects 1..2; SLOOP's
  * 0 and 2..5 (project_t) are not offered. The working project is read through a window of its stream (no copy: it
- * can be larger than the staging RAM), checked against the hash LIST saw; a restored stream is staged chunk 0 in
- * proj_tmp, chunk 1 in st_buf (both FMP_DATA bytes or more), parsed whole, then written as fmp_save writes */
+ * can be larger than the staging RAM), checked against the hash LIST saw. A restored stream (up to 3 chunks: more
+ * than the RAM holds) is staged as fmp_save writes: chunk 0 in proj_tmp, each later chunk gathered in st_buf and
+ * written as a new generation as soon as it is whole, its CRC kept as it comes; the commit parses the whole stream
+ * (chunk 0 from RAM, the rest from the flash) and only then writes chunk 0. A stream that fails leaves the slot's
+ * previous project as it was (chunk 0 decides). The working project is restored through the autosave slot. */
 #define ED_FMP_ID 16u
 #define ED_BK_FMP(id) ed_bk_fmp(id)
 _Static_assert(sizeof proj_tmp >= FMP_DATA && sizeof st_buf >= FMP_CHDR + FMP_DATA, "FM1M restore staging");
-static uint32_t ed_bk_whash, ed_bk_wlen, ed_bk_gen;
-static int ed_bk_fmp(uint32_t id) { return id >= ED_FMP_ID && id <= ED_FMP_ID + 4u; }
+static uint32_t ed_bk_whash, ed_bk_wlen, ed_bk_gen, ed_bk_run;
+static uint8_t ed_bk_werr;                              /* a chunk failed to write: the commit refuses */
+static int ed_bk_fmp(uint32_t id) { return id >= ED_FMP_ID && id <= ED_FMP_ID + FMP_NPROJ; }
 static void ed_bk_unhold(void) { fmp_hold = 0; }
 static uint32_t ed_bk_slot(uint32_t id) { return id == ED_FMP_ID ? FMP_AUTOSAVE : id - ED_FMP_ID - 1u; }
 #endif
@@ -493,7 +497,7 @@ static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no such obj
     return 0;
 }
 #if FM1MOVE
-static const uint8_t ED_BK_IDS[] = {1, 6, 7, 8, 9, 16, 17, 18, 19, 20, 32, 33, 34};   /* (no USR4: its flash is the projects') */
+static const uint8_t ED_BK_IDS[] = {1, 6, 7, 8, 9, 16, 17, 18, 32, 33, 34};   /* (no USR4: its flash is the projects') */
 #else
 static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5) */
 #endif
@@ -506,12 +510,11 @@ static uint32_t ed_bk_commit(void)
     uint8_t *raw = ED_BK_RAW;
     uint32_t id = ed_bk_id, n = ed_bk_len;
 #if FM1MOVE
-    if (ED_BK_FMP(id)) {                                  /* (staged in two parts) */
-        uint32_t c = st_crc32_more(0, raw, n < FMP_DATA ? n : FMP_DATA);
-        if (n > FMP_DATA)
-            c = st_crc32_more(c, st_buf + FMP_CHDR, n - FMP_DATA);
-        if (ed_bk_pos != n || c != ed_bk_crc)
+    if (ED_BK_FMP(id)) {                                  /* (its CRC was kept as the data came) */
+        if (ed_bk_pos != n || ed_bk_run != ed_bk_crc)
             return 2;
+        if (ed_bk_werr)
+            return 4;
     } else
 #endif
     if (ed_bk_pos != n || st_crc32(raw, n) != ed_bk_crc)
@@ -532,18 +535,17 @@ static uint32_t ed_bk_commit(void)
                         return 4;
             return 0;
         }
-        if (fmp_open_ram(&r, raw, st_buf + FMP_CHDR, n) || fmp_parse_r(&r, 0, 0))
-            return 2;
-        if (id == ED_FMP_ID) {                            /* the working project: applied (the autosave keeps it) */
+        if (fmp_open_staged(&r, ed_bk_slot(id), ed_bk_gen, raw, n) || fmp_parse_r(&r, 0, 0))
+            return 2;                                     /* (chunk 0 not written: the slot keeps its project) */
+        if (fmp_restore_commit(ed_bk_slot(id), ed_bk_gen, raw, n))
+            return 4;
+        if (id == ED_FMP_ID) {                            /* the working project: loaded from the autosave slot */
             panic_req = (1u << NTRK) - 1u;
-            fmp_open_ram(&r, raw, st_buf + FMP_CHDR, n);
-            fm1_irq_off();
-            fmp_parse_r(&r, 1, &refused);
-            fm1_irq_on();
-            autosave_hash = 0;
-            return 0;
+            if (fmp_load(FMP_AUTOSAVE, &refused))
+                return 2;
+            fmp_measure(&autosave_hash);
         }
-        return fmp_restore(ed_bk_slot(id), ed_bk_gen, raw, n) ? 4u : 0u;
+        return 0;
     }
 #else
     if (id <= 5u)
@@ -688,9 +690,14 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
             len = ed_bk_r32(a + 2);
             if (ED_BK_FMP(id) ? id != 16u || len : (id >= 2u || len)) {   /* (the working project and the settings are never empty) */
 #if FM1MOVE
-                if (ED_BK_FMP(id) && id != ED_FMP_ID)
+                if (ED_BK_FMP(id)) {
                     ed_bk_gen = fmp_next_gen(ed_bk_slot(id));   /* (now: it reads into st_buf, the staging of chunk 1) */
-                if (ED_BK_FMP(id) ? len <= FMP_MAX : len <= sizeof proj_tmp) {
+                    ed_bk_run = 0;
+                    ed_bk_werr = 0;
+                }
+                if (ED_BK_FMP(id) && ed_flash_busy())
+                    rc = 3;                               /* (its chunks are written as they come: stopped only) */
+                else if (ED_BK_FMP(id) ? len <= FMP_MAX : len <= sizeof proj_tmp) {
 #else
                 if (len <= sizeof proj_tmp) {
 #endif
@@ -713,14 +720,23 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
             uint32_t k = ed_unpack7(a + 7, na - 7u, ed_smp_buf, 256u);
             if (k && k <= ed_bk_len - ed_bk_pos) {
 #if FM1MOVE
-                if (ED_BK_FMP(ed_bk_id)) {                /* chunk 0's bytes into proj_tmp, chunk 1's into st_buf */
-                    uint32_t j;
+                if (ED_BK_FMP(ed_bk_id)) {                /* chunk 0's bytes into proj_tmp, a later chunk's into st_buf,
+                                                           * written as soon as it is whole */
+                    uint32_t j, nch = (ed_bk_len + FMP_DATA - 1u) / FMP_DATA;
+                    ed_bk_run = st_crc32_more(ed_bk_run, ed_smp_buf, k);
                     for (j = 0; j < k; j++) {
                         uint32_t q = ed_bk_pos + j;
-                        if (q < FMP_DATA)
+                        if (q < FMP_DATA) {
                             ED_BK_RAW[q] = ed_smp_buf[j];
-                        else
-                            st_buf[FMP_CHDR + q - FMP_DATA] = ed_smp_buf[j];
+                            continue;
+                        }
+                        st_buf[FMP_CHDR + q % FMP_DATA] = ed_smp_buf[j];
+                        if ((q + 1u) % FMP_DATA == 0u || q + 1u == ed_bk_len) {
+                            uint32_t ck = q / FMP_DATA;
+                            if (ed_flash_busy() || fmp_put_chunk(ed_bk_slot(ed_bk_id), ck, nch, ed_bk_gen, ed_bk_len,
+                                                                 q + 1u - ck * FMP_DATA))
+                                ed_bk_werr = 1;
+                        }
                     }
                 } else
 #endif
@@ -874,9 +890,9 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
         }
 #endif
 #if FM1MOVE
-        if (a[0] < 2u && (song.playing || transport_req || ed_bk_put)) {
+        if (a[0] < 2u && (song.playing || transport_req || ed_bk_put || (a[1] & 3u) >= FMP_NPROJ)) {
             ed_b(a[0]); ed_b(a[1] & 3u); ed_b(project_used(a[1] & 3u));
-            ed_b(1);                                  /* optional status: transport busy (no operation) */
+            ed_b(1);                                  /* optional status: busy or no such slot (no operation) */
             break;
         }
         if (a[0] == 1u)

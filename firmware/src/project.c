@@ -510,10 +510,8 @@ static int audio_quiet(void)
 }
 
 #if FM1MOVE
-/* ---- FM1 Move: projects as FM1M streams (projfmt.c): slots 0..3, the autosave in slot 4 */
-#define FMP_AUTOSAVE 4u
+/* ---- FM1 Move: projects as FM1M streams (projfmt.c): slots 0..1, the autosave in slot 2 */
 static uint8_t fmp_hold;                       /* a restore (editor.c) stages a stream in st_buf: no flash use meanwhile */
-static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + (slot % FMP_SLOTS) * 2u + chunk % 2u; }
 #include "projfmt.c"
 /* SLOOP's USR4 sample slot lived where FM1M projects go: one found there is never written over unasked */
 static int fmp_region_has_sample(void)
@@ -750,7 +748,7 @@ static void persist_boot(void)                    /* before settings_init / pane
 }
 
 #if FM1MOVE
-static int project_used(uint32_t slot) { return fmp_used(slot & 3u); }
+static int project_used(uint32_t slot) { return slot < FMP_NPROJ && fmp_used(slot); }
 #else
 static int project_used(uint32_t slot) { return proj_ok(&proj_slot[slot & 3u]); }
 #endif
