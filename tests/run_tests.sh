@@ -87,6 +87,14 @@ else
     echo "(stress under ASan: this compiler has no AddressSanitizer, skipped)"
 fi
 
+# FM1 Move: the eight-track engine (FM1MOVE=1): every track heard, budgets, arenas, two drum tracks, mute / solo,
+# kind changes, determinism; the same under AddressSanitizer + UBSan
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/eight_track_test" tests/eight_track_test.c -lm
+run "FM1 Move: eight tracks (kinds, budgets, arenas, two drum kits, mute / solo, determinism)" "$OUT/eight_track_test" "$OUT/eight-tracks.wav"
+if $ASAN -o "$OUT/eight_track_asan" tests/eight_track_test.c -lm 2>/dev/null; then
+    run "FM1 Move: eight tracks under ASan + UBSan" "$OUT/eight_track_asan"
+fi
+
 # FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
 python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
 $CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c

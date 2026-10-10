@@ -766,6 +766,38 @@ static void steps_clear(track_t *t)           /* an empty pattern (synth: REST s
     memset(t->fill, 0, sizeof t->fill);
 }
 
+/* FM1 Move: track t becomes another kind (TK_SYNTH, TK_DRUM, TK_MIDI). The main loop calls it with the IRQ off.
+ * Whatever it sounds stops at once (a drum track renders no synth voice and a synth track no drum voice: left
+ * running they would hang), its heavy-engine arena goes back, and its pattern starts empty (synth steps and drum
+ * lanes share the same bytes). */
+static void trk_set_kind(track_t *t, uint32_t kind)
+{
+    uint32_t i, ti = trk_index(t) % NTRK;
+    if (kind >= TK_COUNT || trk_kind(t) == kind)
+        return;
+    seq_out_track_off(t);
+    strum_cancel(t, 0, 1);
+    for (i = 0; i < NVOICE; i++) {
+        voice_t *v = &t->v[i];
+        v->active = v->gate = 0;
+        v->stage = 0;
+        v->env = v->env_out = 0;
+    }
+    for (i = 0; i < NDRUM; i++)
+        if (drums.own[i] == ti)
+            drums.v[i].active = 0;
+    drums.tl[ti] = 0;
+    t->nmono = t->mono_note = 0;
+    t->xp_n = t->xf_on = 0;
+    t->nheld = t->arp_phys = t->arp_note = 0;
+    t->seq_n = t->seq_hold = 0;
+    eng_arena_release(t);
+    if (eng_heavy(t->eng_req) || eng_heavy(t->engine))
+        t->eng_req = t->engine = 0;                  /* (a heavy engine claims its arena again when chosen) */
+    t->kind = (uint8_t)(kind + 1u);
+    steps_clear(t);
+}
+
 /* tempo x 10 of a loop of T blocks holding n bars of 4/4 */
 static uint32_t ft_bpm10(uint32_t T, uint32_t n)
 {

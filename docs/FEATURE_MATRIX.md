@@ -11,14 +11,14 @@ Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflo
 
 | Feature | Status | Notes |
 | --- | --- | --- |
-| 8 independent tracks | PLAN (M1) | SLOOP: 3 synth + 1 drum |
-| Track kind configurable (synth / drums / MIDI out) | PLAN (M1) | SLOOP: fixed roles |
+| 8 independent tracks | PART (FM1M, host) | engine + sequencer + mix run 8 tracks (`FM1MOVE=1`, `tests/eight_track_test.c`); firmware build with the new UI and the 8-track project format pending |
+| Track kind configurable (synth / drums / MIDI out) | PART (FM1M, host) | `trk_set_kind`; synth and drums done, MIDI-out kind pending |
 | Per-track pattern, length 1–64, division | SLOOP | `P_SLEN`, `P_SDIV` |
 | Per-track volume, pan, mute, solo | SLOOP | four tracks |
 | Per-track MIDI channel | PART | SLOOP: fixed map (1–3 parts, DRUMS channel) |
-| Global voice allocation, priority, stealing, shedding | SLOOP | 8-voice budget across parts, bass/lead protected |
+| Global voice allocation, priority, stealing, shedding | SLOOP + FM1M | 8-voice budget across parts, bass/lead protected; last-resort steal for 8 parts |
 | 12 synth engines, 153 presets | SLOOP | FM6 with DX7 import, PHYS, NOISE… |
-| Drum kits (16 sounds, levels, ratchets, choke hat) | SLOOP | one drum track |
+| Drum kits (16 sounds, levels, ratchets, choke hat) | SLOOP + FM1M | any number of drum tracks sharing 6 voices, own kit / mix / choke |
 | Sample playback, user samples (USR1–4), CHOP in editor | SLOOP | no audio input on the device |
 | MIDI OUT track (USB) | PART | SLOOP sends the sequencer to USB MIDI globally (`G_MIDI`) |
 

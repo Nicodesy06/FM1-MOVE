@@ -25,6 +25,9 @@ Living document. Milestones follow the master brief (M0–M7); each step is smal
 
 Order (each a commit):
 
+Status: steps 1–3 done (commits `524f642`, `6e0778d`); step 4's engine part done and host-tested; project format
+and the firmware build with the new UI pending.
+
 1. **Track kind.** `track_t.kind` (SYNTH, DRUM, MIDI); `is_drum(t)` reads it; `TDRUM` / `TRK_DRUM` uses replaced by
    "the drum track(s)". Still 4 tracks: behaviour identical, golden renders unchanged.
 2. **Synth loops over kinds.** `NPART` loops (`voice.c`, `fx.c`, `seq.c`, `engines.c`) become loops over tracks whose

@@ -16,3 +16,10 @@
   (`docs/ui/mockups/`), with label-fit and partial-redraw checks; `tools/ui_contrast.py` (WCAG after RGB565).
 - Target compile check (JieLi clang -Os): 11.2 KB code + 27.9 KB constants. Not yet linked into the firmware.
 - Docs: `UI_DESIGN_SYSTEM.md`, `UI_NAVIGATION.md`, `UI_MAPPING.md`.
+
+### M1 — eight-track foundation
+- Track kind per track (`FM1MOVE=1`: 8 tracks; `0`: SLOOP's 4), loops by kind, `trk_set_kind`.
+- Heavy-engine arenas (GRAIN/FM6/PHYS) as a claimed pool of 3, refused with a message when all are taken.
+- One drum engine for any number of drum tracks (owner-tagged voices, per-track kit, mix, filter, slicer, choke).
+- Voice budget: last-resort steal so eight protected leads never push the shared budget over 8.
+- `tests/eight_track_test.c` (+ ASan/UBSan) in the host suite.

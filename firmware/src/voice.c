@@ -104,6 +104,21 @@ static uint32_t voice_victim(const track_t *self, int soft, track_t **pp)
             }
         }
     }
+    if (best == NVOICE && !soft)                        /* FM1 Move: up to eight parts can each hold a protected
+                                                         * bass or lead, filling the budget: the oldest of another
+                                                         * part's voices gives way, so the budget always holds */
+        for (p = 0; p < NPART; p++) {
+            track_t *t = &trk[p];
+            if (t == self)
+                continue;
+            for (i = 0; i < NVOICE; i++) {
+                const voice_t *v = &t->v[i];
+                if (v->active && v->stage != 4u && (best == NVOICE || v->age < (*pp)->v[best].age)) {
+                    best = i;
+                    *pp = t;
+                }
+            }
+        }
     return best;
 }
 
@@ -165,7 +180,7 @@ static int voice_room(track_t *t, int soft)
         return 1;
     k = voice_victim(t, soft, &vp);
     if (k == NVOICE)
-        return !soft;                                   /* hard: over the budget (cannot happen with 3 parts) */
+        return !soft;                                   /* hard: only when this part holds the whole budget */
     voice_kill(&vp->v[k]);
     return 1;
 }
