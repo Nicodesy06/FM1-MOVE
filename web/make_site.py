@@ -78,10 +78,12 @@ def main(pkg, version, out):
     for f in ("fukiai.ttf", "FUKIAI-LICENSE.txt"):
         if (HERE / f).exists():
             shutil.copy(HERE / f, ed / f)
-    (out / "index.html").write_text(
-        '<!doctype html><meta charset="utf-8"><title>SLOOP</title>'
-        '<meta http-equiv="refresh" content="0; url=webapp/installer/">'
-        '<a href="webapp/installer/">SLOOP installer</a>\n', encoding="utf-8")
+    root = out / "index.html"                      # FM1 Move: the site opens on its device page (web/make_device.py)
+    if not (out / "device" / "index.html").exists():
+        root.write_text(
+            '<!doctype html><meta charset="utf-8"><title>SLOOP</title>'
+            '<meta http-equiv="refresh" content="0; url=webapp/installer/">'
+            '<a href="webapp/installer/">SLOOP installer</a>\n', encoding="utf-8")
     print(f"site: {out}: webapp/installer ({len(html)} B), webapp/editor, firmware/{name} ({len(raw)} B, {product})")
 
 

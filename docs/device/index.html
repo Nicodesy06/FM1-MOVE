@@ -94,7 +94,7 @@ dl.facts dt { color: var(--text-3); } dl.facts dd { margin: 0; color: var(--text
 .trk { position: relative; text-align: left; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 12px 10px 16px; cursor: pointer; min-width: 0; }
 .trk::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--c); }
 .trk.sel { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
-.trk .n { font-size: 12px; font-weight: 800; color: var(--c); letter-spacing: .06em; }
+.trk .n { font-size: 12px; font-weight: 800; color: var(--c); letter-spacing: .06em; padding-right: 44px; }
 .trk .e { font-size: 15px; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trk .p { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .trk .lv { height: 4px; border-radius: 4px; background: var(--panel-3); margin-top: 8px; overflow: hidden; }
@@ -150,15 +150,17 @@ table.list tr.empty td { color: var(--text-3); }
 footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1.6; }
 
 @media (max-width: 900px) {
-  .connect { grid-template-columns: 1fr; }
+  .connect { grid-template-columns: minmax(0, 1fr); }
   .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .grid3, .grid2, .groups, .slots { grid-template-columns: 1fr; }
+  .grid3, .grid2, .groups, .slots { grid-template-columns: minmax(0, 1fr); }
   .pads { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 520px) {
   header nav { margin-left: 0; width: 100%; }
   .prm { grid-template-columns: 64px minmax(0, 1fr) 64px; gap: 8px; }
-  table.list td.acts .btn { padding: 5px 7px; }
+  table.list td.acts { white-space: normal; }
+  table.list td.acts .btn { padding: 5px 7px; margin: 2px 0; }
+  table.list td { padding: 7px 4px; }
   .hide-s { display: none; }
 }
 </style>
@@ -239,7 +241,7 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
       <h2>Back to the official firmware (V15)</h2>
       <p class="small">Download FM-1 V15 from M-VAVE and select its unmodified <code>FM-1.fwsc</code>. It is checked in this browser and sent nowhere.
         The official firmware cannot open FM1 Move's projects or samples: make a backup first (Backup tab).</p>
-      <input type="file" id="stock-file" accept=".fwsc">
+      <input type="file" id="stock-file" accept=".fwsc" style="max-width:100%">
       <label class="check"><input type="checkbox" id="stock-ack"> I saved a backup, or I don't need one.</label>
       <button class="btn" id="go-stock" disabled>Install official V15</button>
     </div>
@@ -3805,7 +3807,7 @@ async function presetNames(e) {
 function renderTracks() {
   $("tracks").replaceChildren(...tracks.map((t) => el("button", { class: "trk" + (t.index === selTrack ? " sel" : ""), style: `--c:${TCOL[t.index]}`,
     onclick: () => job(async () => { await rq(req.track(t.index)); selTrack = t.index; renderTracks(); await renderDetail(); }) },
-    el("div", { class: "n", text: `TRACK ${t.index + 1} · ${t.kind === "drums" ? "DRUMS" : "SYNTH"}` }),
+    el("div", { class: "n" }, el("span", { class: "hide-s", text: "TRACK " }), `${t.index + 1} · ${t.kind === "drums" ? "DRUMS" : "SYNTH"}`),
     el("div", { class: "e", text: t.kind === "drums" ? kitName(t) : t.engine }),
     el("div", { class: "p", text: t.kind === "drums" ? "drum kit" + (kitNames ? "" : " " + (t.kitIndex + 1)) : t.presetName || "" }),
     el("div", { class: "lv" }, el("i", { style: `width:${Math.round(t.level / 127 * 100)}%` })),
@@ -3820,7 +3822,7 @@ async function desc(track, scope, id) {
 }
 function paramRow(d, value, onset, panel) {
   const val = el("div", { class: "v" });
-  const show = (v) => { const [a, u] = fmtValue(d, v); val.replaceChildren(a, u ? el("small", { text: u }) : null); };
+  const show = (v) => { const [a, u] = fmtValue(d, v); val.replaceChildren(String(a), ...(u ? [el("small", { text: u })] : [])); val.title = String(a) + (u ? " " + u : ""); };
   let ctl;
   if (d.fmt === F.ENUM && d.names && d.names.length) {
     ctl = el("select", {}, ...d.names.map((n, i) => el("option", { value: d.min + i, text: n })));
@@ -3980,7 +3982,7 @@ function renderPads() {
   $("pads").replaceChildren(...DRUM_LANES.map(([note, name], l) => {
     const p = pads[l];
     const pad = el("div", { class: "pad" + (p ? " full" : "") }, el("b", { text: name }),
-      el("span", { text: p ? p.fname : "drop a sound" }),
+      el("span", { text: p ? p.fname : "empty", title: p ? p.fname : "drop a sound here" }),
       p ? el("button", { text: `${(kitLen(p) / SMP.RATE).toFixed(2)} s · remove`, onclick: () => { pads[l] = null; renderPads(); } }) : el("span", { class: "tiny", text: " " }));
     pad.addEventListener("dragover", (e) => { e.preventDefault(); e.stopPropagation(); pad.classList.add("drag"); });
     pad.addEventListener("dragleave", () => pad.classList.remove("drag"));

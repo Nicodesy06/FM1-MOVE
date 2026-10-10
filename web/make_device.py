@@ -9,6 +9,7 @@
                                                 in their own scope (they name Link / pack7 as the protocol does)
                                     /*META*/    the firmware packages offered (version, identity, SHA-256)
                                     /*GROUPS*/  the parameter pages of params.c (ids from core.h)
+  docs/index.html                 redirect to device/ (web/site_index.html)
   docs/firmware/fm1move-VER.fwsc  the FM1 Move package (experimental: never run on an FM-1)
 
   web/make_device.py FM1MOVE_PKG VERSION [SLOOP_PKG]
@@ -95,6 +96,7 @@ def main(move_pkg, version, sloop_pkg=None):
     out = ROOT / "docs/device"
     out.mkdir(parents=True, exist_ok=True)
     (out / "index.html").write_text(html, encoding="utf-8")
+    shutil.copy(HERE / "site_index.html", ROOT / "docs/index.html")   # the site opens on the device page
     fw = ROOT / "docs/firmware"
     for old in fw.glob("fm1move-*.fwsc"):                   # one FM1 Move package: the current one
         old.unlink()

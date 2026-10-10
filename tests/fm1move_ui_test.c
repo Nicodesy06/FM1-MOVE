@@ -274,6 +274,34 @@ int main(int argc, char **argv)
         check(dstep_has(&trk[0].dstep[1], 2) == before, "EDIT + OCT-: undo puts the step back");
     }
 
+    /* the step sequencer without recording, on a synth track: SEQ held + a white key writes a step (the pen note:
+     * SEQ held + KNOB 1), a step key held + KNOB 1 changes its note, the same key again clears it */
+    turn(EN_SELECT, 1);
+    {
+        track_t *t = &trk[1];
+        steps_clear(t);
+        ui.step_page = 0;
+        press(B_SEQ);
+        turn(EN_K1, 62 - (int32_t)pen_note[0]);       /* the pen: D4 */
+        keyw(4);
+        release(B_SEQ);
+        check(!song.rec && step_on(&t->step[4]) && t->step[4].note[0] == 62 && t->step[4].time == ST_NOTE,
+              "SEQ + KNOB 1 + white key 5: a D4 step written on track 2, without recording");
+        press(B_SEQ);
+        fm1_in.notes |= 1u << key_of_white(4);         /* step 5 held */
+        frame();
+        turn(EN_K1, 3);
+        fm1_in.notes &= ~(1u << key_of_white(4));
+        frame();
+        release(B_SEQ);
+        check(step_on(&t->step[4]) && t->step[4].note[0] == 65, "... step 5 held + KNOB 1: its note up 3 (F4), the step stays");
+        press(B_SEQ);
+        keyw(4);
+        release(B_SEQ);
+        check(!step_on(&t->step[4]), "... SEQ + the same key again: the step is cleared");
+    }
+    turn(EN_SELECT, -1);
+
     /* knobs and the focus overlay */
     tap(B_GLO);
     turn(EN_SELECT, 1);

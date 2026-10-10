@@ -14,6 +14,7 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 
 | SLOOP feature | FM1 Move | How on FM1 Move |
 | --- | --- | --- |
+| Step entry without recording (stopped or playing) | kept | SEQ held + white keys 1–16 write / clear steps: synth tracks the last note or chord played (or SEQ held + KNOB 1 picks the note), drum tracks the last sound played (or KNOB 1 picks the lane); a step key held: KNOB 1 note, 2 level, 3 ratchet, 4 nudge |
 | 64 steps per track, own length and division (polymeter, 1/32 … 2 bars) | kept (8 tracks) | SEQUENCER: KNOB 1 DIV, KNOB 3 LENGTH; SEQ held: KNOB 2–4 |
 | Chords up to 4 notes a step, ties | kept | recorded from the keys (several keys or chord mode: chords; a note held over steps: ties) |
 | Accent and slide flags on a step | kept in playback; **gone** from the panel | SLOOP set them on its STEP page; FM1 Move plays them (from user preset patterns, SLOOP projects) but no panel page or device-page editor sets them yet |
