@@ -183,6 +183,8 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
       <button class="btn" id="virtual">Use the virtual FM1</button>
       <button class="btn" id="disconnect" hidden>Disconnect</button>
     </div>
+    <div class="tiny" style="margin-top:8px">Installing does not need Connect: go straight to <b>Install</b> below, whatever firmware the FM-1 runs now.
+      Connect is for managing an FM-1 that already runs FM1 Move.</div>
     <div id="status" role="status"></div>
   </div>
   <div class="vscreen" id="vscreen" title="The virtual FM1's screen"><canvas id="vcanvas" width="240" height="240"></canvas></div>
@@ -444,7 +446,11 @@ async function job(fn, okMsg) {
 let dev = null;          /* {kind: "usb" | "virtual", link, info, move, ...} */
 let midi = null;
 const rq = (r, o) => dev.link.request(r, o);
-const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";
+const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";   /* SLOOP / FM1 Move name their USB MIDI "Felucca" */
+const FM1_PORT = /fm-1|felucca|ota|composite|sinco|usb-midi/i;                   /* every name the updater probes (fm1ota.js) */
+const seenPorts = (m) => [...new Set([...m.inputs.values()].filter((p) => p.state !== "disconnected").map((p) => p.name || "(no name)"))];
+const NOT_FOUND_TIPS = "Plug the FM-1 straight into the computer (no hub), switch it on, close every other app or tab that uses MIDI " +
+  "(SLOOP's editor, M-UPGRADE, a DAW; on Windows only one program can use a MIDI port), then reload this page and try again.";
 
 function setPill() {
   const p = $("pill");
@@ -488,13 +494,41 @@ async function connectUsb() {
   catch (e) { say("MIDI (SysEx) was not allowed. Allow MIDI for this site (address bar) and try again.", true); return; }
   midi.onstatechange = (e) => { if (dev && dev.kind === "usb" && e.port && e.port.state === "disconnected" && (e.port.id === dev.input.id || e.port.id === dev.output.id)) disconnect("The FM-1 was unplugged."); };
   const input = [...midi.inputs.values()].find(isF), output = [...midi.outputs.values()].find(isF);
-  if (!input || !output) { say("No FM-1 found. Check the cable (a data cable), close other apps that use MIDI, and try again.", true); return; }
+  if (!input || !output) { await identifyOther(); return; }
   const link = new Link((d) => output.send(d), { timeout: 400, onPush: onPush });
   input.onmidimessage = (e) => link.receive(e.data);
   if (input.open) await input.open().catch(() => {});
   dev = { kind: "usb", link, input, output };
   try { await afterConnect(); }
   catch (e) { console.error(e); disconnect(/timeout/.test(e.message) ? "The FM-1 does not answer. Is it running FM1 Move or SLOOP (not in update mode)?" : e.message, true); }
+}
+
+/* no "Felucca" port: the FM-1 may run the official firmware, or wait in update mode, under another name. Ask it who it is
+   (the updater's identity handshake) and say what to do, instead of "not found" */
+async function identifyOther() {
+  const names = seenPorts(midi);
+  if (!names.some((n) => FM1_PORT.test(n))) {
+    say(`No FM-1 found. MIDI ports this browser sees: ${names.length ? names.join(", ") : "none"}. ${NOT_FOUND_TIPS}`, true);
+    return;
+  }
+  say("Asking the FM-1 which firmware it runs…");
+  let found = null;
+  try { found = await new OTA.Updater(midi, () => {}).find(); } catch (e) { found = null; }
+  if (found) found.link.close();
+  if (!found) {
+    say(`A USB MIDI device is there (${names.join(", ")}) but it does not answer as an FM-1. ${NOT_FOUND_TIPS}`, true);
+    return;
+  }
+  const id = found.id;
+  showTab("install");
+  if (/^ota-/i.test(id.model)) {
+    say(`This FM-1 is in update mode (${id.text}): an install was not finished. Press the Install button again below: it finishes.`, true);
+  } else if (id.text === "FM-1_015" || !/^FM-1_9\d\d$/i.test(id.text)) {
+    say(`This FM-1 runs the official M-VAVE firmware (${id.text}). That is fine: you don't need to connect to install. ` +
+      `Tick the box under FM1 Move and press Install FM1 Move below (or install SLOOP). After the install, Connect works.`);
+  } else {
+    say(`This FM-1 (${id.text}) answers the updater but not as SLOOP or FM1 Move: install from below, then connect.`, true);
+  }
 }
 
 function disconnect(msg = "Disconnected.", err = false) {
@@ -649,7 +683,9 @@ async function install(image, product, label, isStock = false) {
     }
   } catch (e) {
     ilog(String(e && e.stack || e));
-    isay(e && e.code && ERR[e.code] ? ERR[e.code] + (e.detail || "") : "Error: " + (e && e.message), true);
+    isay(e && e.code && ERR[e.code] ? ERR[e.code] + (e.detail || "") +
+      (e.code === "notfound" ? ` MIDI ports this browser sees: ${seenPorts(access).join(", ") || "none"}. ${NOT_FOUND_TIPS}` : "")
+      : "Error: " + (e && e.message), true);
   }
   writing = false; installButtons();
 }
