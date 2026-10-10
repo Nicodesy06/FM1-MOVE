@@ -48,6 +48,12 @@
 - Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
 - `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.
 
+### Manual
+- `docs/manual/`: quick start and every feature (panel, screens, layers, tracks, sequencer, recording, Groove Engine,
+  sounds, projects, settings, MIDI, the device page, install, recovery, coming from SLOOP, questions), in the app's
+  theme, with the firmware's own screen renders; linked from the README, the device page and the simulator. Layout
+  audited at 8 widths (`tools/web_layout_audit.cjs`).
+
 ### Editor protocol in FM1 Move, the device page, SLOOP parity
 - `editor.c` in the FM1MOVE build (`FELUCCA_EDITOR` 1): eight tracks (every track's level its own, the solo mask in
   two bytes, DRUM_STEP on the selected / first drum track), PROJECT on the FM1M slots, version "FM1 MOVE 0.1".

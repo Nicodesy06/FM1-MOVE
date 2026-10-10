@@ -8,6 +8,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 <p align="center">
 <a href="https://nicodesy06.github.io/FM1-MOVE/sim/"><b>▶ Try it in your browser</b></a> ·
 <a href="https://nicodesy06.github.io/FM1-MOVE/device/"><b>Install &amp; manage</b></a> ·
+<a href="https://nicodesy06.github.io/FM1-MOVE/manual/"><b>Manual</b></a> ·
 <a href="#status">Status</a> ·
 <a href="#features">Features</a> ·
 <a href="#the-interface">Interface</a> ·
@@ -33,6 +34,7 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 | Host tests | ✅ all FM1 Move suites pass (also under ASan + UBSan); SLOOP's 182 reference renders unchanged |
 | Browser test view | ▶ [nicodesy06.github.io/FM1-MOVE/sim](https://nicodesy06.github.io/FM1-MOVE/sim/) — the firmware compiled to WebAssembly on a simulated panel (simulation, not the device) |
 | Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move experimental, SLOOP stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly, not yet on an FM-1 |
+| Manual | [nicodesy06.github.io/FM1-MOVE/manual](https://nicodesy06.github.io/FM1-MOVE/manual/) — quick start and every feature |
 | SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) — every engine and sequencer feature kept; song arranger removed (clips / scenes next) |
 | Hardware | ⏳ not tested yet |
 | Branch | [`fm1-move/dev`](../../tree/fm1-move/dev) — `master` is the untouched SLOOP 2.5 baseline |

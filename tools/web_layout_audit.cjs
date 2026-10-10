@@ -54,6 +54,9 @@ const AUDIT = () => {
   const report = {};
   const W = [1440, 1280, 1024, 900, 768, 600, 390, 320];
   const run = async (key) => { for (const w of W) { await p.setViewportSize({ width: w, height: 900 }); await p.waitForTimeout(250); const r = await p.evaluate(AUDIT); if (r.overlaps.length || r.cut.length || r.wide) report[`${key} @${w}`] = r; } };
+  await p.goto('http://localhost:8765/manual/', { waitUntil: 'networkidle' });
+  await p.evaluate(async () => { document.documentElement.style.scrollBehavior = 'auto'; for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 30)); } scrollTo(0, 0); });
+  await run('manual');
   await p.goto('http://localhost:8765/sim/');
   await run('sim (power overlay)');
   await p.click('#on'); await p.waitForTimeout(500);
