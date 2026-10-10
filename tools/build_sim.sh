@@ -12,7 +12,7 @@ mkdir -p "$GEN" docs/sim
 [ -f "$GEN/felucca_drumkits.h" ] || python3 tools/gen_drumkits.py "$GEN/felucca_drumkits.h"
 [ -f "$GEN/felucca_fm6.h" ] || python3 tools/gen_fm6_patches.py "$GEN/felucca_fm6.h"
 python3 tools/gen_dsfont.py "$GEN/ds_fonts.h" >/dev/null
-EXPORTS="sim_init sim_demo sim_resume sim_audio sim_ui sim_set sim_turn sim_led sim_fb sim_pcm_ptr sim_nor sim_fmp_base sim_fmp_size sim_flash_dirty sim_bpm sim_playing"
+EXPORTS="sim_init sim_boot sim_new sim_demo sim_audio sim_ui sim_set sim_turn sim_led sim_fb sim_pcm_ptr sim_nor sim_fmp_base sim_fmp_size sim_store_base sim_store_size sim_flash_dirty sim_bpm sim_playing sim_rx_ptr sim_rx sim_tx_ptr sim_tx_len sim_tx_clear"
 EX=""
 for e in $EXPORTS; do EX="$EX -Wl,--export=$e"; done
 # --global-base: the firmware's register addresses (all below 1 MiB) land on unused memory, never on our data

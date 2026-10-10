@@ -7,6 +7,9 @@ run on a device.
 
 Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflow), Felucca/SLOOP (base).
 
+Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and how each is reached on the panel):
+[`SLOOP_PARITY.md`](SLOOP_PARITY.md).
+
 ## Tracks and engines
 
 | Feature | Status | Notes |
@@ -19,7 +22,7 @@ Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflo
 | Global voice allocation, priority, stealing, shedding | SLOOP + FM1M | 8-voice budget across parts, bass/lead protected; last-resort steal for 8 parts |
 | 12 synth engines, 153 presets | SLOOP | FM6 with DX7 import, PHYS, NOISE… |
 | Drum kits (16 sounds, levels, ratchets, choke hat) | SLOOP + FM1M | any number of drum tracks sharing 6 voices, own kit / mix / choke |
-| Sample playback, user samples (USR1–4), CHOP in editor | SLOOP | no audio input on the device |
+| Sample playback, user samples (USR1–4), CHOP in editor | SLOOP; FM1M: USR1–3 (USR4's flash holds the projects), kits and instruments from the device page; CHOP: SLOOP's editor only | no audio input on the device |
 | MIDI OUT track (USB) | PART | SLOOP sends the sequencer to USB MIDI globally (`G_MIDI`) |
 
 ## Timing, groove

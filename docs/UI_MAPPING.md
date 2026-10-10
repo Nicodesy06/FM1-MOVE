@@ -10,11 +10,11 @@ kind, capture (REC + PLAY).
 
 | Control | Function |
 | --- | --- |
-| SELECT | track 1–8 |
+| SELECT | track 1–8; any function button held + SELECT: tempo (1 BPM a detent) |
 | PRESETS | sound of the selected track |
 | PLAY / REC | transport / record arm; REC + PLAY = capture |
 | SEL held + keys 1–8 | select track |
-| GLO held + keys 1–8 / 9–16 | mute / solo track 1–8 |
+| GLO held + keys 1–8 / 9–16 | mute / solo track 1–8; black keys C#, D#, F#: fill while held, fill next bar, tap tempo |
 | SAVE held + keys 1–8 | launch scene 1–8 (quantised) |
 | FX held + keys 1–16 | punch-in effect while held |
 | ARP held + keys | note repeat (roll) at the GROOVE grid |

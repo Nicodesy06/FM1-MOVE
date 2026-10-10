@@ -512,6 +512,7 @@ static int audio_quiet(void)
 #if FM1MOVE
 /* ---- FM1 Move: projects as FM1M streams (projfmt.c): slots 0..3, the autosave in slot 4 */
 #define FMP_AUTOSAVE 4u
+static uint8_t fmp_hold;                       /* a restore (editor.c) stages a stream in st_buf: no flash use meanwhile */
 static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + (slot % FMP_SLOTS) * 2u + chunk % 2u; }
 #include "projfmt.c"
 /* SLOOP's USR4 sample slot lived where FM1M projects go: one found there is never written over unasked */
@@ -523,11 +524,11 @@ static int fmp_region_has_sample(void)
 static int fmp_used(uint32_t slot)
 {
     fmp_r_t r;
-    return flash_ok && !fmp_open(&r, slot);
+    return flash_ok && !fmp_hold && !fmp_open(&r, slot);   /* (fmp_open reads into st_buf) */
 }
 static int project_save_fmp(uint32_t slot)
 {
-    if (!flash_ok)
+    if (!flash_ok || fmp_hold)
         return -1;
     if (fmp_region_has_sample())
         return -10;
@@ -541,6 +542,8 @@ static int project_load_fmp(uint32_t slot)
         ui_message("STOP BEFORE LOAD");
         return -2;
     }
+    if (fmp_hold)
+        return -1;
     panic_req = (1u << NTRK) - 1u;
     rc = flash_ok ? fmp_load(slot, &refused) : -1;
     if (!rc) {
@@ -554,7 +557,7 @@ static int project_load_fmp(uint32_t slot)
 static void project_delete_fmp(uint32_t slot)
 {
     uint32_t k, c;
-    if (!flash_ok || song.playing)
+    if (!flash_ok || song.playing || fmp_hold)
         return;
     for (k = 0; k < FMP_NCHUNK; k++)
         for (c = 0; c < 2u; c++)
@@ -563,7 +566,7 @@ static void project_delete_fmp(uint32_t slot)
 static void autosave_tick(void)                /* main loop: the working project, when it changed and all is quiet */
 {
     uint32_t h, now = fm1_ms;
-    if (!flash_ok || song.playing || transport_req || rec_wait || ft_on || ctl.menu ||
+    if (!flash_ok || fmp_hold || song.playing || transport_req || rec_wait || ft_on || ctl.menu ||
         now - ui_input_ms < AUTOSAVE_IDLE || now - autosave_ms < AUTOSAVE_GAP || now - autosave_checked < 1000u)
         return;
     autosave_checked = now;

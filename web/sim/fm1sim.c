@@ -14,6 +14,7 @@
  *   sim_flash_dirty()                1 once after the flash was written (the page saves the projects)
  * Built by tools/build_sim.sh into docs/sim/fm1sim.wasm. Not the device: no SPI timing, no audio deadline. */
 #define FM1MOVE 1
+#define FELUCCA_FLASH 1
 #define __attribute__(x)
 #include <stdint.h>
 #include "felucca_tables.h"
@@ -21,6 +22,9 @@
 static struct { volatile uint32_t notes, buttons; } fm1_in;
 static void fm1_irq_off(void) {}
 static void fm1_irq_on(void) {}
+static uint8_t nor[0x100000];                        /* the flash (its XIP window reads it straight) */
+#define SMP_USER_XIP(k) ((const uint8_t *)nor + SMP_USER_OFF((uint32_t)(k)))   /* (eng_sample.c, fm6_bank.c: the XIP */
+#define FM6_BANK_XIP(copy) ((const uint8_t *)nor + st_sector(OBJ_FM6BANK, copy) + ST_PAYLOAD_OFF)   /* window) */
 #include "../../firmware/src/core.h"
 #include "../../firmware/src/engines.c"
 #include "../../firmware/src/drums.c"
@@ -81,21 +85,12 @@ static uint32_t fm1_input_note_edges(void) { uint32_t e = fm1_in.notes & ~notes_
 static void fm1_wdt_feed(void) {}
 #include "../../firmware/src/panel.c"
 #include "../../firmware/src/ui.c"
-static int up_used(uint32_t k) { (void)k; return 0; }
-static int up_load(uint32_t k) { (void)k; return 0; }
-static uint32_t up_count(void) { return 0; }
-static uint32_t up_nth(uint32_t n) { return n; }
-static uint32_t up_rank(uint32_t s) { return s; }
-static void up_name(uint32_t k, char *b) { (void)k; str_cpy(b, "USER", 8); }
-static void up_slot_label(char *b, uint32_t k) { fmt_int(b, (int32_t)k + 1); }
-static void up_ui(uint32_t op, uint32_t k) { (void)op; (void)k; }
-static void settings_save(void) {}
-static void project_save(uint32_t slot) { (void)slot; }
-static void project_load(uint32_t slot) { (void)slot; }
-static int project_used(uint32_t slot) { (void)slot; return 0; }
-static void arrangement_save(void) {}
-/* the flash */
-static uint8_t nor[0x100000];
+#include "../../firmware/src/ds.c"
+#include "../../firmware/src/ui_move.c"
+#include "../../firmware/src/ui_layers.c"
+#include "../../firmware/src/ui_move_ctl.c"
+
+/* the flash: a 1 MiB array (nor, at the top) behind the storage layer and the flash driver calls (fm1_flash.h) */
 static uint8_t flash_ok = 1, sim_dirty;
 static int st_read(uint32_t off, void *dst, uint32_t n) { memcpy(dst, nor + off, n); return 0; }
 static int st_erase(uint32_t off) { memset(nor + (off & ~0xFFFu), 0xFF, 4096); sim_dirty = 1; return 0; }
@@ -107,77 +102,90 @@ static int st_prog(uint32_t off, const void *src, uint32_t n)
     sim_dirty = 1;
     return 0;
 }
+static int fl_write(uint32_t off, const void *src, uint32_t n) { return st_prog(off, src, n); }
+static int fl_erase4k_quiet(uint32_t off, uint32_t *took) { *took = 0; return st_erase(off); }
+static void fl_inval(uint32_t off, uint32_t n) { (void)off; (void)n; }
+static uint32_t irq_save(void) { return 0; }
+static void irq_restore(uint32_t f) { (void)f; }
+static uint32_t fl_jedec_ram(void) { return 0x856014u; }      /* the FM-1's 1 MiB part */
+#define FL_FAR(f) f
+static void fl_plain_window_init(void) {}
 #include "../../firmware/src/storage.c"
-static uint32_t fmp_obj(uint32_t slot, uint32_t chunk) { return OBJ_FMP0 + (slot % FMP_SLOTS) * 2u + chunk % 2u; }
-#include "../../firmware/src/projfmt.c"
-static int fmp_used(uint32_t slot) { fmp_r_t r; return !fmp_open(&r, slot); }
-static int project_save_fmp(uint32_t slot)
-{
-    if (song.playing || transport_req)
-        return -2;
-    return fmp_save(slot);
-}
-static int project_load_fmp(uint32_t slot)
-{
-    if (song.playing || transport_req) {
-        ui_message("STOP BEFORE LOAD");
-        return -2;
-    }
-    panic_req = (1u << NTRK) - 1u;
-    return fmp_load(slot, 0);
-}
-static void project_delete_fmp(uint32_t slot)
-{
-    uint32_t k, c;
-    for (k = 0; k < FMP_NCHUNK; k++)
-        for (c = 0; c < 2u; c++)
-            st_erase(st_sector(fmp_obj(slot, k), c));
-}
-#include "../../firmware/src/ds.c"
-#include "../../firmware/src/ui_move.c"
-#include "../../firmware/src/ui_layers.c"
-#include "../../firmware/src/ui_move_ctl.c"
+#include "../../firmware/src/upreset.c"
+#include "../../firmware/src/project.c"
 
-/* ------------------------------------------------------------------ exports --- */
-static uint32_t autosave_hash_sim, autosave_ms_sim;
-static int audio_quiet_sim(void)                     /* nothing sounds (the autosave waits for it, as project.c) */
+/* the editor's SysEx (usb.c's frame ring on the device): one request frame in, the replies out to the page */
+static uint8_t sim_rxb[1024], sim_tx[8192];
+static uint32_t sim_rx_n, sim_tx_n;
+#define SXQ 256u                                     /* (usb.c's SysEx out ring: the pushes wait for half of it) */
+static uint32_t so_w, so_r;
+static int ota_frame_get(const uint8_t **p, uint32_t *n)
 {
-    uint32_t p, i;
-    for (p = 0; p < NTRK; p++)
-        for (i = 0; i < NVOICE; i++)
-            if (trk[p].v[i].active)
-                return 0;
-    for (i = 0; i < NDRUM; i++)
-        if (drums.v[i].active)
-            return 0;
+    if (!sim_rx_n)
+        return 0;
+    *p = sim_rxb;
+    *n = sim_rx_n;
     return 1;
 }
+static void ota_frame_done(void) { sim_rx_n = 0; }
+static int ota_wire_send(const uint8_t *p, uint32_t n)
+{
+    if (sim_tx_n + n > sizeof sim_tx)
+        return -1;
+    memcpy(sim_tx + sim_tx_n, p, n);
+    sim_tx_n += n;
+    return 0;
+}
+#include "../../firmware/src/editor.c"
+
+/* ------------------------------------------------------------------ exports --- */
 #define SIM_MAXF 4096u
 static int16_t sim_pcm[2u * SIM_MAXF];
 static uint8_t sim_ready;
 
+/* an erased flash (the page then puts back what it kept: sim_store_base / sim_store_size) */
 void sim_init(void)
 {
-    uint32_t i;
     memset(nor, 0xFF, sizeof nor);
-    panel = PANEL_DEFAULT;
+    sim_ready = 0;
+}
+
+/* a new project: main.c's felucca_init without the autosave */
+static void sim_defaults(void)
+{
+    uint32_t i;
     for (i = 0; i < G_COUNT; i++)
         song.g[i] = GP[i].def;
-    song.g[G_BPM] = 120;
-    song.master_q12 = 3200;
     fm6_init();
-    layers_init();
     project_default_tracks();
     song.sel = 0;
+    song.master_q12 = 3200;
+    song.g[G_SYNC] = (int16_t)lights_sync;
+    song.g[G_MIDI] = (int16_t)lights_mout;
+    song.g[G_ROUTE] = (int16_t)lights_min;
+}
+
+/* power-on, as main.c: the settings, the user presets and the sample slots from the flash, then the project as
+ * it was left (the autosave) */
+void sim_boot(void)
+{
+    panel = PANEL_DEFAULT;
+    persist_boot();
+    settings_init();
+    sim_defaults();
+    autosave_resume();
+    layers_init();
     ctl.force = 1;
     sim_ready = 1;
 }
 
-/* the page restored the flash's project region: the working project comes back (as at power-on) */
-void sim_resume(void)
+/* RESET on the page: a new, empty project (what is saved stays) */
+void sim_new(void)
 {
-    if (fmp_load(4u, 0) == 0)
-        fmp_measure(&autosave_hash_sim);
+    fm1_irq_off();
+    panic_req = (1u << NTRK) - 1u;
+    sim_defaults();
+    fm1_irq_on();
     ctl.force = 1;
 }
 
@@ -243,18 +251,14 @@ int sim_ui(uint32_t ms)
     uint32_t h;
     if (!sim_ready)
         return 0;
+    (void)h;
     fm1_ms = ms;
     sim_changed = 0;
+    ed_service();                                    /* (main.c's loop) */
     ui_input();
     ui_leds();
     ui_draw();
-    /* the autosave, as on the device: stopped, quiet, a few seconds after the last touch */
-    if (!song.playing && !transport_req && ms - ui_input_ms > 2500u && ms - autosave_ms_sim > 5000u) {
-        autosave_ms_sim = ms;
-        fmp_measure(&h);
-        if (h != autosave_hash_sim && audio_quiet_sim() && fmp_save(4u) == 0)
-            autosave_hash_sim = h;
-    }
+    autosave_tick();                                 /* the working project into flash, when quiet (project.c) */
     return sim_changed;
 }
 
@@ -294,6 +298,23 @@ int16_t *sim_pcm_ptr(void) { return sim_pcm; }
 uint8_t *sim_nor(void) { return nor; }
 uint32_t sim_fmp_base(void) { return FMP_FLASH_BASE; }
 uint32_t sim_fmp_size(void) { return 2u * FMP_SLOTS * 2u * ST_SECTOR; }
+uint32_t sim_store_base(void) { return 0x97000u; }   /* everything the firmware keeps: projects, presets, samples, */
+uint32_t sim_store_size(void) { return 0x100000u - 0x97000u; }   /* the FM6 bank, the settings */
+
+/* the editor's SysEx: the page writes one request (the bytes between F0 and F7) at sim_rx_ptr and calls sim_rx(n);
+ * the device answers at once (ed_service), the replies (whole F0..F7 messages, pushes too) wait at sim_tx_ptr */
+uint8_t *sim_rx_ptr(void) { return sim_rxb; }
+int sim_rx(uint32_t n)
+{
+    if (!sim_ready || sim_rx_n || n > sizeof sim_rxb)
+        return 0;
+    sim_rx_n = n;
+    ed_service();
+    return 1;
+}
+uint8_t *sim_tx_ptr(void) { return sim_tx; }
+uint32_t sim_tx_len(void) { return sim_tx_n; }
+void sim_tx_clear(void) { sim_tx_n = 0; }
 int sim_flash_dirty(void) { int d = sim_dirty; sim_dirty = 0; return d; }
 uint32_t sim_bpm(void) { return (uint32_t)song.g[G_BPM]; }
 uint32_t sim_playing(void) { return song.playing; }

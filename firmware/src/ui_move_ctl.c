@@ -8,7 +8,7 @@
  *   bottom row HOME PLAY    SAVE CLIPS   ARP GROOVE      SEQ SEQUENCER   PLAY transport   REC record
  *   held       FX punch, EDIT erase, ARP roll, SEQ steps, SEL track / key, GLO mute / solo, SAVE (scenes, M3)
  *   HOME held  the system pages: PROJECT, SETTINGS
- *   encoders   SELECT track, PRESETS sound, ALGORITHM the screen's navigator, KNOB 1..4 the knob strip
+ *   encoders   SELECT track (a button held: the tempo), PRESETS sound, ALGORITHM the screen's navigator, KNOB 1..4
  * Destructive actions ask first: a modal, the same button again confirms, anything else (or 4 s) cancels. */
 
 #define CTL_TAP_MS 450u                         /* a press shorter than this, untouched: a tap */
@@ -189,7 +189,7 @@ static void st_value(uint32_t r, char *b)
     case ST_LIGHTS: str_cpy(b, LV[lights_lvl % 4u], 16); break;
     case ST_KEYS: str_cpy(b, KY[lights_keys % 4u], 16); break;
     case ST_USBAUDIO: str_cpy(b, usb_full ? "FULL" : "MAIN", 16); break;
-    default: str_cpy(b, "FM1 MOVE 0.1", 16); break;
+    default: str_cpy(b, FELUCCA_VERSION, 16); break;
     }
 }
 static void st_turn(uint32_t r, int32_t s)
@@ -462,7 +462,13 @@ static void ui_input(void)
             ctl.hot_ms = fm1_ms;
             ui.hot_t = 0;
         }
-        panel_enc(EN_SELECT);
+        if ((s = panel_enc(EN_SELECT)) != 0) {          /* SELECT with a button held: the tempo, one BPM a detent (as SLOOP) */
+            char bpm[8];
+            song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + s, GP[G_BPM].min, GP[G_BPM].max);
+            ctl.used[lb] = 1;
+            fmt_int(bpm, song.g[G_BPM]);
+            ctl_toast("TEMPO ", bpm);
+        }
         if (!(held == LY_STEP && ui.step_held)) {
             panel_enc(EN_ALGO);
             panel_enc(EN_PRESET);

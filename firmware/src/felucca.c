@@ -192,7 +192,7 @@ static void ota_commit(const uint8_t *parm)
 }
 #endif
 #ifndef FELUCCA_EDITOR
-#define FELUCCA_EDITOR (!FM1MOVE)   /* SLOOP's web editor speaks four tracks: not in FM1 Move (yet) */
+#define FELUCCA_EDITOR 1            /* the editor protocol; FM1 Move: eight tracks, FM1M projects, USR1..3 (editor.c) */
 #endif
 #if FELUCCA_OTA && FELUCCA_EDITOR
 #include "editor.c"          /* web editor SysEx (needs the OTA SysEx plumbing) */

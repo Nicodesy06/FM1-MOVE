@@ -48,6 +48,25 @@
 - Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
 - `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.
 
+### Editor protocol in FM1 Move, the device page, SLOOP parity
+- `editor.c` in the FM1MOVE build (`FELUCCA_EDITOR` 1): eight tracks (every track's level its own, the solo mask in
+  two bytes, DRUM_STEP on the selected / first drum track), PROJECT on the FM1M slots, version "FM1 MOVE 0.1".
+  Backup objects: settings, user presets, FM6 bank, SYN kits, **16 the working project, 17–20 projects 1–4** (FM1M
+  streams, read through a window: no project-sized buffer), USR1–USR3. A restored stream is staged chunk 0 in
+  `proj_tmp`, chunk 1 in `st_buf`, parsed whole, then written as `fmp_save` writes (a cut-off restore leaves the old
+  project); the autosave and the panel's project actions wait meanwhile (`fmp_hold`). **USR4 is refused** (its flash
+  holds the projects). Editor buffers in `.pool`.
+- `projfmt.c`: a RAM reader (`fmp_open_ram`), `fmp_parse_r`, `fmp_put_chunk`, `fmp_restore`, `fmp_read`, `fmp_stored`,
+  `fmp_window`; the parser also checks the stream ends exactly at its length. `storage.c`: `st_crc32_more`.
+- Panel: any function button held + SELECT sets the tempo (SLOOP's way; FM1 Move had only tap tempo).
+- `docs/device/` (`web/device.html`, `web/device_lib.js`, `web/make_device.py`): install FM1 Move (experimental, behind
+  an explicit warning), SLOOP 2.5 (stable) or the official V15 with SLOOP's updater unchanged; manage tracks and every
+  parameter, user presets, sample slots and drum kits (WAV / any audio the browser decodes), the FM6 bank (DX7
+  .syx), projects (files), backup / restore. A virtual FM1 mode runs the firmware in WebAssembly.
+- `web/sim/fm1sim.c` now runs the real `upreset.c`, `project.c` and `editor.c` (power-on and autosave as `main.c`);
+  the simulator page keeps the whole flash (shared with the device page).
+- `web/test_device.mjs` (in `tests/run_tests.sh`), `docs/SLOOP_PARITY.md`.
+
 ### Browser test view (simulation)
 - `web/sim/fm1sim.c` + `tools/build_sim.sh`: the FM1MOVE firmware sources (engines, sequencer, Groove Engine,
   project format, design system, controller) compiled freestanding to WebAssembly with stubbed LCD, encoders,

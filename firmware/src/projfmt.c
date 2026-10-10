@@ -187,6 +187,7 @@ typedef struct {
     uint32_t pos;                              /* stream bytes read */
     uint32_t chunk;                            /* the chunk in st_buf, 0xFF = none */
     int err;
+    const uint8_t *ram[FMP_NCHUNK];            /* a stream in RAM instead (a restore, checked before it is written) */
 } fmp_r_t;
 
 /* the chunk header fields of what st_buf holds */
@@ -221,6 +222,13 @@ static uint32_t fmp_get(fmp_r_t *r)
         return 0;
     }
     k = r->pos / FMP_DATA;
+    if (r->ram[0]) {                                  /* (a stream in RAM: its chunks' data, side by side) */
+        if (k >= r->n || !r->ram[k]) {
+            r->err = 2;
+            return 0;
+        }
+        return r->ram[k][r->pos++ % FMP_DATA];
+    }
     if (k != r->chunk) {
         if (k >= r->n || fmp_chunk_load(fmp_obj(r->slot, k), r->gen, k)) {
             r->err = 2;                               /* a chunk of this generation is missing or damaged */
@@ -257,6 +265,17 @@ static int fmp_open(fmp_r_t *r, uint32_t slot)
     if (!r->n || r->n > FMP_NCHUNK || !r->len || r->len > r->n * FMP_DATA)
         return -1;
     return 0;
+}
+
+/* a stream of len bytes held in RAM, chunk k's data at c[k] (a restore: parsed before anything is written) */
+static int fmp_open_ram(fmp_r_t *r, const uint8_t *c0, const uint8_t *c1, uint32_t len)
+{
+    memset(r, 0, sizeof *r);
+    r->ram[0] = c0;
+    r->ram[1] = c1;
+    r->len = len;
+    r->n = (len + FMP_DATA - 1u) / FMP_DATA;
+    return !c0 || !len || len > FMP_MAX || (r->n > 1u && !c1) ? -1 : 0;
 }
 
 static void fmp_get_groove(fmp_r_t *r, groove_t *g)
@@ -422,11 +441,11 @@ static int fmp_get_track(fmp_r_t *r, track_t *t, uint32_t ti, uint32_t *heavy_re
 /* read slot: pass 1 checks every byte (nothing changes), pass 2 applies. Returns 0, or -1 (empty / damaged: the
  * working project is untouched). *refused: bit per track whose heavy engine found no arena (it got ANALOG). The
  * caller stops the transport and calls this with the interrupts off for pass 2 (fmp_load does both). */
-static int fmp_parse(uint32_t slot, int apply, uint32_t *refused)
+static int fmp_parse_r(fmp_r_t *rp, int apply, uint32_t *refused)
 {
-    fmp_r_t r;
+#define r (*rp)
     uint32_t ntr, ng, i, sel;
-    if (fmp_open(&r, slot) || fmp_get32(&r) != FMP_MAGIC || fmp_get(&r) != FMP_VERSION)
+    if (fmp_get32(&r) != FMP_MAGIC || fmp_get(&r) != FMP_VERSION)
         return -1;
     ntr = fmp_get(&r);
     sel = fmp_get(&r);
@@ -460,11 +479,17 @@ static int fmp_parse(uint32_t slot, int apply, uint32_t *refused)
         trk_set_kind(&trk[i], TK_SYNTH);
         steps_clear(&trk[i]);
     }
-    if (fmp_get(&r) != 'E' || r.err)
+    if (fmp_get(&r) != 'E' || r.err || r.pos != r.len)
         return -1;
     if (apply)
         song.sel = (uint8_t)(sel < NTRK ? sel : 0u);
     return 0;
+#undef r
+}
+static int fmp_parse(uint32_t slot, int apply, uint32_t *refused)
+{
+    fmp_r_t r;
+    return fmp_open(&r, slot) ? -1 : fmp_parse_r(&r, apply, refused);
 }
 
 static int fmp_load(uint32_t slot, uint32_t *refused)
@@ -495,6 +520,26 @@ static uint32_t fmp_next_gen(uint32_t slot)
     return g + 1u;
 }
 
+/* chunk k of n (generation gen, stream length len) whose data (nb bytes) is already at st_buf + FMP_CHDR: its header,
+ * then the storage write */
+static int fmp_put_chunk(uint32_t slot, uint32_t k, uint32_t n, uint32_t gen, uint32_t len, uint32_t nb)
+{
+    st_buf[0] = (uint8_t)FMP_CMAGIC;
+    st_buf[1] = (uint8_t)(FMP_CMAGIC >> 8);
+    st_buf[2] = (uint8_t)(FMP_CMAGIC >> 16);
+    st_buf[3] = (uint8_t)(FMP_CMAGIC >> 24);
+    st_buf[4] = (uint8_t)gen;
+    st_buf[5] = (uint8_t)(gen >> 8);
+    st_buf[6] = (uint8_t)(gen >> 16);
+    st_buf[7] = (uint8_t)(gen >> 24);
+    st_buf[8] = (uint8_t)k;
+    st_buf[9] = (uint8_t)n;
+    st_buf[10] = (uint8_t)len;
+    st_buf[11] = (uint8_t)(len >> 8);
+    st_buf[12] = st_buf[13] = st_buf[14] = st_buf[15] = 0;
+    return st_save_staged(fmp_obj(slot, k), FMP_CHDR + nb);
+}
+
 /* write the project now into slot: the later chunks, then chunk 0. 0 = saved; -9 = too big; else storage's code */
 static int fmp_save(uint32_t slot)
 {
@@ -511,21 +556,64 @@ static int fmp_save(uint32_t slot)
         w.buf = st_buf + FMP_CHDR;
         w.hash = 2166136261u;
         fmp_stream(&w);
-        st_buf[0] = (uint8_t)FMP_CMAGIC;
-        st_buf[1] = (uint8_t)(FMP_CMAGIC >> 8);
-        st_buf[2] = (uint8_t)(FMP_CMAGIC >> 16);
-        st_buf[3] = (uint8_t)(FMP_CMAGIC >> 24);
-        st_buf[4] = (uint8_t)gen;
-        st_buf[5] = (uint8_t)(gen >> 8);
-        st_buf[6] = (uint8_t)(gen >> 16);
-        st_buf[7] = (uint8_t)(gen >> 24);
-        st_buf[8] = (uint8_t)k;
-        st_buf[9] = (uint8_t)n;
-        st_buf[10] = (uint8_t)len;
-        st_buf[11] = (uint8_t)(len >> 8);
-        st_buf[12] = st_buf[13] = st_buf[14] = st_buf[15] = 0;
-        if ((rc = st_save_staged(fmp_obj(slot, k), FMP_CHDR + hi - lo)) != 0)
+        if ((rc = fmp_put_chunk(slot, k, n, gen, len, hi - lo)) != 0)
             return rc;
     }
     return 0;
+}
+
+/* a restored stream into slot (backup / restore, editor.c): chunk 1's data already staged at st_buf + FMP_CHDR,
+ * chunk 0's at c0; the caller parsed the whole stream first (fmp_open_ram + fmp_parse_r) and took gen from
+ * fmp_next_gen before staging (it reads into st_buf). As fmp_save: chunk 1, then chunk 0 commits */
+static int fmp_restore(uint32_t slot, uint32_t gen, const uint8_t *c0, uint32_t len)
+{
+    uint32_t n = (len + FMP_DATA - 1u) / FMP_DATA;
+    int rc;
+    if (!len || len > FMP_MAX)
+        return -9;
+    if (n > 1u && (rc = fmp_put_chunk(slot, 1, n, gen, len, len - FMP_DATA)) != 0)
+        return rc;
+    memcpy(st_buf + FMP_CHDR, c0, n > 1u ? FMP_DATA : len);
+    return fmp_put_chunk(slot, 0, n, gen, len, n > 1u ? FMP_DATA : len);
+}
+
+/* the stream bytes off .. off + cnt - 1 of what slot holds, into dst (backup); 0 = done */
+static int fmp_read(uint32_t slot, uint32_t off, uint8_t *dst, uint32_t cnt)
+{
+    fmp_r_t r;
+    uint32_t i;
+    if (fmp_open(&r, slot) || off > r.len || cnt > r.len - off)
+        return -1;
+    r.pos = off;
+    r.chunk = 0xFFu;                                  /* (st_buf holds chunk 0: re-read whichever is needed) */
+    for (i = 0; i < cnt; i++)
+        dst[i] = (uint8_t)fmp_get(&r);
+    return r.err ? -1 : 0;
+}
+
+/* the length and CRC-32 of what slot holds (0 length: empty or damaged) */
+static uint32_t fmp_stored(uint32_t slot, uint32_t *crc)
+{
+    fmp_r_t r;
+    uint32_t k, c = 0;
+    *crc = 0;
+    if (fmp_open(&r, slot))
+        return 0;
+    for (k = 0; k < r.n; k++) {
+        uint32_t nb = k + 1u < r.n ? FMP_DATA : r.len - k * FMP_DATA;
+        if (fmp_chunk_load(fmp_obj(slot, k), r.gen, k))
+            return 0;
+        c = st_crc32_more(c, st_buf + FMP_CHDR, nb);
+    }
+    *crc = c;
+    return r.len;
+}
+
+/* the working project's stream bytes off .. off + cnt - 1 into dst (a window, nothing else written); returns the
+ * stream's hash, so a reader can tell the project changed between two calls */
+static uint32_t fmp_window(uint32_t off, uint8_t *dst, uint32_t cnt)
+{
+    fmp_w_t w = {0, off, off + cnt, dst, 2166136261u};
+    fmp_stream(&w);
+    return w.hash;
 }

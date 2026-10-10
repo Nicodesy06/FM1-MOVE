@@ -227,6 +227,25 @@ int main(int argc, char **argv)
     release(B_SCL);
     check(song.sel == 5u && ctl.screen == SC_PLAY, "SEL held + white key 6: track 6, no screen change (no tap)");
 
+    /* a button held + SELECT: the tempo (SLOOP's way; SELECT alone stays the track) */
+    {
+        int16_t bpm0 = song.g[G_BPM];
+        uint8_t sel0 = song.sel;
+        press(B_GLO);
+        turn(EN_SELECT, 5);
+        release(B_GLO);
+        check(song.g[G_BPM] == bpm0 + 5 && song.sel == sel0 && ctl.screen == SC_PLAY,
+              "GLO held + SELECT: the tempo, one BPM a detent (no track change, no tap)");
+        press(B_FX);
+        turn(EN_SELECT, -500);
+        release(B_FX);
+        check(song.g[G_BPM] == GP[G_BPM].min, "... any button held, and it stops at the lowest tempo");
+        press(B_FX);
+        turn(EN_SELECT, bpm0 - GP[G_BPM].min);
+        release(B_FX);
+        check(song.g[G_BPM] == bpm0, "... and back");
+    }
+
     /* GLO + keys: mute / solo */
     press(B_GLO);
     keyw(2);

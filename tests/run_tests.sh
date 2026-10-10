@@ -180,6 +180,9 @@ run "installer CLI (fm1_install.py) against a simulated FM-1" python3 tests/inst
 
 if command -v node >/dev/null 2>&1; then
     run "web pages: editor protocol, samples, packages, update protocol" node web/test_web.mjs
+    if [ -f docs/sim/fm1sim.wasm ]; then
+        run "FM1 Move device page: its protocol and flash logic against the firmware in WebAssembly" node web/test_device.mjs
+    fi
 else
     echo "== skip web tests (no node)"
 fi

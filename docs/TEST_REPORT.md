@@ -72,3 +72,28 @@ cancelled kind change leaving a stale request.
 
 Golden renders: 182 unchanged. Known baseline failure unchanged (`fm1_alnk0_irq` static cost).
 **No FM1 Move build has run on a physical FM-1.**
+
+### Editor protocol in FM1MOVE + device page (2026-10-10)
+
+Build `FM1MOVE=1` with the editor: OK — image **536 164 B** (45 KB free), RAM 92 928 / 98 304 B (the editor's
+buffers and watch state in `.pool`: +368 B RAM), pool 324 688 / 344 064 B (19 KB free, 8 KB kept spare). SLOOP layout
+build: OK, 567 920 B (+48 B: `st_crc32_more`).
+
+`web/test_device.mjs` — the device page's code (SLOOP's protocol section + `web/device_lib.js`) against the FM1MOVE
+firmware compiled to WebAssembly (`editor.c`, `project.c`, `projfmt.c`, `upreset.c`, `storage.c` on a simulated
+flash): 27 checks, all pass — INFO / TRACK (eight tracks, kinds), a parameter the panel lacks (arp mode) through
+TRACK_PARAM, user presets (store, list, get, put, erase), a drum kit uploaded into USR2, **USR4 refused** (its flash
+is the FM1M projects'), PROJECT save / load (refused while playing, nothing written), a full backup (13 objects) and
+restore (working project, preset, project slots, sample back), project files (export, import, a damaged and a
+truncated stream refused whole, nothing written), a **dense 5 204 B project (two flash chunks) restored byte for
+byte** as the working project and into a slot, FM6 bank write.
+
+Browser (headless Chromium, the virtual FM1): every tab, a track's parameter pages, a preset stored, a drum kit built
+from two WAV files and written to USR1, a project saved, a backup downloaded; no console errors; no horizontal
+scroll at 390 px. Install wiring with a stubbed Web MIDI (no FM-1): the package downloads, passes its SHA-256 check,
+SLOOP's updater runs and reports "FM-1 not found"; the FM1 Move button stays disabled until its warning is ticked.
+
+Host suite: all groups pass except the known baseline `fm1_alnk0_irq` static cost (unchanged, fails on SLOOP 2.5
+too); 182 golden renders unchanged; `fm1move_ui_test` 39 checks (new: any button held + SELECT sets the tempo).
+**No FM1 Move build has run on a physical FM-1; the device page's USB path has not met a real FM-1.**
+

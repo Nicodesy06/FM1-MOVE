@@ -37,7 +37,7 @@ always say where you are.
 
 | Control | Action |
 | --- | --- |
-| SELECT | select track 1–8 (one detent each, no wrap) |
+| SELECT | select track 1–8 (one detent each, no wrap); with any function button held: the tempo, one BPM a detent (as SLOOP) |
 | PRESETS | browse the selected track's sounds (preset, kit, or MIDI program) |
 | ALGORITHM | the screen's navigator: step page, clip row, list row, envelope stage, groove template |
 | KNOB 1–4 | the four parameters in the knob strip |

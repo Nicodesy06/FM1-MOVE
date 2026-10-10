@@ -1,0 +1,1046 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-only
+     FM1 Move device page: install firmware, manage the FM-1 (tracks, sounds, samples and kits, FM6 patches, projects,
+     backup). Template: web/make_device.py inlines SLOOP's protocol code (web/editor.html), web/device_lib.js and the
+     installer's updater (web/fm1pkg.js, web/fm1ota.js) into docs/device/index.html. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FM1 Move Device</title>
+<meta name="description" content="Install FM1 Move on the M-VAVE FM-1 and manage it from the browser: tracks and sound parameters, user presets, sample slots and drum kits, FM6 patches, projects and backup.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0b0b0c; --panel: #161618; --panel-2: #1f1f22; --panel-3: #28282c; --edge: #2e2e33; --edge-2: #3a3a40;
+  --text-1: #f4f3ee; --text-2: #a6a59e; --text-3: #75746e;
+  --accent: #fac454; --rec: #ff4038; --play: #5cdc8c; --warn: #ffb840;
+  --t1: #ff8052; --t2: #fac454; --t3: #b6dc62; --t4: #5cd6a6; --t5: #5cc4ec; --t6: #8498ff; --t7: #be92fa; --t8: #f684ba;
+  --radius: 14px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text-1); font: 15px/1.5 Inter, system-ui, sans-serif; }
+body { padding: 0 16px 56px; }
+a { color: var(--accent); }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding: 22px 0 18px; }
+.brand { font-weight: 800; font-size: 22px; letter-spacing: .02em; }
+.brand span { color: var(--text-3); font-weight: 600; }
+.pill { font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--edge-2); color: var(--text-2); text-transform: uppercase; }
+.pill.on { background: var(--play); color: #0b0b0c; border-color: transparent; }
+.pill.virt { background: var(--accent); color: #0b0b0c; border-color: transparent; }
+.pill.warn { background: var(--warn); color: #0b0b0c; border-color: transparent; }
+header nav { margin-left: auto; display: flex; gap: 16px; font-size: 14px; }
+
+.card { background: var(--panel); border: 1px solid var(--edge); border-radius: var(--radius); padding: 18px 20px; }
+.card h2 { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-1); margin-bottom: 8px; }
+.card h3 { font-size: 16px; font-weight: 700; }
+.muted { color: var(--text-2); }
+.small { font-size: 13px; color: var(--text-2); }
+.tiny { font-size: 12px; color: var(--text-3); }
+
+.connect { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; }
+.connect .lead { font-size: 20px; font-weight: 700; line-height: 1.3; margin-bottom: 6px; }
+.connect .btns { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.vscreen { display: none; background: #050505; border-radius: 10px; padding: 8px; border: 1px solid #000; box-shadow: inset 0 0 0 1px #2a2a2e; }
+.vscreen canvas { display: block; width: 240px; height: 240px; image-rendering: pixelated; }
+.vscreen.show { display: block; }
+#status { margin-top: 10px; min-height: 1.5em; font-size: 14px; color: var(--text-2); }
+#status.err { color: var(--rec); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 14px; border-radius: 10px; padding: 10px 16px;
+  border: 1px solid var(--edge-2); background: var(--panel-3); color: var(--text-1); cursor: pointer; }
+.btn:hover { border-color: #55555c; }
+.btn.primary { background: var(--accent); color: #0b0b0c; border-color: transparent; }
+.btn.danger { background: transparent; color: var(--rec); border-color: #5a2826; }
+.btn.small { padding: 6px 10px; font-size: 13px; border-radius: 8px; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 22px 0 14px; }
+.tabs button { background: transparent; border: 1px solid var(--edge); border-radius: 99px; padding: 7px 14px; font-weight: 700; font-size: 13px; letter-spacing: .04em;
+  color: var(--text-2); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--text-1); color: #0b0b0c; border-color: transparent; }
+.tabs button:disabled { opacity: .4; cursor: default; }
+section[data-tab] { display: none; }
+section[data-tab].show { display: grid; gap: 16px; }
+.need { padding: 26px; text-align: center; color: var(--text-2); }
+
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 3px 8px; border-radius: 6px; vertical-align: middle; }
+.badge.exp { background: var(--warn); color: #0b0b0c; }
+.badge.ok { background: var(--play); color: #0b0b0c; }
+.badge.off { background: var(--panel-3); color: var(--text-2); }
+.notice { border-left: 3px solid var(--warn); background: #241d10; padding: 10px 12px; border-radius: 0 10px 10px 0; font-size: 14px; color: #f1dfb9; margin: 10px 0; }
+.notice.red { border-color: var(--rec); background: #261210; color: #f3c5c1; }
+label.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-2); margin: 10px 0; cursor: pointer; }
+label.check input { margin-top: 3px; accent-color: var(--accent); }
+progress { width: 100%; height: 6px; appearance: none; -webkit-appearance: none; border: 0; border-radius: 99px; overflow: hidden; background: var(--panel-3); }
+progress::-webkit-progress-bar { background: var(--panel-3); }
+progress::-webkit-progress-value { background: var(--accent); }
+progress::-moz-progress-bar { background: var(--accent); }
+pre.log { font-size: 11px; color: var(--text-3); white-space: pre-wrap; max-height: 160px; overflow: auto; margin: 8px 0 0; }
+details summary { cursor: pointer; font-weight: 700; }
+dl.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 10px 0 0; font-size: 13px; }
+dl.facts dt { color: var(--text-3); } dl.facts dd { margin: 0; color: var(--text-2); word-break: break-all; }
+
+/* tracks */
+.tracks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.trk { position: relative; text-align: left; background: var(--panel-2); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 12px 10px 16px; cursor: pointer; min-width: 0; }
+.trk::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 0 4px 4px 0; background: var(--c); }
+.trk.sel { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset; }
+.trk .n { font-size: 12px; font-weight: 800; color: var(--c); letter-spacing: .06em; }
+.trk .e { font-size: 15px; font-weight: 700; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trk .p { font-size: 13px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trk .lv { height: 4px; border-radius: 4px; background: var(--panel-3); margin-top: 8px; overflow: hidden; }
+.trk .lv i { display: block; height: 100%; background: var(--c); }
+.trk .m { position: absolute; top: 10px; right: 10px; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; background: var(--panel-3); color: var(--text-3); }
+.trk .m.on { background: var(--rec); color: #fff; }
+.detail-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.detail-head .field { display: grid; gap: 4px; min-width: 160px; }
+.field > span { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--text-3); text-transform: uppercase; }
+select, input[type=text], input[type=number] { background: var(--panel-2); border: 1px solid var(--edge-2); border-radius: 9px; padding: 8px 10px; min-width: 0; }
+.groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.group { background: var(--panel-2); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 14px; }
+.group h4 { margin: 0 0 6px; font-size: 12px; letter-spacing: .1em; color: var(--text-2); display: flex; justify-content: space-between; gap: 8px; }
+.group h4 em { font-style: normal; font-weight: 600; color: var(--text-3); letter-spacing: 0; }
+.prm { display: grid; grid-template-columns: 74px minmax(0, 1fr) 76px; gap: 10px; align-items: center; padding: 4px 0; }
+.prm .l { font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--text-1); }
+.prm .l small { display: block; font-size: 10px; font-weight: 600; letter-spacing: 0; color: var(--warn); }
+.prm .v { font-size: 13px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prm .v small { color: var(--text-3); font-weight: 600; margin-left: 2px; }
+.prm input[type=range] { width: 100%; accent-color: var(--accent); }
+.prm select { padding: 5px 8px; }
+
+/* lists */
+table.list { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.list th { text-align: left; font-size: 11px; letter-spacing: .1em; color: var(--text-3); font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--edge); text-transform: uppercase; }
+table.list td { padding: 7px 8px; border-bottom: 1px solid #222226; vertical-align: middle; }
+table.list td.acts { text-align: right; white-space: nowrap; }
+table.list tr.empty td { color: var(--text-3); }
+.scroll { max-height: 520px; overflow: auto; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* samples */
+.slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.slot { background: var(--panel-2); border: 1px solid var(--edge); border-radius: 12px; padding: 12px 14px; }
+.slot .nm { font-size: 18px; font-weight: 800; }
+.pads { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+.pad { background: var(--panel-2); border: 1px dashed var(--edge-2); border-radius: 10px; padding: 8px; min-height: 76px; display: grid; align-content: space-between; gap: 4px; min-width: 0; }
+.pad.full { border-style: solid; border-color: var(--t2); }
+.pad.drag { border-color: var(--accent); background: #2a2516; }
+.pad b { font-size: 11px; letter-spacing: .06em; color: var(--text-2); }
+.pad span { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pad button { justify-self: start; background: none; border: 0; color: var(--text-3); font-size: 11px; padding: 0; cursor: pointer; }
+.meter { height: 8px; border-radius: 8px; background: var(--panel-3); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--play); }
+.meter.over i { background: var(--rec); }
+.drop { border: 1px dashed var(--edge-2); border-radius: 12px; padding: 16px; text-align: center; color: var(--text-2); font-size: 14px; }
+.drop.drag { border-color: var(--accent); color: var(--text-1); }
+
+#toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--text-1); color: #0b0b0c; font-weight: 700; font-size: 14px;
+  padding: 10px 16px; border-radius: 10px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100% - 32px); }
+#toast.show { opacity: 1; }
+#toast.err { background: var(--rec); color: #fff; }
+footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1.6; }
+
+@media (max-width: 900px) {
+  .connect { grid-template-columns: 1fr; }
+  .tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid3, .grid2, .groups, .slots { grid-template-columns: 1fr; }
+  .pads { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  header nav { margin-left: 0; width: 100%; }
+  .prm { grid-template-columns: 64px minmax(0, 1fr) 64px; gap: 8px; }
+  table.list td.acts .btn { padding: 5px 7px; }
+  .hide-s { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">FM1 MOVE <span>Device</span></div>
+  <span class="pill" id="pill">Not connected</span>
+  <nav><a href="../sim/">Simulator</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/SLOOP_PARITY.md">What it does</a></nav>
+</header>
+
+<div class="card connect">
+  <div>
+    <div class="lead">Install FM1 Move, then manage the FM-1 from here.</div>
+    <div class="muted">Connect the FM-1 with a USB data cable straight to the computer and use Chrome or Edge on a desktop. Or try every page on the
+      <b>virtual FM1</b>: the FM1 Move firmware itself, compiled to WebAssembly, with its flash kept in this browser.</div>
+    <div class="btns">
+      <button class="btn primary" id="connect">Connect FM-1 (USB)</button>
+      <button class="btn" id="virtual">Use the virtual FM1</button>
+      <button class="btn" id="disconnect" hidden>Disconnect</button>
+    </div>
+    <div id="status" role="status"></div>
+  </div>
+  <div class="vscreen" id="vscreen" title="The virtual FM1's screen"><canvas id="vcanvas" width="240" height="240"></canvas></div>
+</div>
+
+<div class="tabs" role="tablist" id="tabs">
+  <button role="tab" data-go="install" aria-selected="true">Install</button>
+  <button role="tab" data-go="tracks" data-need>Tracks &amp; sounds</button>
+  <button role="tab" data-go="presets" data-need>User presets</button>
+  <button role="tab" data-go="samples" data-need>Samples &amp; kits</button>
+  <button role="tab" data-go="fm6" data-need>FM6 patches</button>
+  <button role="tab" data-go="projects" data-need>Projects</button>
+  <button role="tab" data-go="backup" data-need>Backup</button>
+</div>
+
+<!-- ============================================================== install -->
+<section data-tab="install" class="show">
+  <div class="grid2">
+    <div class="card">
+      <h2>FM1 Move <span id="mv-ver"></span> <span class="badge exp">EXPERIMENTAL</span></h2>
+      <p class="muted">Eight tracks of any kind, the Groove Engine, the new screens, FM1M projects, and this device page.</p>
+      <div class="notice red"><b>Never run on an FM-1 yet.</b> This build is compiled with the real JieLi compiler and tested only in
+        simulation (host tests and the virtual FM1). Timing, audio load and the display bus of a real FM-1 have not been tried.
+        Install it only on an FM-1 you are ready to recover (see Rescue below). Save a SLOOP backup first if you have one.</div>
+      <label class="check"><input type="checkbox" id="ack-move"> I understand this firmware has never been tested on hardware, that it may not
+        start, and how to put SLOOP or the official firmware back.</label>
+      <button class="btn primary" id="go-move" disabled>Install FM1 Move</button>
+      <dl class="facts" id="mv-facts"></dl>
+    </div>
+    <div class="card">
+      <h2>SLOOP <span id="sl-ver"></span> <span class="badge ok">STABLE</span></h2>
+      <p class="muted">The firmware FM1 Move is built on, by Leo Kuroshita (Hügelton Instruments): four tracks, 12 engines, its own web editor. Install it to go back
+        from FM1 Move, or to use a stable firmware.</p>
+      <button class="btn" id="go-sloop">Install SLOOP</button>
+      <dl class="facts" id="sl-facts"></dl>
+      <p class="tiny" style="margin-top:12px">SLOOP's own installer and editor: <a href="../webapp/installer/">installer</a> · <a href="../webapp/editor/">editor</a></p>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Progress</h2>
+    <progress id="bar" max="100" value="0"></progress>
+    <div id="istatus" class="small" style="margin-top:8px">Nothing is written until you press an Install button. Do not unplug the FM-1 while it writes.</div>
+    <details style="margin-top:8px"><summary class="small">Log</summary><pre class="log" id="log"></pre></details>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h2>Rescue</h2>
+      <ul class="small" style="margin:0;padding-left:18px">
+        <li><b>An install was cut off:</b> the FM-1 stays in update mode. Plug it back in and press the same Install button again: it finishes.</li>
+        <li><b>The FM-1 does not start the firmware:</b> hold <b>OCT−</b> while you switch it on (USB rescue), then install SLOOP from this page.
+          Two failed starts in a row also open the rescue by themselves.</li>
+        <li><b>Nothing starts at all:</b> recovery needs <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener">FM-1-transporter</a>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Back to the official firmware (V15)</h2>
+      <p class="small">Download FM-1 V15 from M-VAVE and select its unmodified <code>FM-1.fwsc</code>. It is checked in this browser and sent nowhere.
+        The official firmware cannot open FM1 Move's projects or samples: make a backup first (Backup tab).</p>
+      <input type="file" id="stock-file" accept=".fwsc">
+      <label class="check"><input type="checkbox" id="stock-ack"> I saved a backup, or I don't need one.</label>
+      <button class="btn" id="go-stock" disabled>Install official V15</button>
+    </div>
+  </div>
+</section>
+
+<!-- =============================================================== tracks -->
+<section data-tab="tracks">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="card" data-body hidden>
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin:0">The eight tracks</h2>
+      <span class="tiny">Click a track to select it on the FM-1 and open its sound.</span>
+    </div>
+    <div class="tracks" id="tracks"></div>
+  </div>
+  <div class="card" data-body hidden>
+    <div class="detail-head">
+      <h3 id="d-title" style="margin-right:auto">Track</h3>
+      <label class="field" id="f-engine"><span>Engine</span><select id="d-engine"></select></label>
+      <label class="field" id="f-preset"><span>Sound</span><select id="d-preset"></select></label>
+      <label class="field" id="f-kit"><span>Drum kit</span><select id="d-kit"></select></label>
+    </div>
+    <p class="tiny" style="margin:10px 0 0">Every parameter of the track, as SLOOP's pages group them. <span style="color:var(--warn)">web only</span> marks the ones the
+      FM1 Move panel does not reach yet (the engine pages: the panel's four macros are four of them).</p>
+    <div class="groups" id="groups"></div>
+  </div>
+  <div class="card" data-body hidden>
+    <h2>Song and effects (all tracks)</h2>
+    <div class="groups" id="ggroups"></div>
+  </div>
+</section>
+
+<!-- ============================================================== presets -->
+<section data-tab="presets">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="card" data-body hidden>
+    <h2>Store a sound</h2>
+    <div class="row">
+      <span class="small">The sound of track</span><select id="p-track"></select>
+      <span class="small">into slot</span><select id="p-slot"></select>
+      <input type="text" id="p-name" maxlength="12" placeholder="Name (12 letters)" style="width:170px">
+      <button class="btn primary small" id="p-store">Store</button>
+    </div>
+    <p class="tiny" style="margin:8px 0 0">A user preset keeps a synth sound: the engine, every parameter and a 16-step pattern. On the FM-1 the PRESETS knob reaches
+      them after the factory sounds.</p>
+  </div>
+  <div class="card" data-body hidden>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">User presets</h2>
+      <div class="row"><button class="btn small" id="p-export">Export all</button><label class="btn small">Import…<input type="file" id="p-import" accept=".json" hidden></label></div>
+    </div>
+    <div class="scroll" style="margin-top:10px"><table class="list"><thead><tr><th>#</th><th>Name</th><th class="hide-s">Engine</th><th></th></tr></thead><tbody id="p-list"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ============================================================== samples -->
+<section data-tab="samples">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="card" data-body hidden>
+    <h2>Sample slots</h2>
+    <div class="slots" id="slots"></div>
+    <p class="tiny" style="margin:10px 0 0">About 3.7 s of sound each (80 KiB, IMA ADPCM at 22 kHz). A drum track plays one as a kit (KIT USR1–USR3), a synth track with
+      the SAMPLE or GRAIN engine as an instrument. FM1 Move has three slots: SLOOP's fourth (USR4) is where FM1 Move keeps its projects.</p>
+  </div>
+  <div class="card" data-body hidden>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Build a drum kit</h2>
+      <div class="row"><label class="btn small">Add sounds…<input type="file" id="k-files" accept="audio/*,.wav,.aif,.aiff,.mp3,.ogg,.flac" multiple hidden></label>
+        <button class="btn small" id="k-clear">Clear</button></div>
+    </div>
+    <p class="tiny" style="margin:6px 0 12px">Drop sounds on the pads (or anywhere here: names like "kick", "snare", "hat" find their pad). One sound per pad, the pads are the
+      FM-1's 16 white keys.</p>
+    <div class="pads" id="pads"></div>
+    <div style="margin-top:12px"><div class="meter" id="k-meter"><i></i></div><div class="tiny" id="k-room" style="margin-top:4px"></div></div>
+    <div class="row" style="margin-top:12px">
+      <input type="text" id="k-name" maxlength="8" placeholder="Kit name" style="width:130px">
+      <span class="small">into</span><select id="k-slot"><option value="0">USR1</option><option value="1">USR2</option><option value="2">USR3</option></select>
+      <button class="btn small" id="k-fit">Shorten to fit</button>
+      <button class="btn primary small" id="k-write">Write the kit</button>
+    </div>
+  </div>
+  <div class="card" data-body hidden>
+    <h2>An instrument (multi-sample)</h2>
+    <div class="drop" id="i-drop">Drop up to 16 sounds, or <label style="color:var(--accent);cursor:pointer">choose files<input type="file" id="i-files" accept="audio/*,.wav,.aif,.aiff,.mp3,.ogg,.flac" multiple hidden></label>.
+      A note in the file name ("piano_C4.wav") sets its key; else they go up from C4.</div>
+    <div id="i-list" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:10px">
+      <input type="text" id="i-name" maxlength="8" placeholder="Name" style="width:130px">
+      <span class="small">into</span><select id="i-slot"><option value="0">USR1</option><option value="1">USR2</option><option value="2">USR3</option></select>
+      <button class="btn primary small" id="i-write" disabled>Write the instrument</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================== fm6 -->
+<section data-tab="fm6">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="card" data-body hidden>
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">FM6 patch bank</h2>
+      <div class="row"><label class="btn small">Import .syx…<input type="file" id="f-file" accept=".syx,.SYX,.bin" hidden></label><button class="btn small" id="f-export">Export bank (.syx)</button></div>
+    </div>
+    <p class="tiny" style="margin:6px 0 10px">The FM6 engine (six operators, DX7 patches) plays the 8 factory patches F1–F8 and the 27 of the bank B1–B27 (its PTCH parameter).
+      DX7 cartridges (32 voices) and single voices load.</p>
+    <div id="f-import" hidden class="card" style="background:var(--panel-2);margin-bottom:12px">
+      <div class="row" style="justify-content:space-between"><b id="f-ititle"></b><div class="row"><button class="btn small" id="f-all">First 27</button><button class="btn small" id="f-none">None</button></div></div>
+      <div id="f-voices" class="tiny" style="columns:3 160px;margin:10px 0"></div>
+      <button class="btn primary small" id="f-store">Store in bank</button> <span class="tiny">The ticked voices go to B1, B2… in order; the other bank slots stay.</span>
+    </div>
+    <div class="scroll"><table class="list"><thead><tr><th>Slot</th><th>Name</th><th></th></tr></thead><tbody id="f-list"></tbody></table></div>
+  </div>
+</section>
+
+<!-- ============================================================= projects -->
+<section data-tab="projects">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="card" data-body hidden>
+    <h2>Projects</h2>
+    <p class="tiny" style="margin:0 0 10px">The working project is what plays now (kept by the autosave). Four slots keep projects; a project file (.fm1m.json) moves one between
+      FM-1s, or into the virtual FM1. Stop the FM-1 (PLAY) before you load, save or import.</p>
+    <table class="list"><thead><tr><th>Project</th><th>Size</th><th></th></tr></thead><tbody id="j-list"></tbody></table>
+    <input type="file" id="j-file" accept=".json" hidden>
+  </div>
+</section>
+
+<!-- =============================================================== backup -->
+<section data-tab="backup">
+  <div class="card need" data-needmsg>Connect an FM-1 running FM1 Move, or use the virtual FM1.</div>
+  <div class="grid2" data-body hidden>
+    <div class="card">
+      <h2>Back up everything</h2>
+      <p class="small">One file with all the FM-1 keeps: the working project, the four projects, the user presets, the FM6 bank, the SYN kits, the
+        three sample slots and the settings.</p>
+      <button class="btn primary" id="b-save">Save a backup</button>
+    </div>
+    <div class="card">
+      <h2>Restore</h2>
+      <p class="small">Puts a backup back, object by object: each is checked whole by the FM-1 before it is written, so a cut-off restore never
+        leaves half a project. It replaces what is on the FM-1. FM1 Move backups only (SLOOP's projects are another format).</p>
+      <label class="btn danger">Restore from a file…<input type="file" id="b-file" accept=".json" hidden></label>
+    </div>
+  </div>
+  <div class="card" data-body hidden><progress id="b-bar" max="100" value="0"></progress><div id="b-status" class="small" style="margin-top:8px"></div></div>
+</section>
+
+<footer>
+  FM1 Move is based on SLOOP by Leo Kuroshita (@kurogedelic), Hügelton Instruments, itself based on Felucca. GPL-3.0, no warranty.
+  This page reuses SLOOP's editor protocol code and its installer's updater unchanged. M-VAVE and FM-1 are trademarks of their respective owners.
+  The virtual FM1 is a simulation, not the device.
+</footer>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+/*PROTO*/
+/*LIB*/
+/*OTA*/
+const META = /*META*/;
+const PG = /*GROUPS*/;
+
+/* ------------------------------------------------------------------ basics --- */
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v; else if (k === "text") e.textContent = v; else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids) if (c != null) e.append(c);
+  return e;
+};
+let toastT = 0;
+function toast(msg, err = false) {
+  const t = $("toast");
+  t.textContent = msg; t.className = "show" + (err ? " err" : "");
+  clearTimeout(toastT); toastT = setTimeout(() => { t.className = ""; }, err ? 5000 : 2600);
+}
+const say = (msg, err = false) => { $("status").textContent = msg; $("status").className = err ? "err" : ""; };
+const TCOL = ["--t1", "--t2", "--t3", "--t4", "--t5", "--t6", "--t7", "--t8"].map((v) => `var(${v})`);
+const today = () => new Date().toISOString().slice(0, 10);
+function download(name, data, type = "application/json") {
+  const blob = new Blob([typeof data === "string" ? data : data], { type });
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+const readJson = async (f) => JSON.parse(await f.text());
+/* a long job on the link: one at a time; its errors become a toast */
+let busy = false;
+async function job(fn, okMsg) {
+  if (busy) { toast("Busy: wait for the current job", true); return; }
+  busy = true;
+  try { const r = await fn(); if (okMsg) toast(okMsg); return r; }
+  catch (e) { console.error(e); toast(e.code === "bkStop" ? "Stop the FM-1 (PLAY) and try again" : (e.message || String(e)), true); }
+  finally { busy = false; }
+}
+
+/* ------------------------------------------------------------- connection --- */
+let dev = null;          /* {kind: "usb" | "virtual", link, info, move, ...} */
+let midi = null;
+const rq = (r, o) => dev.link.request(r, o);
+const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";
+
+function setPill() {
+  const p = $("pill");
+  if (!dev) { p.textContent = "Not connected"; p.className = "pill"; return; }
+  const v = moveVersion(dev.info) || "unknown";
+  p.textContent = dev.kind === "virtual" ? "Virtual FM1 · " + v : dev.move ? v : v + " (not FM1 Move)";
+  p.className = "pill " + (dev.kind === "virtual" ? "virt" : dev.move ? "on" : "warn");
+}
+function setConnected() {
+  $("connect").hidden = !!dev; $("virtual").hidden = !!dev; $("disconnect").hidden = !dev;
+  $("vscreen").classList.toggle("show", !!dev && dev.kind === "virtual");
+  document.querySelectorAll("[data-need]").forEach((b) => { b.disabled = !(dev && dev.move); });
+  document.querySelectorAll("section[data-tab]").forEach((s) => {
+    s.querySelectorAll("[data-body]").forEach((b) => { b.hidden = !(dev && dev.move); });
+    s.querySelectorAll("[data-needmsg]").forEach((b) => { b.hidden = !!(dev && dev.move); });
+  });
+  for (const id of ["go-move", "go-sloop", "go-stock"]) $(id).title = dev && dev.kind === "virtual" ? "Install needs a real FM-1 on USB" : "";
+  installButtons();
+  setPill();
+  if (!(dev && dev.move) && curTab !== "install") showTab("install");
+}
+
+async function afterConnect() {
+  dev.info = parse[CMD.INFO](await rq(req.info(), { timeout: 800, retries: 2 }));
+  dev.move = isMove(dev.info);
+  setConnected();
+  if (!dev.move) {
+    say(`This FM-1 runs ${moveVersion(dev.info) || "an older firmware"}. The pages below need FM1 Move: install it from Install, or use SLOOP's own editor.`, true);
+    return;
+  }
+  say(dev.kind === "virtual" ? "Virtual FM1 on: the FM1 Move firmware compiled to WebAssembly. What you change stays in this browser." :
+    `Connected: ${moveVersion(dev.info)}, ${dev.info.ntrk} tracks.`);
+  await loadTab(curTab === "install" ? "tracks" : curTab);
+  if (curTab === "install") showTab("tracks");
+}
+
+async function connectUsb() {
+  if (!navigator.requestMIDIAccess) { say("This browser has no Web MIDI: open the page in Chrome or Edge on a computer.", true); return; }
+  say("Connecting…");
+  try { midi = midi || await navigator.requestMIDIAccess({ sysex: true }); }
+  catch (e) { say("MIDI (SysEx) was not allowed. Allow MIDI for this site (address bar) and try again.", true); return; }
+  midi.onstatechange = (e) => { if (dev && dev.kind === "usb" && e.port && e.port.state === "disconnected" && (e.port.id === dev.input.id || e.port.id === dev.output.id)) disconnect("The FM-1 was unplugged."); };
+  const input = [...midi.inputs.values()].find(isF), output = [...midi.outputs.values()].find(isF);
+  if (!input || !output) { say("No FM-1 found. Check the cable (a data cable), close other apps that use MIDI, and try again.", true); return; }
+  const link = new Link((d) => output.send(d), { timeout: 400, onPush: onPush });
+  input.onmidimessage = (e) => link.receive(e.data);
+  if (input.open) await input.open().catch(() => {});
+  dev = { kind: "usb", link, input, output };
+  try { await afterConnect(); }
+  catch (e) { console.error(e); disconnect(/timeout/.test(e.message) ? "The FM-1 does not answer. Is it running FM1 Move or SLOOP (not in update mode)?" : e.message, true); }
+}
+
+function disconnect(msg = "Disconnected.", err = false) {
+  if (dev) {
+    dev.link.close();
+    if (dev.input) dev.input.onmidimessage = null;
+    if (dev.stop) dev.stop();
+  }
+  dev = null;
+  setConnected();
+  say(msg, err);
+}
+function onPush(f) {
+  if (!dev || !dev.move) return;
+  if (f.cmd === CMD.RELOAD || f.cmd === CMD.TRACK_CHANGED) schedule(() => curTab === "tracks" && loadTracks());
+}
+let schedT = 0;
+const schedule = (fn) => { clearTimeout(schedT); schedT = setTimeout(fn, 250); };
+
+/* the virtual FM1: docs/sim/fm1sim.wasm (the firmware itself), its flash in this browser */
+const STORE_KEY = "fm1move-sim-store-v2", OLD_KEY = "fm1move-sim-projects-v1";
+async function connectVirtual() {
+  say("Starting the virtual FM1…");
+  let X;
+  try {
+    const r = await fetch("../sim/fm1sim.wasm");
+    if (!r.ok) throw new Error("fm1sim.wasm: HTTP " + r.status);
+    ({ instance: { exports: X } } = await WebAssembly.instantiate(await r.arrayBuffer(), {}));
+  } catch (e) { say("Could not load the virtual FM1: " + e.message, true); return; }
+  const mem = () => X.memory.buffer;
+  const region = () => new Uint8Array(mem(), X.sim_nor() + X.sim_store_base(), X.sim_store_size());
+  X.sim_init();
+  try {
+    const s = localStorage.getItem(STORE_KEY);
+    if (s) { const b = atob(s), u = region(); if (b.length === u.length) for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); }
+    else {
+      const o = localStorage.getItem(OLD_KEY);           /* the simulator page's older store: the projects only */
+      if (o) { const b = atob(o), u = new Uint8Array(mem(), X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size()); if (b.length === u.length) for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); }
+    }
+  } catch (e) { /* private mode: this visit only */ }
+  X.sim_boot();
+  const save = () => {
+    try { const u = region(); let s = ""; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); localStorage.setItem(STORE_KEY, btoa(s)); }
+    catch (e) { /* quota / private mode */ }
+  };
+  const cv = $("vcanvas"), cx = cv.getContext("2d"), img = cx.createImageData(240, 240);
+  let raf = 0, saveT = 0, last = 0;
+  const frame = (t) => {
+    if (t - last > 15) {
+      last = t;
+      X.sim_ui(Math.floor(t));
+      const fb = new Uint16Array(mem(), X.sim_fb(), 240 * 240), px = img.data;
+      for (let i = 0; i < fb.length; i++) { const c = fb[i]; px[4 * i] = (c >> 8) & 0xF8; px[4 * i + 1] = (c >> 3) & 0xFC; px[4 * i + 2] = (c << 3) & 0xF8; px[4 * i + 3] = 255; }
+      cx.putImageData(img, 0, 0);
+      if (X.sim_flash_dirty()) { clearTimeout(saveT); saveT = setTimeout(save, 400); }
+    }
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  const link = new Link((d) => {
+    const inner = Uint8Array.from(d.slice(1, -1));
+    new Uint8Array(mem(), X.sim_rx_ptr(), inner.length).set(inner);
+    if (!X.sim_rx(inner.length)) throw new Error("virtual FM1 busy");
+    const n = X.sim_tx_len(), out = new Uint8Array(mem(), X.sim_tx_ptr(), n).slice();
+    X.sim_tx_clear();
+    if (X.sim_flash_dirty()) { clearTimeout(saveT); saveT = setTimeout(save, 400); }
+    queueMicrotask(() => { let s = 0; for (let i = 0; i < out.length; i++) if (out[i] === 0xF7) { link.receive(out.slice(s, i + 1)); s = i + 1; } });
+  }, { timeout: 600, onPush });
+  dev = { kind: "virtual", link, X, stop: () => { cancelAnimationFrame(raf); save(); } };
+  try { await afterConnect(); } catch (e) { console.error(e); disconnect("The virtual FM1 did not answer: " + e.message, true); }
+}
+
+/* -------------------------------------------------------------------- tabs --- */
+let curTab = "install";
+function showTab(name) {
+  curTab = name;
+  document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.go === name)));
+  document.querySelectorAll("section[data-tab]").forEach((s) => s.classList.toggle("show", s.dataset.tab === name));
+}
+async function loadTab(name) {
+  if (!dev || !dev.move) return;
+  const fn = { tracks: loadTracks, presets: loadPresets, samples: loadSamples, fm6: loadFm6, projects: loadProjects }[name];
+  if (fn) await job(fn);
+}
+$("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-go]");
+  if (!b || b.disabled) return;
+  showTab(b.dataset.go);
+  loadTab(b.dataset.go);
+});
+
+/* ------------------------------------------------------------------ install --- */
+const facts = (dl, m) => {
+  dl.replaceChildren(...[["Package", m.pkg.split("/").pop()], ["Size", (m.size / 1024).toFixed(0) + " KiB"], ["Identity", m.product], ["SHA-256", m.sha256]]
+    .flatMap(([k, v]) => [el("dt", { text: k }), el("dd", { text: v })]));
+};
+$("mv-ver").textContent = META.move.version; $("sl-ver").textContent = META.sloop.version;
+facts($("mv-facts"), META.move); facts($("sl-facts"), META.sloop);
+let writing = false, stock = null;
+function installButtons() {
+  const virt = !!dev && dev.kind === "virtual";
+  $("go-move").disabled = writing || virt || !$("ack-move").checked;
+  $("go-sloop").disabled = writing || virt;
+  $("go-stock").disabled = writing || virt || !stock || !$("stock-ack").checked;
+}
+$("ack-move").addEventListener("change", installButtons);
+$("stock-ack").addEventListener("change", installButtons);
+window.addEventListener("beforeunload", (e) => { if (writing) { e.preventDefault(); e.returnValue = "Writing: do not close the page."; } });
+const ilog = (t) => { $("log").textContent += t + "\n"; };
+const isay = (t, err = false) => { $("istatus").textContent = t; $("istatus").style.color = err ? "var(--rec)" : ""; };
+const STEP_TXT = { start: "Starting", verify: "Checking the FM-1", loader: "Switching to update mode", write: "Writing", reboot: "Restarting", done: "Done" };
+const TOTAL = 74 + 1179;
+const onStep = (k, a) => {
+  ilog(`${k} ${a ?? ""}`);
+  if (STEP_TXT[k]) isay(STEP_TXT[k] + (k === "done" && a ? `: the FM-1 reports ${a}` : "…"));
+  if (k === "verify") $("bar").value = Math.min(100, (a / TOTAL) * 100);
+  if (k === "write") $("bar").value = Math.min(100, ((74 + a) / TOTAL) * 100);
+  if (k === "done") $("bar").value = 100;
+};
+const ERR = { denied: "MIDI (SysEx) was not allowed: allow MIDI for this site and press Install again.",
+  notfound: "FM-1 not found: check the cable, close other MIDI apps, press Install again.", model: "The device on USB is not an FM-1.",
+  lost: "The USB connection was lost: plug it back in and press Install again (it finishes).",
+  noloader: "The FM-1 in update mode was not found: plug it back in and press Install again.",
+  noreturn: "The FM-1 did not come back after the write: switch it off and on.", mismatch: "Written, but the FM-1 reports another firmware: ",
+  foreign: "The FM-1 is in another firmware's update mode: finish that with its own updater (M-UPGRADE) first: " };
+async function loadPackage(m) {
+  const r = await fetch(m.pkg);
+  if (!r.ok) throw new Error(`${m.pkg}: HTTP ${r.status}`);
+  const pkg = new Uint8Array(await r.arrayBuffer());
+  if (OTA.productOf(pkg) !== m.product) throw new Error("the package is damaged (identity): reload the page");
+  if ((await OTA.sha256hex(pkg)) !== m.sha256) throw new Error("the package is damaged (SHA-256): reload the page");
+  return OTA.logicalImage(pkg);
+}
+async function install(image, product, label, isStock = false) {
+  if (writing) return;
+  writing = true; installButtons();
+  $("log").textContent = ""; $("bar").value = 0;
+  if (dev) disconnect("Disconnected for the install.");
+  let access;
+  try { access = midi || await navigator.requestMIDIAccess({ sysex: true }); midi = access; }
+  catch (e) { isay(ERR.denied, true); writing = false; installButtons(); return; }
+  try {
+    const up = new OTA.Updater(access, ilog);
+    const ota = await up.find((id) => /^ota-/i.test(id.model));
+    if (ota) {
+      ota.link.close();
+      if (isStock && OTA.OUR_LOADER(ota.id)) isay("The FM-1 is in the update mode of FM1 Move / SLOOP: finish that install first (press its Install button), then return to V15.", true);
+      else isay((await up.resume(image, onStep, isStock ? { product } : undefined)) ? `${label}: done` : "Stopped. Plug the FM-1 back in and press Install again.");
+    } else {
+      await up.install(image, product, onStep);
+      isay(`${label} installed. Connect it above to check the version.`);
+    }
+  } catch (e) {
+    ilog(String(e && e.stack || e));
+    isay(e && e.code && ERR[e.code] ? ERR[e.code] + (e.detail || "") : "Error: " + (e && e.message), true);
+  }
+  writing = false; installButtons();
+}
+$("go-move").addEventListener("click", async () => {
+  if (!confirm("Install FM1 Move, never tested on hardware, on this FM-1?\n\nIf it does not start: hold OCT− while switching on (USB rescue) and install SLOOP.")) return;
+  try { isay("Loading the package…"); await install(await loadPackage(META.move), META.move.product, "FM1 Move " + META.move.version); }
+  catch (e) { isay(e.message, true); }
+});
+$("go-sloop").addEventListener("click", async () => {
+  try { isay("Loading the package…"); await install(await loadPackage(META.sloop), META.sloop.product, "SLOOP " + META.sloop.version); }
+  catch (e) { isay(e.message, true); }
+});
+$("stock-file").addEventListener("change", async () => {
+  const f = $("stock-file").files[0];
+  stock = null; installButtons();
+  if (!f) return;
+  try { stock = await OTA.validateStockPackage(new Uint8Array(await f.arrayBuffer())); isay("Official V15 verified."); }
+  catch (e) { isay("Not the official V15: " + e.message, true); }
+  installButtons();
+});
+$("go-stock").addEventListener("click", async () => {
+  if (!stock || !confirm("Install the official V15? It cannot open FM1 Move's projects or samples.")) return;
+  await install(stock.image, stock.product, "Official V15", true);
+});
+
+/* ------------------------------------------------------------------- tracks --- */
+let tracks = [], selTrack = 0;
+const descCache = new Map();           /* `${track}:${engine}:${scope}:${id}` -> desc */
+/* the parameters the FM1 Move panel reaches (firmware/src/ui_move_ctl.c, ui_layers.c), by name */
+const PANEL_P = ["P_LEVEL", "P_PAN", "P_REV", "P_DLY", "P_SDIV", "P_SSWING", "P_SLEN", "P_TRANS", "P_ATK", "P_DEC", "P_SUS", "P_REL", "P_LRATE", "P_LWAVE",
+  "P_LD_PIT", "P_LD_FLT", "P_DIST", "P_CHOR", "P_TFLT", "P_MUTE", "P_CHORD", "P_SCALE", "P_QUANT", "P_ROOT"].map((n) => PG.P[n]);
+const PANEL_G = ["G_FILT", "G_DUST", "G_DUCK", "G_ROLL", "G_SYNC", "G_MIDI", "G_ROUTE"].map((n) => PG.G[n]);
+const DRUM_GROUPS = ["FX", "FILTER", "SLICER", "PATTERN"];
+const HIDDEN_G = new Set([PG.G.G_INFO, PG.G.G_SLOT, PG.G.G_LOAD, PG.G.G_SAVE, PG.G.G_CLRSEQ, PG.G.G_INITSND, PG.G.G_NEWPRJ, PG.G.G_ENGSEL].filter((x) => x != null));
+async function loadTracks() {
+  const tr = parse[CMD.TRACK](await rq(req.track()));
+  tracks = trackRows(dev.info, tr);
+  selTrack = tr.sel;
+  for (const t of tracks) {
+    if (t.kind === "synth") t.presetName = (await presetNames(t.engineIndex))[t.preset] || `#${t.preset + 1}`;
+    else t.kitIndex = parse[CMD.TRACK_PARAM](await rq(req.trackParam(t.index, dev.info.pe0))).value;   /* (P_E0: the kit) */
+  }
+  renderTracks();
+  await renderDetail();
+}
+const namesCache = new Map();
+async function presetNames(e) {
+  if (!namesCache.has(e)) { const r = await rq(req.names(e)); const rd = new Reader(r); rd.b(); const n = rd.b(), out = []; for (let i = 0; i < n; i++) out.push(rd.s()); namesCache.set(e, out); }
+  return namesCache.get(e);
+}
+function renderTracks() {
+  $("tracks").replaceChildren(...tracks.map((t) => el("button", { class: "trk" + (t.index === selTrack ? " sel" : ""), style: `--c:${TCOL[t.index]}`,
+    onclick: () => job(async () => { await rq(req.track(t.index)); selTrack = t.index; renderTracks(); await renderDetail(); }) },
+    el("div", { class: "n", text: `TRACK ${t.index + 1} · ${t.kind === "drums" ? "DRUMS" : "SYNTH"}` }),
+    el("div", { class: "e", text: t.kind === "drums" ? kitName(t) : t.engine }),
+    el("div", { class: "p", text: t.kind === "drums" ? "drum kit" + (kitNames ? "" : " " + (t.kitIndex + 1)) : t.presetName || "" }),
+    el("div", { class: "lv" }, el("i", { style: `width:${Math.round(t.level / 127 * 100)}%` })),
+    el("span", { class: "m" + (t.mute ? " on" : ""), text: t.mute ? "MUTE" : "ON" }))));
+}
+let kitNames = null;
+const kitName = (t) => (t.kitIndex != null && kitNames ? kitNames[t.kitIndex] : "DRUMS");
+async function desc(track, scope, id) {
+  const t = tracks[track], key = `${track}:${t.kind === "drums" ? "d" : t.engineIndex}:${scope}:${id}`;
+  if (!descCache.has(key)) descCache.set(key, parse[CMD.DESC](await rq(req.desc(scope, id))));
+  return descCache.get(key);
+}
+function paramRow(d, value, onset, panel) {
+  const val = el("div", { class: "v" });
+  const show = (v) => { const [a, u] = fmtValue(d, v); val.replaceChildren(a, u ? el("small", { text: u }) : null); };
+  let ctl;
+  if (d.fmt === F.ENUM && d.names && d.names.length) {
+    ctl = el("select", {}, ...d.names.map((n, i) => el("option", { value: d.min + i, text: n })));
+    ctl.value = value;
+    ctl.addEventListener("change", () => { show(+ctl.value); onset(+ctl.value); });
+  } else {
+    ctl = el("input", { type: "range", min: d.min, max: d.max, step: 1, value });
+    ctl.addEventListener("input", () => { show(+ctl.value); onset(+ctl.value); });
+  }
+  show(value);
+  return el("div", { class: "prm" }, el("div", { class: "l", text: d.label }, panel ? null : el("small", { text: "web only" })), ctl, val);
+}
+async function renderDetail() {
+  const t = tracks[selTrack];
+  if (!t) return;
+  $("d-title").textContent = `Track ${selTrack + 1}`;
+  $("d-title").style.color = TCOL[selTrack];
+  const dump = parse[CMD.TRACK_DUMP](await rq(req.trackDump(selTrack)), dev.info);
+  const drums = t.kind === "drums";
+  $("f-engine").hidden = drums; $("f-preset").hidden = drums; $("f-kit").hidden = !drums;
+  if (drums) {
+    const kd = await desc(selTrack, 0, dev.info.pe0);
+    kitNames = kd.names;
+    $("d-kit").replaceChildren(...kd.names.map((n, i) => el("option", { value: i, text: /USR4|USR3\+4/.test(n) ? n + " (not in FM1 Move)" : n, disabled: /USR4|USR3\+4/.test(n) })));
+    $("d-kit").value = dump.p[dev.info.pe0];
+    t.kitIndex = dump.p[dev.info.pe0];
+    renderTracks();                                    /* (the kits' names are known now) */
+  } else {
+    $("d-engine").replaceChildren(...dev.info.engines.map((n, i) => el("option", { value: i, text: n })));
+    $("d-engine").value = t.engineIndex;
+    const names = await presetNames(t.engineIndex);
+    $("d-preset").replaceChildren(...names.map((n, i) => el("option", { value: i, text: `${i + 1}. ${n}` })));
+    $("d-preset").value = t.preset;
+  }
+  const groups = PG.groups.filter((g) => g.scope === 0 && (!drums || DRUM_GROUPS.includes(g.name)));
+  const out = [];
+  if (drums) groups.unshift({ name: "MIX", ids: [PG.P.P_LEVEL, PG.P.P_PAN], scope: 0 });
+  for (const g of groups) {
+    const rows = [];
+    for (const id of g.ids) {
+      if (drums && id === dev.info.pe0) continue;
+      const d = await desc(selTrack, 0, id);
+      if (!d || !d.label || d.max <= d.min) continue;
+      const panel = g.engine || PANEL_P.includes(id);
+      rows.push(paramRow(d, dump.p[id], (v) => rq(req.trackParam(selTrack, id, v), { key: `tp${selTrack}:${id}` }).catch(() => {}), panel));
+    }
+    if (rows.length) out.push(el("div", { class: "group" }, el("h4", {}, g.engine ? `ENGINE ${g.name.slice(-1)}` : g.name, g.engine ? el("em", { text: "4 of these on the panel (macros)" }) : null), ...rows));
+  }
+  $("groups").replaceChildren(...out);
+  /* the song and the effects: global parameters */
+  const gout = [];
+  for (const g of PG.groups.filter((x) => x.scope === 1 && x.fam !== "save")) {
+    const rows = [];
+    for (const id of g.ids) {
+      if (HIDDEN_G.has(id) || (g.name === "DRUMS" && id !== PG.G.G_DRCH)) continue;   /* (FM1 Move: drum level and sends per track) */
+      const d = parse[CMD.DESC](await rq(req.desc(1, id)));
+      if (!d || !d.label || d.max <= d.min) continue;
+      const v = parse[CMD.GET](await rq(req.get(1, id))).value;
+      rows.push(paramRow(d, v, (x) => rq(req.set(1, id, x), { key: `g${id}` }).catch(() => {}), PANEL_G.includes(id)));
+    }
+    if (rows.length) gout.push(el("div", { class: "group" }, el("h4", { text: g.name }), ...rows));
+  }
+  $("ggroups").replaceChildren(...gout);
+}
+$("d-engine").addEventListener("change", () => job(async () => {
+  await rq(req.set(1, PG.G.G_ENGSEL, +$("d-engine").value));
+  await loadTracks();
+}));
+$("d-preset").addEventListener("change", () => job(async () => {
+  await rq(req.preset(tracks[selTrack].engineIndex, +$("d-preset").value));
+  await loadTracks();
+}));
+$("d-kit").addEventListener("change", () => job(async () => {
+  await rq(req.trackParam(selTrack, dev.info.pe0, +$("d-kit").value));
+  await loadTracks();
+}));
+
+/* ------------------------------------------------------------------ presets --- */
+let upList = null;
+async function loadPresets() {
+  if (!tracks.length) tracks = trackRows(dev.info, parse[CMD.TRACK](await rq(req.track())));
+  upList = await bank.list(rq);
+  $("p-track").replaceChildren(...tracks.map((t) => el("option", { value: t.index, text: `${t.index + 1} · ${t.kind === "drums" ? "drums" : t.engine}`, disabled: t.kind === "drums" })));
+  const firstSynth = tracks.find((t) => t.kind === "synth");
+  $("p-track").value = tracks[selTrack] && tracks[selTrack].kind === "synth" ? selTrack : firstSynth ? firstSynth.index : 0;
+  $("p-slot").replaceChildren(...upList.slots.map((s) => el("option", { value: s.slot, text: `${s.slot + 1}${s.used ? " · " + s.name : " · empty"}` })));
+  const free = upList.slots.find((s) => !s.used);
+  if (free) $("p-slot").value = free.slot;
+  $("p-list").replaceChildren(...upList.slots.map((s) => el("tr", { class: s.used ? "" : "empty" },
+    el("td", { text: s.slot + 1 }), el("td", { text: s.used ? s.name : "empty" }), el("td", { class: "hide-s", text: s.used ? dev.info.engines[s.engine] || "" : "" }),
+    el("td", { class: "acts" }, ...(s.used ? [
+      el("button", { class: "btn small", text: "Load", title: "Into the selected track", onclick: () => job(async () => {
+        const rc = await bank.load(rq, s.slot); if (rc) throw new Error("load rc " + rc); }, `"${s.name}" loaded into track ${selTrack + 1}`) }), " ",
+      el("button", { class: "btn small", text: "Rename", onclick: () => job(async () => {
+        const n = prompt("New name (12 letters)", s.name); if (!n) return;
+        const pt = await bank.get(rq, dev.info, s.slot); pt.name = n;
+        const rc = await bank.put(rq, s.slot, pt); if (rc) throw new Error(rc === 3 ? "Stop the FM-1 first" : "rename rc " + rc); await loadPresets(); }, "Renamed") }), " ",
+      el("button", { class: "btn small danger", text: "Erase", onclick: () => confirm(`Erase "${s.name}"?`) && job(async () => {
+        const rc = await bank.erase(rq, s.slot); if (rc) throw new Error(rc === 3 ? "Stop the FM-1 first" : "erase rc " + rc); await loadPresets(); }, "Erased") })] : [])))));
+}
+$("p-store").addEventListener("click", () => job(async () => {
+  const slot = +$("p-slot").value, used = upList.slots[slot] && upList.slots[slot].used;
+  if (used && !confirm(`Slot ${slot + 1} holds "${upList.slots[slot].name}". Replace it?`)) return;
+  await rq(req.track(+$("p-track").value));
+  selTrack = +$("p-track").value;
+  const rc = await bank.store(rq, slot, $("p-name").value.trim());
+  if (rc) throw new Error(rc === 3 ? "Stop the FM-1 first" : "store rc " + rc);
+  $("p-name").value = "";
+  await loadPresets();
+}, "Stored"));
+$("p-export").addEventListener("click", () => job(async () => {
+  const presets = [];
+  for (const s of upList.slots) if (s.used) { const pt = await bank.get(rq, dev.info, s.slot); presets.push({ slot: s.slot, name: pt.name, engine: dev.info.engines[pt.engine], p: pt.p, pattern: pt.pattern }); }
+  download(`fm1move-presets-${today()}.json`, JSON.stringify({ format: "fm1move-presets", version: 1, firmware: dev.info.version, pcount: dev.info.pcount, presets }, null, 1));
+}, "Exported"));
+$("p-import").addEventListener("change", (e) => job(async () => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const o = await readJson(f);
+  if (o.format !== "fm1move-presets" || !Array.isArray(o.presets) || o.pcount !== dev.info.pcount) throw new Error("Not an FM1 Move preset file (or from another firmware version)");
+  const free = upList.slots.filter((s) => !s.used).map((s) => s.slot);
+  if (free.length < o.presets.length && !confirm(`Only ${free.length} free slots for ${o.presets.length} presets: import the first ${free.length}?`)) return;
+  let n = 0;
+  for (const pr of o.presets.slice(0, free.length)) {
+    const engine = dev.info.engines.indexOf(pr.engine);
+    if (engine < 0) continue;
+    const rc = await bank.put(rq, free[n], { engine, name: pr.name, p: pr.p, pattern: pr.pattern });
+    if (rc) throw new Error(rc === 3 ? "Stop the FM-1 first" : "import rc " + rc);
+    n++;
+  }
+  await loadPresets();
+  toast(`${n} presets imported into free slots`);
+}));
+
+/* ------------------------------------------------------------------ samples --- */
+async function loadSamples() {
+  const si = parse[CMD.SMP_INFO](await rq(req.smpInfo()));
+  $("slots").replaceChildren(...si.slots.map((s, k) => el("div", { class: "slot" },
+    el("div", { class: "tiny", text: `USR${k + 1}` }), el("div", { class: "nm", text: s.zones ? s.name || "(no name)" : "empty" }),
+    el("div", { class: "small", text: s.zones ? `${s.zones} sound${s.zones > 1 ? "s" : ""} · ${s.kib} KiB of ${si.slotKiB}` : `${si.slotKiB} KiB free` }),
+    s.zones ? el("button", { class: "btn small danger", style: "margin-top:8px", text: "Erase", onclick: () => confirm(`Erase USR${k + 1} (${s.name})?`) && job(async () => {
+      const r = parse[CMD.SMP_ERASE](await rq(req.smpErase(k), { timeout: 2500, retries: 0 })); if (r.rc) throw new Error("erase rc " + r.rc); await loadSamples(); }, "Erased") }) : null)));
+}
+/* any audio file -> mono floats at SMP.RATE (WAV exactly as SLOOP's editor reads it, the rest through the browser) */
+async function decodeAudio(file) {
+  const buf = await file.arrayBuffer();
+  try { const w = parseWav(buf); return resample(Array.from(w.x), w.sr, SMP.RATE); }
+  catch (e) {
+    const ac = new OfflineAudioContext(1, 1, 44100), ab = await ac.decodeAudioData(buf.slice(0));
+    const x = new Float64Array(ab.length);
+    for (let c = 0; c < ab.numberOfChannels; c++) { const d = ab.getChannelData(c); for (let i = 0; i < x.length; i++) x[i] += d[i] / ab.numberOfChannels; }
+    return resample(Array.from(x), ab.sampleRate, SMP.RATE);
+  }
+}
+const pads = new Array(16).fill(null);
+function renderPads() {
+  $("pads").replaceChildren(...DRUM_LANES.map(([note, name], l) => {
+    const p = pads[l];
+    const pad = el("div", { class: "pad" + (p ? " full" : "") }, el("b", { text: name }),
+      el("span", { text: p ? p.fname : "drop a sound" }),
+      p ? el("button", { text: `${(kitLen(p) / SMP.RATE).toFixed(2)} s · remove`, onclick: () => { pads[l] = null; renderPads(); } }) : el("span", { class: "tiny", text: " " }));
+    pad.addEventListener("dragover", (e) => { e.preventDefault(); e.stopPropagation(); pad.classList.add("drag"); });
+    pad.addEventListener("dragleave", () => pad.classList.remove("drag"));
+    pad.addEventListener("drop", (e) => { e.preventDefault(); e.stopPropagation(); pad.classList.remove("drag"); addPads([...e.dataTransfer.files], l); });
+    return pad;
+  }));
+  const used = kitBytes(pads), pct = Math.min(100, used / SMP.MAX_DATA * 100);
+  $("k-meter").classList.toggle("over", used > SMP.MAX_DATA);
+  $("k-meter").firstChild.style.width = pct + "%";
+  $("k-room").textContent = `${(used / 1024).toFixed(1)} of ${(SMP.MAX_DATA / 1024).toFixed(1)} KiB${used > SMP.MAX_DATA ? " — too long: Shorten to fit" : ""}`;
+}
+async function addPads(files, want = -1) {
+  for (const f of files.slice(0, 16)) {
+    const l = kitPlace(pads, f.name, want);
+    if (l < 0) { toast("All 16 pads are taken", true); break; }
+    try { pads[l] = { s: normalize(await decodeAudio(f)), fname: f.name, tune: 0, len: 0, gain: 0 }; }
+    catch (e) { toast(`${f.name}: ${e.message}`, true); }
+    want = -1;
+  }
+  renderPads();
+}
+$("k-files").addEventListener("change", (e) => { addPads([...e.target.files]); e.target.value = ""; });
+$("k-clear").addEventListener("click", () => { pads.fill(null); renderPads(); });
+$("k-fit").addEventListener("click", () => { toast(kitFit(pads) ? "Shortened to fit" : "It fits already"); renderPads(); });
+const samplesCard = $("pads").closest(".card");
+samplesCard.addEventListener("dragover", (e) => e.preventDefault());
+samplesCard.addEventListener("drop", (e) => { e.preventDefault(); addPads([...e.dataTransfer.files]); });
+$("k-write").addEventListener("click", () => job(async () => {
+  if (!pads.some(Boolean)) throw new Error("Put at least one sound on a pad");
+  if (kitBytes(pads) > SMP.MAX_DATA) throw new Error("Too long for a slot: press Shorten to fit");
+  const k = +$("k-slot").value, slot = buildSlot($("k-name").value.trim() || "KIT", kitZones(pads));
+  if (!confirm(`Write this kit into USR${k + 1}? What is there now goes.`)) return;
+  await uploadSlot(rq, k, slot);
+  await loadSamples();
+}, "Kit written: on a drum track, KIT USR" + "1–3"));
+let inst = [];
+function renderInst() {
+  $("i-list").replaceChildren(...inst.map((z, i) => el("div", { class: "row small", style: "padding:3px 0" },
+    el("span", { style: "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap", text: z.fname }),
+    el("span", { class: "tiny", text: `${(z.s.length / SMP.RATE).toFixed(2)} s` }),
+    el("label", { class: "tiny" }, "key ", Object.assign(el("input", { type: "number", min: 0, max: 127, value: z.root, style: "width:64px" }), { oninput: (e) => { z.root = +e.target.value; } })),
+    el("button", { class: "btn small", text: "remove", onclick: () => { inst.splice(i, 1); renderInst(); } }))));
+  $("i-write").disabled = !inst.length;
+}
+async function addInst(files) {
+  for (const f of files) {
+    if (inst.length >= 16) { toast("16 sounds at most", true); break; }
+    try { inst.push({ s: normalize(await decodeAudio(f)), fname: f.name, root: /[A-G][#b]?-?\d/.test(f.name) ? rootFromName(f.name) : 60 + inst.length }); }
+    catch (e) { toast(`${f.name}: ${e.message}`, true); }
+  }
+  renderInst();
+}
+$("i-files").addEventListener("change", (e) => { addInst([...e.target.files]); e.target.value = ""; });
+$("i-drop").addEventListener("dragover", (e) => { e.preventDefault(); $("i-drop").classList.add("drag"); });
+$("i-drop").addEventListener("dragleave", () => $("i-drop").classList.remove("drag"));
+$("i-drop").addEventListener("drop", (e) => { e.preventDefault(); $("i-drop").classList.remove("drag"); addInst([...e.dataTransfer.files]); });
+$("i-write").addEventListener("click", () => job(async () => {
+  const k = +$("i-slot").value;
+  const slot = buildSlot($("i-name").value.trim() || "INSTR", inst.map((z) => ({ s: z.s, root: z.root })));
+  if (!confirm(`Write this instrument into USR${k + 1}? What is there now goes.`)) return;
+  await uploadSlot(rq, k, slot);
+  await loadSamples();
+}, "Instrument written: SAMPLE engine, USR1–3"));
+
+/* ---------------------------------------------------------------------- fm6 --- */
+let fm6 = null, fm6File = null;
+async function loadFm6() {
+  fm6 = parse[CMD.FM6_LIST](await rq(req.fm6List()));
+  $("f-list").replaceChildren(...fm6.slots.map((s, i) => {
+    const isF = i < fm6.factory, k = isF ? i : i - fm6.factory;
+    return el("tr", { class: s.used ? "" : "empty" }, el("td", { text: isF ? `F${k + 1}` : `B${k + 1}` }), el("td", { text: s.used ? s.name : "empty" }),
+      el("td", { class: "acts" }, !isF && s.used ? el("button", { class: "btn small danger", text: "Erase", onclick: () => confirm(`Erase B${k + 1} (${s.name})?`) && job(async () => {
+        const r = parse[CMD.FM6_ERASE](await rq(req.fm6Erase(k), { timeout: 3000 })); if (r.rc) throw new Error(r.rc === 3 ? "Stop the FM-1 first" : "erase rc " + r.rc); await loadFm6(); }, "Erased") }) : null));
+  }));
+}
+$("f-file").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const r = FM6.parseSysex(new Uint8Array(await f.arrayBuffer()));
+  if (!r.voices.length) { toast("No DX7 voices in this file", true); return; }
+  fm6File = r.voices;
+  $("f-ititle").textContent = `${f.name}: ${r.voices.length} voice${r.voices.length > 1 ? "s" : ""}`;
+  $("f-voices").replaceChildren(...r.voices.map((v, i) => el("label", { style: "display:block" }, el("input", { type: "checkbox", "data-i": i, checked: i < FM6.BANK_N }), " ", v.name || `voice ${i + 1}`)));
+  $("f-import").hidden = false;
+});
+$("f-all").addEventListener("click", () => $("f-voices").querySelectorAll("input").forEach((c, i) => { c.checked = i < FM6.BANK_N; }));
+$("f-none").addEventListener("click", () => $("f-voices").querySelectorAll("input").forEach((c) => { c.checked = false; }));
+$("f-store").addEventListener("click", () => job(async () => {
+  const pick = [...$("f-voices").querySelectorAll("input")].filter((c) => c.checked).map((c) => fm6File[+c.dataset.i]);
+  if (!pick.length) throw new Error("Tick at least one voice");
+  if (pick.length > FM6.BANK_N) throw new Error(`The bank holds ${FM6.BANK_N}: untick some`);
+  if (!confirm(`Store ${pick.length} voice${pick.length > 1 ? "s" : ""} into B1–B${pick.length}?`)) return;
+  const rc = await fm6CartWrite(rq, pick.map((x) => FM6.pack(x.v)));
+  if (rc === 3) throw new Error("Stop the FM-1 first");
+  if (rc === "old") throw new Error("This firmware has no FM6 bank");
+  $("f-import").hidden = true;
+  await loadFm6();
+}, "Stored in the bank"));
+$("f-export").addEventListener("click", () => job(async () => {
+  const voices = [];
+  for (let k = 0; k < fm6.bank; k++) {
+    const g = parse[CMD.FM6_GET](await rq(req.fm6Get(FM6.TARGET.BANK, k)));
+    if (!g.rc && g.packed) voices.push(FM6.unpack(Uint8Array.from(g.packed)));
+  }
+  if (!voices.length) throw new Error("The bank is empty");
+  download(`fm1move-fm6-bank-${today()}.syx`, FM6.bankSysex(voices), "application/octet-stream");
+}, "Exported"));
+
+/* ----------------------------------------------------------------- projects --- */
+let jTarget = null;
+async function loadProjects() {
+  const s = await projectSlots(rq);
+  const row = (label, slot, len) => el("tr", { class: len ? "" : "empty" }, el("td", {}, el("b", { text: label })), el("td", { text: len ? `${len} B` : "empty" }),
+    el("td", { class: "acts" }, ...(slot < 0 ? [
+      el("button", { class: "btn small", text: "Export", onclick: () => job(async () => download(`fm1move-working-${today()}.fm1m.json`, JSON.stringify(await projectExport(rq, dev.info, -1))), "Exported") }), " ",
+      el("button", { class: "btn small", text: "Import…", onclick: () => { jTarget = -1; $("j-file").click(); } })] : [
+      el("button", { class: "btn small", text: "Load", disabled: !len, onclick: () => confirm(`Load project ${slot + 1}? The working project is replaced (save it first if you want to keep it).`) && job(async () => {
+        const r = await projectOp(rq, 0, slot); if (r.busy) throw new Error("Stop the FM-1 first"); tracks = []; }, `Project ${slot + 1} loaded`) }), " ",
+      el("button", { class: "btn small", text: "Save here", onclick: () => (!len || confirm(`Project ${slot + 1} is used. Replace it with the working project?`)) && job(async () => {
+        const r = await projectOp(rq, 1, slot); if (r.busy) throw new Error("Stop the FM-1 first"); await loadProjects(); }, `Saved into ${slot + 1}`) }), " ",
+      el("button", { class: "btn small", text: "Export", disabled: !len, onclick: () => job(async () => download(`fm1move-project-${slot + 1}-${today()}.fm1m.json`, JSON.stringify(await projectExport(rq, dev.info, slot))), "Exported") }), " ",
+      el("button", { class: "btn small", text: "Import…", onclick: () => { jTarget = slot; $("j-file").click(); } }), " ",
+      el("button", { class: "btn small danger", text: "Clear", disabled: !len, onclick: () => confirm(`Clear project ${slot + 1}? It cannot be undone.`) && job(async () => {
+        await putObject(rq, FM1.PROJ0 + slot, new Uint8Array(0)); await loadProjects(); }, "Cleared") })])));
+  $("j-list").replaceChildren(row("Working project", -1, s.work), ...s.slots.map((len, k) => row(`Project ${k + 1}`, k, len)));
+}
+$("j-file").addEventListener("change", (e) => job(async () => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const o = await readJson(f);
+  if (!confirm(jTarget < 0 ? "Replace the working project with this file?" : `Import into project ${jTarget + 1}? What is there now goes.`)) return;
+  await projectImport(rq, o, jTarget);
+  tracks = [];
+  await loadProjects();
+}, "Imported"));
+
+/* ------------------------------------------------------------------- backup --- */
+const bsay = (t) => { $("b-status").textContent = t; };
+$("b-save").addEventListener("click", () => job(async () => {
+  bsay("Backing up…");
+  const f = await moveBackupCapture(rq, dev.info, (d, t) => { $("b-bar").value = d / t * 100; });
+  download(`fm1move-backup-${today()}.json`, JSON.stringify(f));
+  bsay(`Backup saved: ${f.objects.length} objects, ${(f.objects.reduce((s, o) => s + o.len, 0) / 1024).toFixed(0)} KiB.`);
+}, "Backup saved"));
+$("b-file").addEventListener("change", (e) => job(async () => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  const o = await readJson(f);
+  moveBackupObjects(o);                            /* (checked before the question: a wrong file says why at once) */
+  if (!confirm(`Replace everything on the FM-1 with this backup from ${(o.date || "").slice(0, 10)}?`)) return;
+  bsay("Restoring…");
+  await moveBackupRestore(rq, o, (d, t) => { $("b-bar").value = d / t * 100; });
+  tracks = [];
+  bsay("Restored.");
+}, "Restored"));
+
+/* --------------------------------------------------------------------- go --- */
+$("connect").addEventListener("click", connectUsb);
+$("virtual").addEventListener("click", connectVirtual);
+$("disconnect").addEventListener("click", () => disconnect());
+renderPads();
+setConnected();
+if (!navigator.requestMIDIAccess) say("This browser has no Web MIDI (iPhone, iPad, Safari, Firefox): the USB pages need Chrome or Edge on a computer. The virtual FM1 works here.");
+if (new URLSearchParams(location.search).get("virtual") === "1") connectVirtual();
+</script>
+</body>
+</html>

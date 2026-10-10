@@ -109,7 +109,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
   <h1>FM1 MOVE</h1>
   <span class="sub">Browser test view — the firmware's own code, compiled to WebAssembly</span>
   <span class="pill">SIMULATION</span>
-  <nav><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
+  <nav><a href="../device/">Device &amp; install</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
 </header>
 
 <div class="device">
@@ -287,18 +287,24 @@ function drawLeds() {
 }
 
 // ---- flash: the project region lives in localStorage
-const STORE = "fm1move-sim-projects-v1";
+const STORE = "fm1move-sim-store-v2", OLD_STORE = "fm1move-sim-projects-v1";   /* (shared with ../device/: one virtual FM1) */
+const region = () => new Uint8Array(mem.buffer, X.sim_nor() + X.sim_store_base(), X.sim_store_size());
 function saveFlash() {
   try {
-    const u = new Uint8Array(mem.buffer, X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size());
+    const u = region();
     let s = ""; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192));
     localStorage.setItem(STORE, btoa(s));
-  } catch (e) { /* private mode, quota: projects last for this visit only */ }
+  } catch (e) { /* private mode, quota: what is saved lasts for this visit only */ }
 }
-function loadFlash() {
+function loadFlash() {   /* everything the firmware keeps (projects, presets, samples, the FM6 bank, settings) */
   try {
-    const s = localStorage.getItem(STORE); if (!s) return false;
-    const b = atob(s), u = new Uint8Array(mem.buffer, X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size());
+    let s = localStorage.getItem(STORE), u = s ? region() : null;
+    if (!s) {            /* an older visit kept the projects only */
+      s = localStorage.getItem(OLD_STORE);
+      if (!s) return false;
+      u = new Uint8Array(mem.buffer, X.sim_nor() + X.sim_fmp_base(), X.sim_fmp_size());
+    }
+    const b = atob(s);
     if (b.length !== u.length) return false;
     for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
     return true;
@@ -356,7 +362,8 @@ async function boot() {
     const { instance } = await WebAssembly.instantiate(await r.arrayBuffer(), {});
     X = instance.exports; mem = X.memory;
     X.sim_init();
-    if (loadFlash()) X.sim_resume();
+    loadFlash();
+    X.sim_boot();                        /* power-on: the settings, presets, samples and the project as it was left */
     X.sim_ui(0); drawScreen(); drawLeds();
   } catch (e) {
     document.getElementById("powererr").textContent = "Could not load the simulator: " + e;
@@ -369,7 +376,7 @@ async function boot() {
     requestAnimationFrame(frame);
   };
   document.getElementById("demo").onclick = () => X && X.sim_demo();
-  document.getElementById("reset").onclick = () => { if (X && confirm("Start a new empty project? (saved projects stay)")) { X.sim_init(); loadFlash(); } };
+  document.getElementById("reset").onclick = () => { if (X && confirm("Start a new empty project? (saved projects stay)")) X.sim_new(); };
 }
 boot();
 </script>

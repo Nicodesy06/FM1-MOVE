@@ -27,7 +27,9 @@ Order (each a commit):
 
 Status: steps 1–6 done on the host; the FM1MOVE firmware builds with eight tracks, the new UI and FM1M projects.
 Open in M1: MIDI-out track kind, per-track MIDI channel parameter, import of SLOOP project slots 1–4 (the autosave is
-imported), web editor for eight tracks.
+imported). The editor protocol runs in FM1MOVE (eight tracks, FM1M project backup, USR1–3) and the device page
+(`docs/device/`) manages tracks, presets, samples and kits, FM6, projects and backup; step / piano-roll editing there
+is still open.
 
 1. **Track kind.** `track_t.kind` (SYNTH, DRUM, MIDI); `is_drum(t)` reads it; `TDRUM` / `TRK_DRUM` uses replaced by
    "the drum track(s)". Still 4 tracks: behaviour identical, golden renders unchanged.
