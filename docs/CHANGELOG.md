@@ -48,6 +48,13 @@
 - Layers for eight tracks: SEL + keys 1–8 select, GLO + keys 1–8 / 9–16 mute / solo, fill and tap tempo on black keys.
 - `tests/fm1move_ui_test.c`: a virtual FM1 (36 checks + fuzz, ASan); live screenshots in `docs/ui/live/`.
 
+### Device page: connect fix (reported by testers)
+- Connect looked only for the "Felucca" MIDI port (SLOOP / FM1 Move), so an FM-1 on the official firmware got "No FM-1
+  found" with a working cable. It now probes the ports the updater probes, asks the FM-1 its identity and says what to
+  do (official firmware: install from Install, no connect needed; update mode: press Install again; nothing found: the
+  MIDI ports the browser sees and what to check). Install's "not found" lists the ports too. Checked in Chromium with
+  fake Web MIDI (none, official firmware, update mode, other gear); not yet with a real FM-1.
+
 ### Manual
 - `docs/manual/`: quick start and every feature (panel, screens, layers, tracks, sequencer, recording, Groove Engine,
   sounds, projects, settings, MIDI, the device page, install, recovery, coming from SLOOP, questions), in the app's
