@@ -382,6 +382,13 @@ static uint32_t trk_grid(const track_t *t, uint32_t *into, uint32_t *len)
     return grid_at(div, swings(div) ? swing_units(t->p[P_SSWING] + song.g[G_SWING], div_units(div)) : 0u, into, len);
 }
 static uint32_t trk_len(const track_t *t) { return t->p[P_SLEN] > 0 ? (uint32_t)t->p[P_SLEN] : 1u; }
+/* FM1 Move: the groove template's sixteenth for step idx of track t's pattern. Pattern-relative (not the bar's):
+ * a polymetric pattern keeps its feel every pass, and a groove commit bakes exactly what plays */
+static uint32_t trk_slot(const track_t *t, uint32_t idx)
+{
+    uint32_t div = trk_div(t);
+    return div < NDIV_SHORT ? groove_slot(idx, DIV_DEN[div]) : (idx * DIV_BEATS[(div - NDIV_SHORT) % 3u] * 4u) % 16u;
+}
 
 /* ------------------------------------------------------------- undo --- */
 /* One step back (and forward again) for the pattern of one track: what it was before the last
@@ -416,6 +423,15 @@ static uint32_t undo_erase_sess;
 
 /* the step a note played now goes into (as heard: REC_LAT earlier): the one playing, or the next one
  * when it is past the middle of the playing one; *later: it has not played yet (it must not sound twice) */
+/* FM1 Move: the deviation of a note played now from the grid of step abs (rec_target's), as heard (REC_LAT
+ * earlier), in 1/64 of a step: the raw timing the Groove Engine keeps (roff[]) */
+static int8_t rec_dev64(const track_t *t, uint32_t abs)
+{
+    uint32_t into, slen, now = trk_grid(t, &into, &slen), lat = REC_LAT * (uint32_t)song.g[G_BPM];
+    int32_t d = (int32_t)into - (int32_t)(lat < slen ? lat : slen) - (int32_t)(abs - now) * (int32_t)slen;
+    d = slen ? d * 64 / (int32_t)slen : 0;
+    return (int8_t)(d < MICRO_MIN ? MICRO_MIN : d > MICRO_MAX ? MICRO_MAX : d);
+}
 static uint32_t rec_target(const track_t *t, uint32_t *later)
 {
     uint32_t into, slen, abs = trk_grid(t, &into, &slen), half = slen / 2u, lat = REC_LAT * (uint32_t)song.g[G_BPM];
@@ -463,6 +479,7 @@ static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int 
     uint32_t len = trk_len(t), later, abs = rec_target(t, &later), idx = abs % len, k;
     undo_mark(t, UNDO_REC(t));
     step_add(t, idx, note, vel, vel_lvl(vel), rat);
+    t->roff[idx % NSTEP] = rec_dev64(t, abs);         /* the raw timing (played back by the quantize strength) */
     t->seq_active = 1;
     if (later) {                                    /* it sounds now: the step must not trigger it again */
         if (t->rskip_abs != abs)
@@ -490,6 +507,7 @@ static void rec_hit(track_t *t, uint32_t lane, uint32_t lvl, uint32_t rat)
     uint32_t later, abs = rec_target(t, &later);
     undo_mark(t, UNDO_REC(t));
     dstep_set(&t->dstep[abs % trk_len(t)], lane, lvl, rat);
+    t->roff[abs % trk_len(t) % NSTEP] = rec_dev64(t, abs);
     t->seq_active = 1;
     if (later) {
         if (t->rskip_abs != abs)
@@ -764,6 +782,7 @@ static void steps_clear(track_t *t)           /* an empty pattern (synth: REST s
             t->step[k].time = ST_REST;
     locks_clear(t);
     memset(t->fill, 0, sizeof t->fill);
+    memset(t->roff, 0, sizeof t->roff);
 }
 
 /* FM1 Move: track t becomes another kind (TK_SYNTH, TK_DRUM, TK_MIDI). The main loop calls it with the IRQ off.
@@ -1806,6 +1825,32 @@ static uint32_t step_vel(const step_t *s, uint32_t i)
     return lvl_vel((s->lvl >> (2u * i)) & 3u, base);
 }
 
+/* FM1 Move: a step note's velocity through the groove (template accents, humanize); SLOOP's when it is off */
+static uint32_t seq_vel(const track_t *t, const step_t *s, uint32_t i)
+{
+    uint32_t v = step_vel(s, i);
+    if (!groove_active(&t->gv, &song_groove))
+        return v;
+    return groove_vel(&t->gv, &song_groove, v, trk_slot(t, t->seq_idx), trk_index(t), t->seq_idx, i);
+}
+static uint32_t drum_vel(const track_t *t, const dstep_t *s, uint32_t l)
+{
+    uint32_t v = lvl_vel(dstep_lvl(s, l), 100);
+    if (!groove_active(&t->gv, &song_groove))
+        return v;
+    return groove_vel(&t->gv, &song_groove, v, trk_slot(t, t->seq_idx), trk_index(t), t->seq_idx, l);
+}
+/* a drum step's earliest pad offset among its lanes (the step fires then; later pads follow) */
+static int32_t pad_lead(const track_t *t, const dstep_t *s)
+{
+    uint32_t m = dstep_mask(s), l;
+    int32_t lead = 127;
+    for (l = 0; m; l++, m >>= 1)
+        if ((m & 1u) && t->pad_off[l] < lead)
+            lead = t->pad_off[l];
+    return lead == 127 ? 0 : lead;
+}
+
 /* play one synth step: TIE extends, REST releases, NOTE (re)triggers; a SLIDE on the previous
  * step makes this one legato with a glide (acid style). skip: bit k = note k already sounds
  * from live recording (not triggered, not released here). len: the step's length (units). */
@@ -1841,11 +1886,11 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
     for (i = 0; i < s->n; i++)
         if (!((skip >> i) & 1u)) {
             if (slide_in)
-                trk_note_on(t, s->note[i], step_vel(s, i));
+                trk_note_on(t, s->note[i], seq_vel(t, s, i));
             else                                    /* (STRUM: a chord's notes one after the other) */
-                trk_note_chord(t, s->note, s->n, i, step_vel(s, i));
+                trk_note_chord(t, s->note, s->n, i, seq_vel(t, s, i));
             if (!slide_in || !(mo_set[trk_index(t) % NTRK][s->note[i] >> 5] & (1u << (s->note[i] & 31u))))
-                seq_out_on(t, s->note[i], step_vel(s, i));   /* (a slide into the same note: one MIDI note) */
+                seq_out_on(t, s->note[i], seq_vel(t, s, i));   /* (a slide into the same note: one MIDI note) */
         }
     if (slide_in)                                   /* release what is not held over */
         for (i = 0; i < t->seq_n; i++) {
@@ -1868,11 +1913,17 @@ static void seq_step(track_t *t, const step_t *s, uint32_t slen, uint32_t skip)
 static void drum_step(track_t *t, const dstep_t *s, uint32_t skip)
 {
     uint32_t l, m = dstep_mask(s) & ~skip & ~roll_lanes(t);
+    int32_t lead = pad_lead(t, s);
     seq_out_track_off(t);                           /* the last step's hits end here */
+    t->pad_pend = 0;
     for (l = 0; m; l++, m >>= 1)
         if (m & 1u) {
-            trk_note_on(t, LANE_NOTE[l], lvl_vel(dstep_lvl(s, l), 100));
-            seq_out_on(t, LANE_NOTE[l], lvl_vel(dstep_lvl(s, l), 100));
+            if (t->pad_off[l] > lead) {             /* FM1 Move: a later pad fires in seq_ratchets */
+                t->pad_pend |= (uint16_t)(1u << l);
+                continue;
+            }
+            trk_note_on(t, LANE_NOTE[l], drum_vel(t, s, l));
+            seq_out_on(t, LANE_NOTE[l], drum_vel(t, s, l));
         }
 }
 
@@ -1885,16 +1936,31 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
     if (is_drum(t)) {
         const dstep_t *s = &t->dstep[t->seq_idx % NSTEP];
         uint32_t m = dstep_mask(s) & ~roll_lanes(t);
+        int32_t lead = t->pad_pend ? pad_lead(t, s) : 0;
         for (i = 0; m; i++, m >>= 1) {
-            uint32_t hits = 1u + dstep_rat(s, i), h, done;
-            if (!(m & 1u) || hits == 1u)
+            uint32_t hits = 1u + dstep_rat(s, i), h, done, d = 0;
+            if (!(m & 1u))
                 continue;
-            h = into * hits / slen;
+            if (t->pad_pend) {                      /* FM1 Move: this pad's own start, after the step's lead */
+                d = (uint32_t)(t->pad_off[i] - lead) * (slen / 64u);
+                if ((t->pad_pend >> i) & 1u) {
+                    if (into < d)
+                        continue;
+                    t->pad_pend &= (uint16_t)~(1u << i);
+                    trk_note_on(t, LANE_NOTE[i], drum_vel(t, s, i));
+                    seq_out_on(t, LANE_NOTE[i], drum_vel(t, s, i));
+                }
+                if (into < d)
+                    continue;
+            }
+            if (hits == 1u)
+                continue;
+            h = (into - d) * hits / slen;
             done = (t->rat_lanes >> (2u * i)) & 3u;
             if (h > done && h < hits) {
                 t->rat_lanes = (t->rat_lanes & ~(3u << (2u * i))) | h << (2u * i);
-                trk_note_on(t, LANE_NOTE[i], lvl_vel(dstep_lvl(s, i), 100));
-                seq_out_on(t, LANE_NOTE[i], lvl_vel(dstep_lvl(s, i), 100));
+                trk_note_on(t, LANE_NOTE[i], drum_vel(t, s, i));
+                seq_out_on(t, LANE_NOTE[i], drum_vel(t, s, i));
             }
         }
         return;
@@ -1912,8 +1978,8 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
                 uint32_t j;
                 t->rat_done[i] = (uint8_t)h;
                 trk_note_off(t, s->note[i]);
-                trk_note_on(t, s->note[i], step_vel(s, i));
-                seq_out_on(t, s->note[i], step_vel(s, i));
+                trk_note_on(t, s->note[i], seq_vel(t, s, i));
+                seq_out_on(t, s->note[i], seq_vel(t, s, i));
                 t->seq_off = slen / hits * (uint32_t)t->p[P_SGATE] / 128u;
                 for (j = 0; j < t->seq_n && t->seq_notes[j] != s->note[i]; j++)
                     ;
@@ -1928,8 +1994,63 @@ static void seq_ratchets(track_t *t, uint32_t into, uint32_t slen)
  * (micro >= 0), or how far before its step (micro < 0, as a negative number) */
 static int32_t micro_units(const track_t *t, uint32_t abs, uint32_t slen)
 {
-    int32_t m = t->micro[abs % trk_len(t) % NSTEP];
-    return (int32_t)(slen / 64u) * m;                /* |m| <= 32: fits */
+    uint32_t idx = abs % trk_len(t) % NSTEP;
+    int32_t m = t->micro[idx], pad = is_drum(t) ? pad_lead(t, &t->dstep[idx]) : 0;
+    if (!pad && !groove_active(&t->gv, &song_groove))
+        return (int32_t)(slen / 64u) * m;            /* |m| <= 32: fits (SLOOP's nudge, exactly) */
+    /* FM1 Move: the Groove Engine's offset (groove.c): raw timing x quantize, template, nudge and pad, humanize */
+    return groove_units(groove_offset(&t->gv, &song_groove, t->roff[idx], m, pad, trk_slot(t, idx), trk_index(t), idx,
+                                      0xFFu),
+                        slen);
+}
+
+/* FM1 Move: GROOVE COMMIT. The timing the groove gives each step of track t (raw x quantize, the template's
+ * timing, humanize) becomes its nudge; the raw deviations go to 0 and the template's timing amount and humanize
+ * timing to 0, so the pattern plays as before (rounded to 1/64 of a step) and can now be edited step by step.
+ * The template's velocity feel stays. One undo (groove_uncommit). The main loop calls it with the IRQ off. */
+static struct {
+    uint8_t valid, trk;
+    int8_t micro[NSTEP], roff[NSTEP];
+    groove_t gv;
+} grv_undo;
+static void groove_commit(track_t *t)
+{
+    uint32_t i, len = trk_len(t), tm, am;
+    const groove_t *u;
+    grv_undo.valid = 1;
+    grv_undo.trk = (uint8_t)trk_index(t);
+    memcpy(grv_undo.micro, t->micro, sizeof t->micro);
+    memcpy(grv_undo.roff, t->roff, sizeof t->roff);
+    grv_undo.gv = t->gv;
+    for (i = 0; i < len && i < NSTEP; i++) {
+        int32_t off = groove_offset(&t->gv, &song_groove, t->roff[i], t->micro[i], 0, trk_slot(t, i), trk_index(t), i,
+                                    0xFFu);
+        off = off >= 0 ? (off + 8) / 16 : -((-off + 8) / 16);
+        t->micro[i] = (int8_t)clamp(off, MICRO_MIN, MICRO_MAX);
+    }
+    memset(t->roff, 0, sizeof t->roff);
+    groove_tmpl_of(&t->gv, &song_groove, &tm, &am, &u);
+    if (!t->gv.own) {                                /* it followed the song: it keeps the song's feel as its own */
+        t->gv.tmpl = (uint8_t)tm;
+        t->gv.vamt = (uint8_t)groove_vamt(&t->gv, &song_groove);
+        memcpy(t->gv.user_off, u->user_off, sizeof t->gv.user_off);
+        memcpy(t->gv.user_vel, u->user_vel, sizeof t->gv.user_vel);
+        t->gv.own = 1;
+    }
+    t->gv.amt = 0;
+    t->gv.hum_t = 0;
+}
+static int groove_uncommit(void)
+{
+    track_t *t;
+    if (!grv_undo.valid)
+        return 0;
+    t = &trk[grv_undo.trk % NTRK];
+    memcpy(t->micro, grv_undo.micro, sizeof t->micro);
+    memcpy(t->roff, grv_undo.roff, sizeof t->roff);
+    t->gv = grv_undo.gv;
+    grv_undo.valid = 0;
+    return 1;
 }
 
 /* The steps fire in order, one a block at most, each at its nudged time (micro: 1/64 of a step early

@@ -23,3 +23,11 @@
 - One drum engine for any number of drum tracks (owner-tagged voices, per-track kit, mix, filter, slicer, choke).
 - Voice budget: last-resort steal so eight protected leads never push the shared budget over 8.
 - `tests/eight_track_test.c` (+ ASan/UBSan) in the host suite.
+
+### M2 — Groove Engine (host)
+- `firmware/src/groove.c`: non-destructive quantize strength on recorded raw timing, 8 templates (residual timing +
+  velocity/accent maps + suggested swing), swing applied once, micro-timing, drum pad offsets (early/late),
+  deterministic humanize (seed), global groove with per-track override, groove commit with undo.
+- `seq.c`: groove-aware firing time and velocity, raw deviation recorded with latency compensation, late pads.
+- `tests/groove_test.c` (26 checks, + ASan/UBSan). SLOOP's 182 golden renders unchanged.
+- `docs/GROOVE_ENGINE.md`.

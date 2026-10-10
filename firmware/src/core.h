@@ -193,6 +193,7 @@ typedef struct {                 /* a step of the drum track (10 bytes, the size
     uint8_t rat[4];              /* 2 bits per lane: ratchet */
 } dstep_t;
 _Static_assert(sizeof(step_t) == 10 && sizeof(dstep_t) == 10, "a step is 10 bytes on every track");
+#include "groove.c"           /* FM1 Move: the Groove Engine's types and pure functions (groove_t in track_t) */
 /* SLOOP 2.4: per-step nudge (micro timing) and parameter locks (seq.c seq_tick / lock_step) */
 #define MICRO_MIN (-32)          /* a step's nudge in 1/64 of its length: half a step early .. */
 #define MICRO_MAX 31             /* .. just under half a step late (0 = on the grid) */
@@ -236,6 +237,10 @@ typedef struct track {
         dstep_t dstep[NSTEP];
     };
     int8_t micro[NSTEP];         /* each step's nudge, MICRO_MIN..MICRO_MAX (1/64 of a step; - early, + late) */
+    int8_t roff[NSTEP];          /* FM1 Move: each step's recorded deviation from its grid, 1/64 step (the raw timing) */
+    int8_t pad_off[DRUM_LANES];  /* FM1 Move: a drum track's per-pad offset, 1/64 step (- early, + late) */
+    groove_t gv;                 /* FM1 Move: the track's groove (groove.c) */
+    uint16_t pad_pend;           /* drum lanes of the step playing still to fire (late pads) */
     plock_t lock[NLOCK];         /* parameter locks, unsorted (step LOCK_FREE = a free slot) */
     uint8_t fill[NSTEP / 4];     /* each step's condition, 2 bits (seq.c step_fill): FC_* */
     /* the locks in force (seq.c lock_step): the params overridden now, what they were, what the lock set */
@@ -301,6 +306,7 @@ typedef struct {
 
 static track_t trk[NTRK];        /* the instrument: three parts and the drum track */
 static song_t song;
+static groove_t song_groove;     /* FM1 Move: the global groove (template, amount) the tracks follow by default */
 
 /* The transport clock (seq.c runs it). One unit = one sample at 1 BPM: a beat is BEAT_U units at any
  * tempo, and every division of it (1/4 .. 1/64, the triplets) is a whole number of units. The steps

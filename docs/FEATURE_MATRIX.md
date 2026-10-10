@@ -28,13 +28,13 @@ Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflo
 | --- | --- | --- |
 | Sample-clock transport, no drift | SLOOP | units of 1 sample at 1 BPM; events at 32-sample (0.73 ms) blocks |
 | Swing global + per track, 50–75 % | SLOOP | reads 0–100; straight grids only |
-| Micro timing per step (±½ step, 1/64) | SLOOP | per step, not per note / lane |
-| Non-destructive quantise with strength 0–100 % | PLAN (M2) | SLOOP records quantised (destructive) |
+| Micro timing per step (±½ step, 1/64) | SLOOP + FM1M | + drum pad offsets per lane |
+| Non-destructive quantise with strength 0–100 % | FM1M (host) | raw timing kept per step; `GROOVE_ENGINE.md` |
 | Quantise grids 1/4 … 1/32, triplets | PART | division grids exist; quantise-on-record only |
-| Groove templates (offset + velocity + accent) | PLAN (M2) | |
-| Groove amount, per-track override | PLAN (M2) | |
-| Humanise timing / velocity with deterministic seed | PLAN (M2) | |
-| Groove commit with undo | PLAN (M2) | |
+| Groove templates (offset + velocity + accent) | FM1M (host) | 8 templates incl. USER |
+| Groove amount, per-track override | FM1M (host) | timing and velocity amounts, song groove + own |
+| Humanise timing / velocity with deterministic seed | FM1M (host) | REGEN = new seed |
+| Groove commit with undo | FM1M (host) | |
 
 ## Sequencer
 

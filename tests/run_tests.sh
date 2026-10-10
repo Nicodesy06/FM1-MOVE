@@ -95,6 +95,13 @@ if $ASAN -o "$OUT/eight_track_asan" tests/eight_track_test.c -lm 2>/dev/null; th
     run "FM1 Move: eight tracks under ASan + UBSan" "$OUT/eight_track_asan"
 fi
 
+# FM1 Move Groove Engine: the pipeline's arithmetic, real firing times, commit / undo; and under ASan + UBSan
+$CC -O2 -w -Ibuild/gen -Ifirmware/src -o "$OUT/groove_test" tests/groove_test.c -lm
+run "FM1 Move groove: quantize strength, templates, swing once, humanize, pads, wrap, no drift, commit" "$OUT/groove_test"
+if $ASAN -o "$OUT/groove_asan" tests/groove_test.c -lm 2>/dev/null; then
+    run "FM1 Move groove under ASan + UBSan" "$OUT/groove_asan"
+fi
+
 # FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
 python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
 $CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c
