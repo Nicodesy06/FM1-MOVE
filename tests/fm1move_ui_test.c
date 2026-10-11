@@ -380,6 +380,49 @@ int main(int argc, char **argv)
     check(ctl.menu && ctl.screen == SC_SETTINGS, "HOME held again: SETTINGS");
     frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("13-settings-live");
+    /* SETTINGS: the metronome and the count-in */
+    {
+        uint32_t n0;
+        check(!strcmp(mv.row_l[0], "METRONOME") && !strcmp(mv.row_r[0], "OFF") && !song.playing,
+              "SETTINGS: METRONOME first, OFF");
+        turn(EN_K1, 1);                                   /* (one value a detent event) */
+        turn(EN_K1, 1);
+        check(song.g[G_CLOCK] == 2 && !strcmp(mv.row_r[0], "ON"), "... KNOB 1: OFF, REC, ON");
+        n0 = click_n;
+        tap(B_PLAY);
+        frames(70);
+        check(song.playing && click_n >= n0 + 2u, "... ON: it clicks on every beat while it plays");
+        tap(B_PLAY);
+        frames(4);
+        turn(EN_K1, -1);
+        n0 = click_n;
+        tap(B_PLAY);
+        frames(70);
+        check(song.g[G_CLOCK] == 1 && click_n == n0, "... REC: silent while it only plays");
+        tap(B_PLAY);
+        frames(4);
+        turn(EN_ALGO, 1);
+        turn(EN_K1, 1);
+        check(ctl.row[SC_SETTINGS] == 1u && rec_count && !strcmp(mv.row_r[1], "1 BAR"), "COUNT-IN: 1 BAR");
+        tap(B_REC);
+        n0 = click_n;
+        tap(B_PLAY);
+        frames(4);
+        check(ci_on && !song.rec && click_n > n0, "... REC armed, PLAY: a bar of clicks first, not recording yet");
+        frames(140);
+        check(!ci_on && song.playing && song.rec && click_n >= n0 + 4u, "... then it records, the metronome on (REC mode)");
+        tap(B_REC);
+        tap(B_PLAY);
+        frames(4);
+        turn(EN_K1, -1);
+        turn(EN_ALGO, -1);
+        turn(EN_K1, -1);
+        check(!rec_count && song.g[G_CLOCK] == 0 && !song.playing && !song.rec, "... both back to OFF");
+        turn(EN_ALGO, 20);
+        check(!strcmp(mv.row_l[mv.row_sel], "VERSION") && !strcmp(mv.row_r[mv.row_sel], FELUCCA_VERSION),
+              "the list scrolls to its last row, VERSION");
+        turn(EN_ALGO, -20);
+    }
     tap(B_HOME);
     check(!ctl.menu && ctl.screen == SC_PLAY, "HOME tapped: back to PLAY");
 

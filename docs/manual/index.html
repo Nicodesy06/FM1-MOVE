@@ -259,7 +259,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <figure><img src="../ui/live/09-sound.png" alt="SOUND screen" loading="lazy"><figcaption><b>SOUND · EDIT</b>Pages PRESET → ENV → LFO → SENDS (EDIT again turns them).</figcaption></figure>
     <figure><img src="../ui/live/11-perform.png" alt="PERFORM screen" loading="lazy"><figcaption><b>PERFORM · FX</b>DJ filter, dust, duck, track filter; hold FX for the effects.</figcaption></figure>
     <figure><img src="../ui/live/12-project-live.png" alt="PROJECT screen" loading="lazy"><figcaption><b>PROJECT · HOME held</b>Two project slots: save, load, delete.</figcaption></figure>
-    <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Clock, MIDI, lights, USB audio, version.</figcaption></figure>
+    <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Metronome, count-in, clock, MIDI, lights, USB audio, version.</figcaption></figure>
   </div>
   <h3>The knobs on each screen</h3>
   <div class="tablewrap"><table>
@@ -425,11 +425,13 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li><b>Playing:</b> <kbd>REC</kbd> records at once; every pass is added on top (overdub). Notes land where you heard them — the keys' latency is taken back.</li>
     <li><b>Stopped:</b> <kbd>REC</kbd> arms (its light flashes); your first note — or <kbd>PLAY</kbd> — starts the loop and the recording.</li>
     <li><b>Stop recording:</b> <kbd>REC</kbd> again ("REC OFF").</li>
+    <li><b>Metronome and count-in:</b> HOME held twice › SETTINGS › METRONOME (OFF · REC · ON) and COUNT-IN (OFF · 1 BAR).</li>
+    <li><b>Undo a take:</b> <kbd>EDIT</kbd> + <kbd>OCT−</kbd> (one step; <kbd>EDIT</kbd> + <kbd>OCT+</kbd> redo).</li>
     <li><b>Note repeat:</b> hold <kbd>ARP</kbd> and hold keys: rolls at the rate of <kbd>KNOB 1</kbd>, recorded as ratchets.</li>
     <li><b>Drums with dynamics:</b> hold <kbd>OCT−</kbd> / <kbd>OCT+</kbd> while you play for ghost / hard hits; every hit keeps its level.</li>
     <li><b>Timing is kept:</b> the recorded deviation of every note stays with it, so the Groove Engine's quantize can be changed at any time.</li>
   </ul>
-  <div class="note">The REC screen options of SLOOP (free tempo, length, count-in) keep their stored values but have no FM1 Move page yet, and holding REC to clear
+  <div class="note">The REC screen options of SLOOP (free tempo, length) keep their stored values but have no FM1 Move page yet (the count-in is in SETTINGS), and holding REC to clear
     a track is gone — use <kbd>EDIT</kbd> held + keys while stopped, or undo.</div>
 </section>
 
@@ -554,6 +556,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     in flash when the FM-1 is stopped.</p>
   <div class="tablewrap"><table>
     <tr><th>Row</th><th>Values</th><th>What it does</th></tr>
+    <tr><td>METRONOME <span class="tag new">NEW</span></td><td>OFF · REC · ON</td><td>A click on every beat (higher on the bar's first): REC only while recording, ON whenever it plays. Saved with the project; its level follows the drum level</td></tr>
+    <tr><td>COUNT-IN <span class="tag new">NEW</span></td><td>OFF · 1 BAR</td><td>Armed with <kbd>REC</kbd> while stopped, <kbd>PLAY</kbd> counts one bar of clicks before recording (a note then only sounds; the very first take of an empty project starts without it)</td></tr>
     <tr><td>CLOCK IN</td><td>INT · USB · TRS</td><td>Follow your own tempo, or a DAW / drum machine's MIDI clock (start, stop, continue, tempo)</td></tr>
     <tr><td>MIDI OUT</td><td>KEYS · SEQ</td><td>The keys always go out; SEQ also sends the sequencer, the arp and the rolls</td></tr>
     <tr><td>MIDI IN</td><td>NOTES · CLOCK</td><td>CLOCK: follow the clock and ignore incoming notes</td></tr>

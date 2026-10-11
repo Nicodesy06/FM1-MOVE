@@ -2,6 +2,11 @@
 
 ## Unreleased (fm1-move/dev)
 
+### Metronome and count-in on the panel (host simulation)
+- SETTINGS gains METRONOME (OFF / REC / ON: `G_CLOCK`, saved with the project) and COUNT-IN (OFF / 1 BAR: REC armed,
+  PLAY counts a bar first; kept with the settings). FM1 Move had no panel route to either. The SETTINGS list now
+  scrolls (9 rows, 6 shown).
+
 ### Simulator: HOLD mode (web)
 - HOLD · OFF / ON in the simulator's header. On: a click (or F1–F12, [ ] ) on a function button latches it down; a
   second click lets it go, so one hand can hold FX, SEL or ENV while the other turns knobs or plays keys. Turning HOLD

@@ -322,8 +322,8 @@ int main(int argc, char **argv)
     mv.page = 1;
     mv.playing = 0;
     {
-        static const char *const L[6] = {"CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS", "KEY LIGHTS", "USB AUDIO"};
-        static const char *const R[6] = {"USB", "SEQ", "NOTES", "LOW", "WHITE", "MAIN"};
+        static const char *const L[6] = {"METRONOME", "COUNT-IN", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS"};
+        static const char *const R[6] = {"REC", "1 BAR", "USB", "SEQ", "NOTES", "LOW"};
         for (i = 0; i < 6u; i++) {
             snprintf(mv.row_l[i], 16, "%s", L[i]);
             snprintf(mv.row_r[i], 16, "%s", R[i]);
@@ -331,7 +331,7 @@ int main(int argc, char **argv)
         mv.nrows = 6;
         mv.row_sel = 0;
     }
-    kn(0, "VALUE", "USB", -1, 0);
+    kn(0, "VALUE", "REC", -1, 0);
     mv.k[1].label = mv.k[2].label = mv.k[3].label = 0;
     render(dir, "13_settings");
 

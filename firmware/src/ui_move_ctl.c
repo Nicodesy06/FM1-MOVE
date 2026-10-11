@@ -202,15 +202,17 @@ static groove_t *ctl_groove_own(void)
 }
 
 /* ------------------------------------------------------------ settings --- */
-enum { ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_ABOUT, ST_COUNT };
-static const char *const ST_LABEL[ST_COUNT] = {"CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS", "KEY LIGHTS", "USB AUDIO",
-                                               "VERSION"};
+enum { ST_CLICK, ST_COUNTIN, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_ABOUT, ST_COUNT };
+static const char *const ST_LABEL[ST_COUNT] = {"METRONOME", "COUNT-IN", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS",
+                                               "KEY LIGHTS", "USB AUDIO", "VERSION"};
 static void st_value(uint32_t r, char *b)
 {
     static const char *const SYNC[3] = {"INT", "USB", "TRS"};
     static const char *const LV[4] = {"OFF", "LOW", "MID", "HIGH"};
     static const char *const KY[4] = {"OFF", "C KEYS", "WHITE", "ALL"};
     switch (r) {
+    case ST_CLICK: str_cpy(b, N_CLICK[clamp(song.g[G_CLOCK], 0, 2)], 16); break;   /* OFF / REC (while recording) / ON */
+    case ST_COUNTIN: str_cpy(b, rec_count ? "1 BAR" : "OFF", 16); break;
     case ST_SYNC: str_cpy(b, SYNC[lights_sync % 3u], 16); break;
     case ST_MIDIOUT: str_cpy(b, lights_mout ? "SEQ" : "KEYS", 16); break;
     case ST_MIDIIN: str_cpy(b, lights_min ? "CLOCK" : "NOTES", 16); break;
@@ -224,6 +226,12 @@ static void st_turn(uint32_t r, int32_t s)
 {
     int32_t d = s > 0 ? 1 : -1;
     switch (r) {
+    case ST_CLICK:                                       /* the metronome (seq.c click_tick; the project keeps it) */
+        song.g[G_CLOCK] = (int16_t)clamp(song.g[G_CLOCK] + d, 0, 2);
+        break;
+    case ST_COUNTIN:                                     /* REC armed, PLAY: one bar of clicks first (seq.c) */
+        rec_count = (uint8_t)!rec_count;
+        break;
     case ST_SYNC:
         lights_sync = (uint8_t)((lights_sync + 3 + d) % 3);
         song.g[G_SYNC] = lights_sync;
@@ -1363,12 +1371,13 @@ static void mv_fill(void)
         mv.k[2].label = 0;
         mv.k[3].label = 0;
     } else if (ctl.menu) {
-        for (i = 0; i < ST_COUNT && i < MV_ROWS; i++) {
-            str_cpy(mv.row_l[i], ST_LABEL[i], 16);
-            st_value(i, mv.row_r[i]);
+        uint32_t sel = ctl.row[SC_SETTINGS], first = sel >= MV_ROWS ? sel - MV_ROWS + 1u : 0u;   /* (the list scrolls) */
+        for (i = 0; i < MV_ROWS && first + i < ST_COUNT; i++) {
+            str_cpy(mv.row_l[i], ST_LABEL[first + i], 16);
+            st_value(first + i, mv.row_r[i]);
         }
-        mv.nrows = ST_COUNT < MV_ROWS ? ST_COUNT : MV_ROWS;
-        mv.row_sel = ctl.row[SC_SETTINGS] < MV_ROWS ? ctl.row[SC_SETTINGS] : MV_ROWS - 1u;
+        mv.nrows = (uint8_t)i;
+        mv.row_sel = (uint8_t)(sel - first);
     }
     /* modal, toast */
     if (ctl.arm) {

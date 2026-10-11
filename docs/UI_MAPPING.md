@@ -20,7 +20,7 @@ Status: **implemented** in `firmware/src/ui_move_ctl.c` (FM1MOVE build) and exer
 | ARP held + keys | note repeat (roll) at the GROOVE grid |
 | SEQ held + keys 1–16 | toggle steps of the shown page. Held: the STEPS page, a 4 × 4 grid of the page's steps (note, tie, accent, lock, playhead, held step), NOTE · DIV · SWING · LENGTH with values (not on the SEQUENCER) |
 | EDIT held + keys | erase that note / lane as it plays; EDIT + OCT−/OCT+ undo / redo |
-| HOME held | menu (PROJECT, SETTINGS) |
+| HOME held | menu (PROJECT, SETTINGS: METRONOME OFF / REC / ON, COUNT-IN OFF / 1 BAR, clock, MIDI, lights, USB audio, version) |
 
 ## Per screen
 

@@ -34,7 +34,8 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | Layer pages: SEQ held shows the steps (4 × 4), SEL held the chords on the keys | kept: STEPS and KEY pages in FM1 Move's style, over any screen (shown after 0.25 s held, or at once when a key or knob is used) |
 | Tap tempo | changed | GLO held + black key F# (SLOOP: the last white key) |
 | Set the tempo exactly | changed | any function button held + SELECT, one BPM a detent (as SLOOP's "inside a layer: tempo"); the web: GLOBAL › BPM |
-| REC screen: mode free / tempo, length 1-2-4 bars, start on note / count-in | **web** for none, **gone** from the panel | the REC button arms and records; the three REC options keep their stored value but no FM1 Move page sets them yet |
+| REC screen: mode free / tempo, length 1-2-4 bars, start on note / count-in | count-in **kept** (SETTINGS › COUNT-IN); mode and length **gone** from the panel | the REC button arms and records; mode and length keep their stored value but no FM1 Move page sets them yet |
+| Metronome (GLO › GLOBAL › CLICK: OFF / REC / ON) | kept: SETTINGS › METRONOME; also the device page (Global › CLICK) | |
 | Hold REC ~2 s to clear the track | **gone** | EDIT held + keys while stopped erases from the whole pattern; changing a track's kind clears it |
 | *New in FM1 Move* | — | Groove Engine: quantise strength, templates, humanize, per-track groove, commit with undo (GROOVE screen) |
 
