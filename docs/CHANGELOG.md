@@ -2,6 +2,12 @@
 
 ## Unreleased (fm1-move/dev)
 
+### REC on the cycle, as Ableton (host simulation)
+- Playing, REC starts the take on the next cycle's first beat and REC during a take ends it when the cycle closes
+  (never mid-bar); REC again while it waits cancels, STOP drops it; the REC light blinks while it waits. The cycle:
+  SETTINGS › REC QUANT 1 BAR (default), 2, 4, 8 BARS (counted from PLAY), OFF = at once as SLOOP. Done in the audio
+  interrupt on the bar, before that block's steps (seq.c rec_cycle_bar); kept with the settings (word bits 21–23).
+
 ### Metronome and count-in on the panel (host simulation)
 - SETTINGS gains METRONOME (OFF / REC / ON: `G_CLOCK`, saved with the project) and COUNT-IN (OFF / 1 BAR: REC armed,
   PLAY counts a bar first; kept with the settings). FM1 Move had no panel route to either. The SETTINGS list now

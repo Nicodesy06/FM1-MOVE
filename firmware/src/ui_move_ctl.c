@@ -202,8 +202,8 @@ static groove_t *ctl_groove_own(void)
 }
 
 /* ------------------------------------------------------------ settings --- */
-enum { ST_CLICK, ST_COUNTIN, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_ABOUT, ST_COUNT };
-static const char *const ST_LABEL[ST_COUNT] = {"METRONOME", "COUNT-IN", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS",
+enum { ST_CLICK, ST_COUNTIN, ST_RECQ, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_ABOUT, ST_COUNT };
+static const char *const ST_LABEL[ST_COUNT] = {"METRONOME", "COUNT-IN", "REC QUANT", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS",
                                                "KEY LIGHTS", "USB AUDIO", "VERSION"};
 static void st_value(uint32_t r, char *b)
 {
@@ -213,6 +213,11 @@ static void st_value(uint32_t r, char *b)
     switch (r) {
     case ST_CLICK: str_cpy(b, N_CLICK[clamp(song.g[G_CLOCK], 0, 2)], 16); break;   /* OFF / REC (while recording) / ON */
     case ST_COUNTIN: str_cpy(b, rec_count ? "1 BAR" : "OFF", 16); break;
+    case ST_RECQ: {                                      /* REC while playing: on the cycle of 1 .. 8 bars, or at once */
+        static const char *const RQN[5] = {"OFF", "1 BAR", "2 BARS", "4 BARS", "8 BARS"};
+        str_cpy(b, RQN[rec_q_idx()], 16);
+        break;
+    }
     case ST_SYNC: str_cpy(b, SYNC[lights_sync % 3u], 16); break;
     case ST_MIDIOUT: str_cpy(b, lights_mout ? "SEQ" : "KEYS", 16); break;
     case ST_MIDIIN: str_cpy(b, lights_min ? "CLOCK" : "NOTES", 16); break;
@@ -232,6 +237,11 @@ static void st_turn(uint32_t r, int32_t s)
     case ST_COUNTIN:                                     /* REC armed, PLAY: one bar of clicks first (seq.c) */
         rec_count = (uint8_t)!rec_count;
         break;
+    case ST_RECQ: {
+        static const uint8_t RQ[5] = {0, 1, 2, 4, 8};
+        rec_q = RQ[clamp((int32_t)rec_q_idx() + d, 0, 4)];
+        break;
+    }
     case ST_SYNC:
         lights_sync = (uint8_t)((lights_sync + 3 + d) % 3);
         song.g[G_SYNC] = lights_sync;
@@ -630,12 +640,23 @@ static void ui_input(void)
         ctl_clip_clear();
         pressed &= ~ctl_btn_bit(B_REC);
     }
+    if (!song.playing)
+        rec_pend = 0;                                    /* (stopped: nothing waits for a cycle) */
     if (pressed & ctl_btn_bit(B_REC)) {
         if (!ft_owns_press()) {
-            if (song.rec || rec_wait) {
+            if (rec_pend) {                              /* REC again before the cycle: never mind */
+                ctl_toast(rec_pend == REC_PEND_ON ? "REC CANCELLED" : "REC GOES ON", "");
+                rec_pend = 0;
+            } else if (song.rec && song.playing && rec_q) {   /* the take ends when the cycle closes */
+                rec_pend = REC_PEND_OFF;
+                ctl_toast("REC STOPS ON THE BAR", "");
+            } else if (song.rec || rec_wait) {
                 song.rec = 0;
                 rec_wait = 0;
                 ctl_toast("REC OFF", "");
+            } else if (song.playing && rec_q) {         /* the take starts on the next cycle */
+                rec_pend = REC_PEND_ON;
+                ctl_toast("REC STARTS ON THE BAR", "");
             } else if (song.playing) {
                 rec_begin();
             } else {
@@ -828,7 +849,7 @@ static void ui_leds(void)
     beat = song.playing && clk_pos < BEAT_U / 4u;
     ctl_led(nl, panel.btn[ui.layer != LY_PLAY ? LAYER_BTN[ui.layer] : SC_BTN[ctl.screen % SC_COUNT]], 1);
     ctl_led(nl, panel.btn[B_PLAY], (int)beat);
-    ctl_led(nl, panel.btn[B_REC], song.rec != 0u || ft_on || (rec_wait && ((fm1_ms / 125u) & 1u)));
+    ctl_led(nl, panel.btn[B_REC], (song.rec != 0u && !rec_pend) || ft_on || ((rec_wait || rec_pend) && ((fm1_ms / 125u) & 1u)));
     if (is_drum(TSEL)) {
         ctl_led(nl, panel.btn[B_OCTDN], (fm1_in.buttons & dyn_bit[0]) != 0u);
         ctl_led(nl, panel.btn[B_OCTUP], (fm1_in.buttons & dyn_bit[1]) != 0u);

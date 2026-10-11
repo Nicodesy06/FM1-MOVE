@@ -595,6 +595,27 @@ static void rec_begin(void)
     rec_wait = 0;
     rec_go = 1;
 }
+#if FM1MOVE
+/* FM1 Move: REC while playing, quantised as Ableton's global quantisation. rec_q bars make a cycle, counted from the
+ * transport's start: REC starts the take on the next cycle's first beat, REC during a take ends it when the cycle
+ * closes (never in the middle of a bar). 0: at once, as SLOOP. The UI asks (rec_pend); the audio interrupt does it
+ * on the bar, before that block's steps, so the downbeat is in the take */
+static volatile uint8_t rec_q = 1;              /* bars a cycle: 0 (at once), 1, 2, 4, 8 */
+static volatile uint8_t rec_pend;               /* REC_PEND_ON / REC_PEND_OFF on the next cycle, 0 none */
+#define REC_PEND_ON 1u
+#define REC_PEND_OFF 2u
+static uint32_t rec_q_idx(void) { return rec_q >= 8u ? 4u : rec_q >= 4u ? 3u : rec_q; }   /* 0 1 2 4 8 -> 0..4 */
+static void rec_cycle_bar(void)
+{
+    if (!rec_pend || (rec_q && (clk_beat >> 2) % rec_q))
+        return;
+    if (rec_pend == REC_PEND_ON)
+        rec_begin();
+    else
+        song.rec = 0;
+    rec_pend = 0;
+}
+#endif
 
 #define FT_MAX 192u
 #define FT_BLOCKS (24u * FS / CTL)            /* 24 s: 4 bars at 40 BPM, the longest loop */
@@ -2351,6 +2372,9 @@ static void events_block(uint32_t n)
         transport_req = 0;
         song.rec = 0;                               /* STOP ends the take (and the wait) */
         rec_wait = 0;
+#if FM1MOVE
+        rec_pend = 0;                               /* (and a REC asked for on the cycle) */
+#endif
         if (ft_on) {
             ft_on = 0;                              /* a free take: dropped */
             ft_bars = 0xFF;
@@ -2399,6 +2423,7 @@ static void events_block(uint32_t n)
         fill_bar_on = fill_arm;
         fill_arm = 0;
 #if FM1MOVE
+        rec_cycle_bar();                            /* a REC asked for on the cycle (before the clip: its take) */
         if (clip_bar_fn)
             clip_bar_fn();                          /* the clips asked for start (clip.c): before this block's steps */
 #endif

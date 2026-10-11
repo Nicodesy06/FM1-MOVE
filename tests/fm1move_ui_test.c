@@ -418,6 +418,20 @@ int main(int argc, char **argv)
         turn(EN_ALGO, -1);
         turn(EN_K1, -1);
         check(!rec_count && song.g[G_CLOCK] == 0 && !song.playing && !song.rec, "... both back to OFF");
+        turn(EN_ALGO, 2);
+        check(!strcmp(mv.row_l[2], "REC QUANT") && !strcmp(mv.row_r[2], "1 BAR"), "REC QUANT: 1 BAR");
+        turn(EN_K1, 1);
+        turn(EN_K1, 1);
+        check(rec_q == 4u && !strcmp(mv.row_r[2], "4 BARS"), "... KNOB 1: 2 BARS, 4 BARS");
+        {
+            uint32_t w = lights_word();
+            rec_q = 0;
+            lights_from_word(w);
+            check(rec_q == 4u, "... kept with the settings");
+            lights_from_word(w & ~(7u << 21));
+            check(rec_q == 1u, "... settings saved before it: 1 BAR");
+        }
+        turn(EN_ALGO, -2);
         turn(EN_ALGO, 20);
         check(!strcmp(mv.row_l[mv.row_sel], "VERSION") && !strcmp(mv.row_r[mv.row_sel], FELUCCA_VERSION),
               "the list scrolls to its last row, VERSION");
@@ -425,6 +439,55 @@ int main(int argc, char **argv)
     }
     tap(B_HOME);
     check(!ctl.menu && ctl.screen == SC_PLAY, "HOME tapped: back to PLAY");
+
+    /* REC while playing, on the cycle (SETTINGS > REC QUANT, 1 BAR by default) as Ableton's quantisation */
+    {
+        uint32_t n, ok;
+        check(rec_q == 1u, "REC QUANT: 1 BAR by default");
+        tap(B_PLAY);
+        frames(40);                                       /* (inside the first bar) */
+        tap(B_REC);
+        check(song.playing && !song.rec && rec_pend == REC_PEND_ON, "playing, REC mid-bar: the take waits for the bar");
+        for (n = 0; n < 400u && !song.rec; n++)
+            frame();
+        check(song.rec && (clk_beat & 3u) == 0u, "... and starts on the next bar's first beat");
+        frames(30);
+        tap(B_REC);
+        check(song.rec && rec_pend == REC_PEND_OFF, "REC during the take mid-bar: it goes on to the end of the bar");
+        for (n = 0; n < 400u && song.rec; n++)
+            frame();
+        check(!song.rec && (clk_beat & 3u) == 0u, "... and ends as the bar closes");
+        rec_q = 4;
+        frames(20);
+        tap(B_REC);
+        for (n = 0; n < 1200u && !song.rec; n++)
+            frame();
+        ok = song.rec && (clk_beat & 3u) == 0u && ((clk_beat >> 2) % 4u) == 0u;
+        frames(140);
+        tap(B_REC);
+        frames(4);
+        check(ok && song.rec, "4 BARS: the take starts on a 4-bar boundary; REC after a bar does not stop it yet");
+        for (n = 0; n < 1200u && song.rec; n++)
+            frame();
+        check(!song.rec && (clk_beat & 3u) == 0u && ((clk_beat >> 2) % 4u) == 0u, "... it stops when the 4 bars close");
+        tap(B_REC);
+        tap(B_REC);
+        frames(2);
+        check(!rec_pend && !song.rec, "REC twice before the cycle: cancelled");
+        tap(B_REC);
+        tap(B_PLAY);
+        frames(4);
+        check(!song.playing && !rec_pend && !song.rec, "STOP drops a REC that waits");
+        rec_q = 0;
+        tap(B_PLAY);
+        frames(40);
+        tap(B_REC);
+        check(song.rec, "REC QUANT OFF: REC records at once (as SLOOP)");
+        tap(B_REC);
+        tap(B_PLAY);
+        frames(4);
+        rec_q = 1;
+    }
 
     /* FX + key: punch-in while held */
     tap(B_PLAY);

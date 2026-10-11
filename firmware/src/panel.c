@@ -91,7 +91,11 @@ static uint32_t lights_word(void)
     return (uint32_t)lights_lvl | (uint32_t)lights_keys << 4 | (uint32_t)(lights_notes != 0u) << 8 |
            (uint32_t)(rec_tempo != 0u) << 9 | (uint32_t)(rec_count != 0u) << 10 | (uint32_t)(usb_full != 0u) << 11 |
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min != 0u) << 15 |
-           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)(vis_style % 12u) << 17;
+           (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)(vis_style % 12u) << 17
+#if FM1MOVE
+           | (uint32_t)(rec_q_idx() + 1u) << 21          /* FM1 Move: SETTINGS > REC QUANT (0 in older words: 1 BAR) */
+#endif
+        ;
 }
 static void lights_from_word(uint32_t w)
 {
@@ -105,6 +109,13 @@ static void lights_from_word(uint32_t w)
     lights_mout = (uint8_t)((w >> 14) & 1u);    /* GLO > SYSTEM > MIDI (seq.c) */
     lights_min = (uint8_t)((w >> 15) & 1u);     /* GLO > SYSTEM > IN (seq.c) */
     usb_serial = (uint8_t)((w >> 16) & 1u);
+#if FM1MOVE
+    {
+        static const uint8_t RQ[5] = {0, 1, 2, 4, 8};
+        uint32_t f = (w >> 21) & 7u;
+        rec_q = RQ[f >= 1u && f <= 5u ? f - 1u : 1u];
+    }
+#endif
     vis_style = (uint8_t)(((w >> 17) & 15u) % 12u);   /* the visualiser (ui_vis.c); 0 in 2.3 = OSCILLOSCOPE */     /* menu USB SERIAL (usb.c usb_cdc_on, at the next start); 0 in 2.3 = OFF */
 }
 
