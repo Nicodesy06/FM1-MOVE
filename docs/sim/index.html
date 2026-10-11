@@ -54,6 +54,9 @@ canvas#screen { display: block; width: 480px; height: 480px; image-rendering: pi
 .btn.lit .key::before { background: var(--led); box-shadow: 0 0 8px var(--led); }
 .btn.rec.lit .key::before { background: var(--rec); box-shadow: 0 0 8px var(--rec); }
 .btn.play.lit .key::before { background: var(--play); box-shadow: 0 0 8px var(--play); }
+.holdbtn { margin-left: auto; font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--text-2); background: #1b1b1f; border: 1px solid #2f2f35;
+  border-radius: 99px; padding: 6px 10px; cursor: pointer; }
+.holdbtn[aria-pressed="true"] { color: #0b0b0c; background: var(--led); border-color: var(--led); }
 .btn.down .key { transform: translateY(2px); box-shadow: 0 1px 0 #111114; background: var(--btn); }
 .btn .fn { font-size: 10px; font-weight: 600; color: var(--text-3); letter-spacing: .04em; text-align: center; }
 
@@ -110,6 +113,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
   <span class="sub">Browser test view — the firmware's own code, compiled to WebAssembly</span>
   <span class="pill">SIMULATION</span>
   <span class="pill" id="fwver" title="the firmware compiled into this page">FM1 MOVE 0.2</span>
+  <button class="holdbtn" id="holdbtn" aria-pressed="false" title="Hold mode: a click (or F-key) latches a function button until you click it again">HOLD · OFF</button>
   <nav><a href="../manual/">Manual</a><a href="../device/">Device &amp; install</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
 </header>
 
@@ -142,7 +146,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
     <h2>KEYBOARD</h2>
     <table>
       <tr><td><kbd>Z</kbd>…<kbd>M</kbd>, <kbd>Q</kbd>…<kbd>U</kbd></td><td>the keys (two octaves, chromatic)</td></tr>
-      <tr><td><kbd>F1</kbd>…<kbd>F6</kbd></td><td>FX · SEL · ENV · LFO · EDIT · GLO</td></tr>
+      <tr><td><kbd>F1</kbd>…<kbd>F6</kbd></td><td>FX · SEL · ENV · LFO · EDIT · GLO (with HOLD on: a press latches the button, a second press lets go)</td></tr>
       <tr><td><kbd>F7</kbd>…<kbd>F10</kbd></td><td>HOME · SAVE · ARP · SEQ (F11 / F12 are the browser's: use Space / Enter for PLAY / REC)</td></tr>
       <tr><td><kbd>Space</kbd> <kbd>Enter</kbd></td><td>PLAY · REC</td></tr>
       <tr><td><kbd>←</kbd> <kbd>→</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></td><td>SELECT (track) / ALGORITHM</td></tr>
@@ -176,11 +180,14 @@ const EN = { SELECT:0, ALGO:1, PRESET:2, K1:3, K2:4, K3:5, K4:6 };
 const FS = 44100;
 
 let X = null, mem = null, held = 0, heldNotes = 0, ptrButtons = 0, ptrNotes = 0, kbButtons = 0, kbNotes = 0;
+// HOLD mode: a function button pressed once stays down (latched) until pressed again, so one hand can hold a
+// layer (FX, SEL, ENV ...) while the other turns knobs or plays keys. Only buttons latch; keys and knobs do not.
+let holdMode = false, latched = 0;
 let audio = null, gain = null, t0 = performance.now(), lastUi = 0;
 const btnEls = {}, keyEls = [];
 
 function setInputs() {
-  const b = ptrButtons | kbButtons, n = ptrNotes | kbNotes;
+  const b = ptrButtons | kbButtons | latched, n = ptrNotes | kbNotes;
   if (X && (b !== held || n !== heldNotes)) { held = b; heldNotes = n; X.sim_set(b >>> 0, n >>> 0); }
 }
 
@@ -206,11 +213,32 @@ function mkBtn(parent, name) {
   const printed = name === "OCTDN" ? "OCT−" : name === "OCTUP" ? "OCT+" : name;
   el.innerHTML = `<div class="key" role="button" aria-label="${printed}">${printed}</div><div class="fn">${FN[name]}</div>`;
   const k = el.querySelector(".key"), bit = 1 << B[name];
-  const down = e => { e.preventDefault(); k.setPointerCapture && k.setPointerCapture(e.pointerId); ptrButtons |= bit; el.classList.add("down"); setInputs(); };
-  const up = () => { ptrButtons &= ~bit; el.classList.remove("down"); setInputs(); };
+  const down = e => {
+    e.preventDefault(); k.setPointerCapture && k.setPointerCapture(e.pointerId);
+    if (holdMode) { toggleLatch(B[name]); return; }
+    ptrButtons |= bit; el.classList.add("down"); setInputs();
+  };
+  const up = () => { if (holdMode) return; ptrButtons &= ~bit; el.classList.remove("down"); setInputs(); };
   k.addEventListener("pointerdown", down); k.addEventListener("pointerup", up); k.addEventListener("pointercancel", up);
   parent.appendChild(el);
   btnEls[B[name]] = el;
+}
+// hold mode: flip one button's latch and show it
+function toggleLatch(b) {
+  latched ^= 1 << b;
+  const el = btnEls[b];
+  if (el) el.classList.toggle("down", !!(latched & (1 << b)));
+  setInputs();
+}
+function setHoldMode(on) {
+  holdMode = on;
+  const hb = document.getElementById("holdbtn");
+  hb.textContent = on ? "HOLD · ON" : "HOLD · OFF";
+  hb.setAttribute("aria-pressed", String(on));
+  if (!on) {                                       // turning it off lets go of whatever is latched
+    for (const b in btnEls) btnEls[b].classList.remove("down");
+    latched = 0; setInputs();
+  }
 }
 function buildPanel() {
   const left = document.getElementById("left");
@@ -254,6 +282,7 @@ function keyEvent(e, isDown) {
   if (FKEYS[e.key] !== undefined) {
     e.preventDefault(); if (e.repeat) return;
     const bit = 1 << B[FKEYS[e.key]];
+    if (holdMode) { if (isDown) toggleLatch(B[FKEYS[e.key]]); return; }
     kbButtons = isDown ? kbButtons | bit : kbButtons & ~bit; setInputs(); return;
   }
   if (isDown && !e.repeat && X) {
@@ -270,7 +299,8 @@ function keyEvent(e, isDown) {
 }
 addEventListener("keydown", e => keyEvent(e, true));
 addEventListener("keyup", e => keyEvent(e, false));
-addEventListener("blur", () => { kbButtons = kbNotes = ptrButtons = ptrNotes = 0; setInputs(); });
+addEventListener("blur", () => { kbButtons = kbNotes = ptrButtons = ptrNotes = latched = 0; setInputs(); });
+document.getElementById("holdbtn").addEventListener("click", () => setHoldMode(!holdMode));
 
 // ---- the screen and the LEDs
 const cv = document.getElementById("screen"), cx = cv.getContext("2d"), img = cx.createImageData(240, 240);

@@ -2,6 +2,11 @@
 
 ## Unreleased (fm1-move/dev)
 
+### Simulator: HOLD mode (web)
+- HOLD · OFF / ON in the simulator's header. On: a click (or F1–F12, [ ] ) on a function button latches it down; a
+  second click lets it go, so one hand can hold FX, SEL or ENV while the other turns knobs or plays keys. Turning HOLD
+  off releases everything. Only buttons latch; keys and knobs do not.
+
 ### Layer pages: STEPS and KEY (host simulation)
 - SEQ held shows **STEPS** over any screen (SLOOP's layer page): the page's 16 steps as a 4 × 4 grid (note names,
   ties, accents, lock / nudge dots, the playhead, the held step framed; drum tracks: the sound's hits by level), the
