@@ -30,14 +30,15 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 
 | | |
 | --- | --- |
-| Firmware build (`FM1MOVE=1`) | ✅ compiles and links — 536 164 B of 581 564 B, RAM 90.8 / 96 KiB |
-| Host tests | ✅ all FM1 Move suites pass (also under ASan + UBSan); SLOOP's 182 reference renders unchanged |
+| Version | **0.3**, based on **SLOOP 2.6** (upstream tag `v2.6` merged): 27 punch-ins, INSERT on every track, TEXTURE, MIDI LEARN… |
+| Firmware build (`FM1MOVE=1`) | ✅ compiles and links — 569 828 B of 581 564 B, RAM 96 496 / 98 304 B, pool 10 904 B spare |
+| Host tests | ✅ all FM1 Move suites pass (also under ASan + UBSan); the 182 reference renders identical to SLOOP 2.6's (host simulation) |
 | Browser test view | ▶ [nicodesy06.github.io/FM1-MOVE/sim](https://nicodesy06.github.io/FM1-MOVE/sim/) — the firmware compiled to WebAssembly on a simulated panel (simulation, not the device) |
-| Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move experimental, SLOOP stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly, not yet on an FM-1 |
+| Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move 0.3 experimental, SLOOP 2.6 stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly, not yet on an FM-1 |
 | Manual | [nicodesy06.github.io/FM1-MOVE/manual](https://nicodesy06.github.io/FM1-MOVE/manual/) — quick start and every feature |
-| SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) — every engine and sequencer feature kept; song arranger replaced by clips and scenes |
+| SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) against SLOOP 2.6 — every engine and sequencer feature kept; song arranger replaced by clips and scenes |
 | Hardware | ⏳ not tested yet |
-| Branch | [`fm1-move/dev`](../../tree/fm1-move/dev) — `master` is the untouched SLOOP 2.5 baseline |
+| Branch | [`fm1-move/dev`](../../tree/fm1-move/dev) — `master` is the untouched SLOOP 2.5 baseline (SLOOP 2.6 merged on `fm1-move/dev`) |
 
 ## Features
 
@@ -70,10 +71,21 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 - Sparse, versioned **FM1M** format: a typical 8-track project is about 1 KB, eight full 64-step tracks about 5 KB.
 - Power-loss safe: a save cut at any flash write leaves the old project or the new one, never a mix.
 - 2 project slots (with their clips) + the autosave; SLOOP's working project is imported on first boot.
+- Projects, settings and backups of FM1 Move 0.2 load in 0.3 as they are (the SLOOP 2.6 parameters start off).
 
-### Kept from SLOOP
-USB-MIDI in/out, TRS MIDI in, MIDI clock in, USB audio to a computer or phone, 16 punch-in effects, chord and
-scale modes, arpeggiator, note repeat, USB updates and the USB rescue mode.
+### Performance
+- **Tempo with one hand:** on PLAY, TRACKS, MIXER and PERFORM, **ALGORITHM turns the tempo** (no button held; fast
+  turns go further) and the BPM shows large for a moment. **OCT− + OCT+ tapped together** in time = tap tempo.
+- **27 punch-in effects:** FX held + the 16 white keys, and (SLOOP 2.6) the 11 black keys: KILL LOW / MID / HIGH,
+  REWIND, OCT UP, FLANGER, AUTO-PAN, FREEZE, LOOP 8T, MONO, FADE OUT. FX + OCT− / OCT+: **REV / ECHO THROW**.
+- **INSERT effect per track** (SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, dry / wet MIX): up to 4 tracks at
+  once (RAM), drum tracks included.
+- **TEXTURE**, a bed under the mix: VINYL, TAPE, RAIN, WIND, RADIO, ROOM or a user sample, saved with the project.
+
+### Kept from SLOOP (2.6)
+USB-MIDI in/out, TRS MIDI in, MIDI clock in, sustain pedal, pitch bend, MIDI LEARN (16 CCs), USB
+audio to a computer or phone, LFO sync, ENV SYNC, note length and step velocity, live drum mutes, chord and scale
+modes, arpeggiator, note repeat, USB updates and the USB rescue mode.
 
 ## The interface
 
@@ -100,12 +112,14 @@ arrangement**. Every screen is one press away.
 | **SEQ** | SEQUENCER (again: the STEP page) | the 16 white keys are the steps, shown as a 4 × 4 STEPS page |
 | **SAVE** | CLIPS | keys 1–6 launch clips, 9–14 scenes (on the next bar) |
 | **ARP** | GROOVE | note repeat |
-| **GLO** | MIXER | keys 1–8 mute, 9–16 solo |
-| **FX** | PERFORM | punch-in effects |
-| **EDIT / ENV / LFO** | SOUND (preset, envelope, LFO) | EDIT: erase, EDIT + OCT− / OCT+ undo / redo |
+| **GLO** | MIXER | keys 1–8 mute, 9–16 solo; black keys F# fill held, G# fill next bar, A# tap tempo, C# MIDI LEARN |
+| **FX** | PERFORM (again: black-key effects, TEXTURE, TEXTURE 2) | 27 punch-in effects (white and black keys); OCT− / OCT+ REV / ECHO THROW |
+| **EDIT / ENV / LFO** | SOUND (preset, envelope, LFO, sync, sends, insert) | EDIT: erase, EDIT + OCT− / OCT+ undo / redo; EDIT + a black key on a drum track: the keys mute lanes |
 | **PLAY / REC** | transport / record | |
+| **OCT− + OCT+** | together, tapped in time: tap tempo | |
 
-**SELECT** always picks the track, **PRESETS** the sound, **ALGORITHM** navigates the screen, and **KNOB 1–4** are
+**SELECT** always picks the track, **PRESETS** the sound, **ALGORITHM** navigates the screen (on PLAY, TRACKS, MIXER and
+PERFORM, where there is nothing to navigate, it turns the tempo), and **KNOB 1–4** are
 the four values along the bottom of the screen, in the same order as the knobs. Turning a knob shows its value large;
 destructive actions ask first and confirm with the same button. Full map: [UI_MAPPING.md](docs/UI_MAPPING.md).
 
@@ -130,7 +144,7 @@ web editor before trying FM1 Move. Installing custom firmware is at your own ris
 
 ## Not there yet
 
-Capture · MIDI-out tracks and per-track MIDI channels · import of SLOOP's saved project slots ·
+Capture · MIDI-out tracks and per-track MIDI channels · import of SLOOP's saved project slots · MIDI LEARN clear on the panel ·
 step and piano-roll editing on the device page · dual-core research. See the [development plan](docs/DEVELOPMENT_PLAN.md) and the
 [feature matrix](docs/FEATURE_MATRIX.md).
 
@@ -145,7 +159,7 @@ step and piano-roll editing on the device page · dual-core research. See the [d
 
 ## Credits and licence
 
-FM1 Move is based on **[SLOOP](https://github.com/isod89/sloop-fm1)** by isod89, itself based on
+FM1 Move is based on **[SLOOP](https://github.com/isod89/sloop-fm1)** 2.6 by isod89, itself based on
 **[Felucca](https://github.com/hugelton/Felucca)** by Leo Kuroshita / Hügelton Instruments. SLOOP's original README is
 kept as [SLOOP_README.md](SLOOP_README.md). Hardware research from [FM-1-RE](https://github.com/AL-255/FM-1-RE) and
 [Dinghy](https://github.com/zvenson/dinghy).

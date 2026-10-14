@@ -14,7 +14,7 @@ Living document. Milestones follow the master brief (M0–M7); each step is smal
 
 ## M0 — Technical foundation (current)
 
-- [x] Baseline chosen: SLOOP 2.5 (tag `v2.5`), imported with its history.
+- [x] Baseline chosen: SLOOP 2.5 (tag `v2.5`), imported with its history; SLOOP 2.6 (tag `v2.6`) merged for 0.3.
 - [x] JieLi toolchain + 3 SDK files fetched; baseline firmware builds (565 200 B image).
 - [x] Baseline host tests run (one known failure, see `TEST_REPORT.md`).
 - [x] Audit documents: `HARDWARE_AUDIT.md`, `CODEBASE_MAP.md`, `FEATURE_MATRIX.md`, `MEMORY_BUDGET.md`.
@@ -101,7 +101,26 @@ Status: clips, scenes, quantised launch and the STEP page done and verified **in
 5. [x] Virtual FM1: navigation tested on simulated controls (`tests/fm1move_ui_test.c`).
 6. [ ] Hardware: readability, frame time, real controls [TEST-HW] — needs the owner's device.
 
-## M5 — Sound & performance, M6 — Dual-core R&D, M7 — Stabilisation
+## M5 — Sound & performance
+
+Status: FM1 Move **0.3** merges SLOOP 2.6 (upstream tag `v2.6`, d7590be); done and verified **in host simulation
+only** (`tests/fm1move_ui_test.c`, the SLOOP-layout suite); not yet run on an FM-1.
+
+- [x] SLOOP 2.6 engine merged: 27 punch-ins, REV / ECHO THROW, INSERT, LFO 2, ENV SYNC, ANALOG filter TYPE, note LEN
+  and step velocity, TEXTURE, live drum mutes, MIDI LEARN, sustain, pitch bend, MIDI IN on one channel, look-ahead
+  limiter and the 2.6 click / FREEZE / arp fixes. 182 golden renders identical to SLOOP 2.6's.
+- [x] Fitted in RAM: INSERT in 4 states shared by the 8 tracks ("INSERT: 4 TRACKS MAX"), SLOOP 1.x import in the idle
+  flash buffer, MIDI note-routing table in nibbles (1 808 B RAM free).
+- [x] Panel: PERFORM pages (white keys, black keys, TEXTURE, TEXTURE 2), SOUND pages SYNC / INSERT / INSERT 2, FX +
+  OCT− / OCT+ THROWs, GLO + C# MIDI LEARN, STEP page LEN, step VELO.
+- [x] Performance tempo: ALGORITHM on PLAY / TRACKS / MIXER / PERFORM, OCT− + OCT+ tap, a large TEMPO readout.
+- [x] MIDI Program Change and the STEP page from a MIDI keyboard: drained by FM1 Move's controller (`pc_poll`,
+  `ctl_midi_step_in`).
+- [ ] MIDI LEARN clear on the panel (SLOOP: HOME › SYSTEM › MIDI LEARN CLEAR; FM1 Move has no item yet).
+- [ ] SETTINGS › MIDI IN on the panel shows NOTES / CLOCK only (the one-channel setting: device page).
+- [ ] Hardware: CPU of 4 INSERTs + 8 tracks, limiter, THROWs on a device [TEST-HW].
+
+## M6 — Dual-core R&D, M7 — Stabilisation
 
 As in the master brief. M6 starts with reading the AC79 SDK's CPU1 start sequence (`cpu/wl82`) in a separate
 experimental build that never ships; see `DUAL_CORE_RESEARCH.md` when it exists.
@@ -111,7 +130,7 @@ experimental build that never ships; see `DUAL_CORE_RESEARCH.md` when it exists.
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Flash: 16 KiB free | new UI / features do not fit | replace old UI code, glyph subsets, RLE fonts; trim CC0 sample sets only as a documented last resort |
-| RAM: 13 KiB free | 8 tracks + clips | sparse project, band renderer, arena pool; clip bank 8 KiB in `.pool` (10 992 B pool spare) |
+| RAM: 1 808 B free (0.3) | 8 tracks + clips + SLOOP 2.6 | sparse project, band renderer, arena pool; clip bank 8 KiB in `.pool` (10 904 B pool spare); INSERT in 4 shared slots; the next feature must bring its RAM back |
 | CPU with 8 tracks | dropouts | voice budget stays global (8 synth voices); per-track insert cost measured; shedding policy unchanged |
 | No hardware in the loop | regressions only visible on device | keep platform code untouched; ask the owner to test builds; never flash without permission |
 | UI rewrite breaks the tested input logic | usability regressions | keep `ui_input.c` behaviour tests (`ui_pages_test.c`) green while the drawing layer changes |

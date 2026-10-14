@@ -1,7 +1,8 @@
 # FM1 Move — Codebase map
 
 Baseline: **SLOOP 2.5** (`master` = tag `v2.5`, commit `fa9ce57`), GPL-3.0-only, itself based on Felucca by
-Leo Kuroshita / Hügelton Instruments. FM1 Move work happens on `fm1-move/dev`.
+Leo Kuroshita / Hügelton Instruments. FM1 Move work happens on `fm1-move/dev`, which merged SLOOP **2.6** (upstream
+tag `v2.6`, d7590be) for FM1 Move 0.3; `master` stays the SLOOP 2.5 baseline.
 
 Why SLOOP 2.5: it is the newest tagged release, it builds reproducibly with the public JieLi toolchain
 (verified here, see `TEST_REPORT.md`), and its host test suite passes unchanged. There is no beta branch upstream;
@@ -29,15 +30,15 @@ register access outside `hal/`, 64-bit divisions.
 | `firmware/src/voice.c` | Voice allocation (8-voice budget shared by the synth parts), stealing, mono/legato/unison, envelopes, engine switch, per-track render |
 | `firmware/src/engines.c`, `eng_*.c` | 12 engines (ANALOG, FM4, FM6, PHASE, TRIO, DRAWBAR, FORMANT, GRAIN, LOFI, SAMPLE, PHYS, NOISE); big state in a per-part arena (`eng_arena[NPART]`) |
 | `firmware/src/drums.c`, `drum_synth.c` | The drum track: 16 lanes, 6 own voices, sampled/synth/user kits, click |
-| `firmware/src/fx.c` | Per-track insert (drive, slicer, filter), level/pan/mute fades, sends, chorus/delay/reverb, master DUST/DUCK/DJ filter/limiter, `mix_block` |
-| `firmware/src/punch.c`, `slicer.c` | Punch-in FX (64 KiB loop ring), per-track slicer |
+| `firmware/src/fx.c` | Per-track insert (drive, slicer, filter; 2.6 INSERT effect: FM1 Move shares 4 states, `INS_SLOTS`), level/pan/mute fades, sends, REV / ECHO THROW, TEXTURE, chorus/delay/reverb, master DUST/DUCK/DJ filter/look-ahead limiter, `mix_block` |
+| `firmware/src/punch.c`, `slicer.c` | Punch-in FX (27: 16 white keys + 11 black keys, 64 KiB loop ring), per-track slicer |
 | `firmware/src/params.c` | Parameter descriptors (`TP[]`, `GP[]`), pages (`PAGES[]`), formatting |
 | `firmware/src/project.c`, `storage.c`, `upreset.c` | Project formats FUN1–FUN5, autosave, A/B flash objects with CRC32, user presets, settings |
 | `firmware/src/arranger*.c` | Song sections A–D and the arrangement clock |
 | `firmware/src/projfmt.c` (FM1M) | FM1 Move project format: sparse stream in up to 3 chunks, two-pass load (`PROJECT_FORMAT.md`) |
 | `firmware/src/clip.c` (FM1M) | Clips: 8 tracks × 6 patterns in one packed 8 KiB `.pool` bank, launch on the next bar (`clip_bar` from `events_block`), scenes, copy / erase, the project's clip section; included by `projfmt.c` |
 | `firmware/src/groove.c` (FM1M) | Groove Engine (`GROOVE_ENGINE.md`) |
-| `firmware/src/ds.c`, `ui_move.c`, `ui_move_ctl.c` (FM1M) | FM1 Move design system, screens (incl. CLIPS grid, SEQUENCER STEP page) and panel controls / live view model (`UI_DESIGN_SYSTEM.md`, `UI_MAPPING.md`) |
+| `firmware/src/ds.c`, `ui_move.c`, `ui_move_ctl.c` (FM1M) | FM1 Move design system, screens (incl. CLIPS grid, SEQUENCER STEP page, PERFORM / SOUND pages, TEMPO readout) and panel controls / live view model (`UI_DESIGN_SYSTEM.md`, `UI_MAPPING.md`). FM1MOVE leaves out `ui_input.c`: anything SLOOP polls only there (2.6 Program Change `pc_poll`, MIDI step entry) must be called from `ui_move_ctl.c` |
 | `firmware/src/lcd.c`, `gfx.c` | ST7789 driver; strip canvas renderer (`cv_px` 240 × 124, 4-bit anti-aliased fonts) |
 | `firmware/src/ui*.c` | The SLOOP UI: state (`ui.c`), pages (`ui_draw.c`), the four-track "studio" screens (`ui_studio.c`), layers (`ui_layers.c`), menu, song, visualiser, input dispatch (`ui_input.c`) |
 | `firmware/src/usb.c`, `midi_uart.c` | USB-MIDI, UAC1 audio to host, CDC; TRS MIDI IN |

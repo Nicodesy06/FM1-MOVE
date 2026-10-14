@@ -397,6 +397,51 @@ static void ctl_step_edit(uint32_t k, int32_t s)
         break;
     }
 }
+/* (2.6) the STEP page from a MIDI keyboard (seq.c step_in_q): its notes on the selected track write the cursor's step
+ * as the keys do (held together: a chord; every note up, keys too: the next step). Not while recording or armed */
+static uint32_t ctl_mi_held[4];
+static void ctl_midi_step_in(void)
+{
+    track_t *t = TSEL;
+    int on_page = ctl_roll() && !song.rec && !rec_wait && !ft_on;
+    if (step_in_lost) {                                  /* (the queue overflowed: start clean) */
+        step_in_lost = 0;
+        step_in_r = step_in_w;
+        ctl_mi_held[0] = ctl_mi_held[1] = ctl_mi_held[2] = ctl_mi_held[3] = 0;
+    }
+    while (step_in_r != step_in_w) {
+        uint32_t ev = step_in_q[step_in_r % STEP_IN_Q], note = ev & 127u, tr = (ev >> 8) % NTRK;
+        step_t *st = &t->step[ui.cursor % NSTEP];
+        step_in_r++;
+        if (!(ev & 0x80u)) {
+            ctl_mi_held[note >> 5] &= ~(1u << (note & 31u));
+            continue;
+        }
+        if (!on_page)
+            continue;
+        if (&trk[tr] != t) {
+            char b[2] = {(char)('1' + tr), 0};
+            ctl_toast("MIDI PLAYS TRACK ", b);
+            continue;
+        }
+        ctl_mi_held[note >> 5] |= 1u << (note & 31u);
+        if (!ui.entry_open) {
+            ui.entry_open = 1;
+            undo_mark(t, (undo_sess += 4u) | 3u);
+            st->n = 0;
+            st->lvl = st->rat = 0;
+            st->time = ST_NOTE;
+            t->seq_active = 1;
+        }
+        if (t->p[P_VOICE]) {
+            st->note[0] = (uint8_t)note;
+            st->n = 1;
+        } else if (st->n < 4u) {
+            st->note[st->n++] = (uint8_t)note;
+        }
+        last_note = (uint8_t)note;
+    }
+}
 /* STEP page entry, acid style (SLOOP's seq_entry): the keys pressed together (a mono part: the last one) become the
  * cursor's step; letting go of every key moves on. Not while recording or armed: the keys record live then */
 static void ctl_step_entry(uint32_t pressed)
@@ -440,8 +485,8 @@ static void ctl_step_entry(uint32_t pressed)
         }
         last_note = (uint8_t)note;
     }
-    if (ui.entry_open && !fm1_in.notes)
-        cursor_set((int32_t)ui.cursor + 1);
+    if (ui.entry_open && !fm1_in.notes && !(ctl_mi_held[0] | ctl_mi_held[1] | ctl_mi_held[2] | ctl_mi_held[3]))
+        cursor_set((int32_t)ui.cursor + 1);              /* (every key and MIDI note up: the next step) */
 }
 
 /* CLIPS: launch clip k of the selected track; playing, it starts on the next bar */
@@ -632,6 +677,8 @@ static void ui_input(void)
         thr_req = (uint8_t)q;
     }
     ml_poll();                                           /* MIDI LEARN: a CC came for the picked parameter (2.6) */
+    pc_poll();                                           /* MIDI Program Change: a track's sound (2.6, ui.c) */
+    ctl_midi_step_in();                                  /* the STEP page from a MIDI keyboard (2.6) */
     if (ins_full) {
         ins_full = 0;
         ctl_toast("INSERT: 4 TRACKS MAX", "");

@@ -167,8 +167,9 @@ triangles, thick lines, blended text.
 | GROOVE | the focused groove value at 64 px | the other three, the timing of two beats as it plays | `05_groove.png`, `06_groove_focus.png` |
 | CLIPS | 8 tracks × 6 clips (all six rows visible); title "SCENE n" when every track plays clip n | CLIP cursor; LAUNCH / COPY / CLEAR on their buttons | `07_clips.png`; live: `ui/live/07b-clips-live.png`, `07c-clips-queued.png` |
 | MIXER | eight strips | volume, pan, sends of the selected track | `08_mixer.png` |
-| SOUND | the preset (browser with previous / next), or the envelope | engine, category, macros | `09_sound.png`, `10_sound_env.png` |
-| PERFORM | the 16 punch-in effects as the keys | master filter, dust, duck, track filter | `11_perform.png` |
+| SOUND | the preset (browser with previous / next), or the envelope; LFO, SYNC, SENDS, INSERT, INSERT 2 (drums: INSERT, INSERT 2): the four values large (2 × 2, F22) | engine, category, macros | `09_sound.png`, `10_sound_env.png`; live: `ui/live/09b-sound-insert.png` |
+| PERFORM | page 1 the 16 white-key effects as tiles numbered 1–16; page 2 the 11 black-key effects, tiles named F#, G#…; pages 3–4 TEXTURE / TEXTURE 2 values large; a held effect's tile inverted | master filter, dust, duck, track filter; TEXTURE values | `11_perform.png`; live: `ui/live/11d-perform-black.png`, `11c-texture.png` |
+| TEMPO (ALGORITHM on PLAY / TRACKS / MIXER / PERFORM, OCT− + OCT+ tapped, button + SELECT) | the BPM in the 64 px numerals for ~1.5 s, "TEMPO" label; "TAP: OCT- + OCT+", or "FOLLOWS CLOCK IN" with dimmed numerals under an external clock | the screen's knob strip | live: `ui/live/18-tempo.png` |
 | PROJECT | slot list | actions on their buttons | `12_project.png` |
 | SETTINGS | setting list | value on KNOB 1 | `13_settings.png` |
 

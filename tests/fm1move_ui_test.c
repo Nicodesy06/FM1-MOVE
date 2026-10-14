@@ -64,6 +64,7 @@ static void fm1_wdt_feed(void) {}
 /* user presets: none (upreset.c is the firmware's) */
 static int up_used(uint32_t k) { (void)k; return 0; }
 static int up_load(uint32_t k) { (void)k; return 0; }
+static int up_load_to(track_t *t, uint32_t k) { (void)t; (void)k; return 0; }
 static uint32_t up_count(void) { return 0; }
 static uint32_t up_nth(uint32_t n) { return n; }
 static uint32_t up_rank(uint32_t s) { return s; }
@@ -802,6 +803,23 @@ int main(int argc, char **argv)
         turn(EN_K3, 2);
         check(note_len(TSEL, 0) == 3u && !strcmp(mv.k[2].label, "LEN"), "STEP page: KNOB 3 on a note sets its LEN (2.6)");
         steps_clear(TSEL);
+        cursor_set(0);
+        step_in_push(64u | 0x80u | song.sel << 8);        /* a MIDI keyboard on the selected track: E4 and G4 together */
+        step_in_push(67u | 0x80u | song.sel << 8);
+        frame();
+        check(TSEL->step[0].n == 2 && ui.cursor == 0u, "STEP page from a MIDI keyboard: two notes held, a chord");
+        step_in_push(64u | song.sel << 8);
+        step_in_push(67u | song.sel << 8);
+        frames(2);
+        check(ui.cursor == 1u, "... both let go: the next step");
+        steps_clear(TSEL);
+        {
+            uint32_t total, before;
+            before = preset_pos(&total);
+            pc_req[song.sel] = (uint8_t)((before + 5u) % total + 1u);
+            frames(2);
+            check(preset_pos(&total) == (before + 5u) % total, "MIDI Program Change: the n-th sound of PRESETS");
+        }
         tap(B_HOME);
     }
 

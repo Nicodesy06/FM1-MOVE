@@ -1,6 +1,6 @@
 # FM1 Move — Memory budget
 
-Measured on the SLOOP 2.5 baseline with the JieLi toolchain (`jieli-linux-toolchains-20260730.1`, clang 4.0.1
+Measured on the SLOOP 2.5 baseline (§1; FM1 Move builds in §1b–1c) with the JieLi toolchain (`jieli-linux-toolchains-20260730.1`, clang 4.0.1
 pi32v2) via `nm -S build/felucca.elf`; struct sizes from the host (`track_t` has no pointers, so its host size
 equals the target size, cross-checked: `trk` = 7 760 B = 4 × 1 940 on the target).
 
@@ -36,6 +36,24 @@ takes ~100–300 B, so 6 clips × 8 tracks of dense patterns do not all fit; a s
 ("CLIP MEMORY FULL") and the clip keeps its last stored version. The project stream (`FMP_MAX` 11 472 B, 3 chunks)
 is sized for the tracks plus a full bank. Flash: 2 project slots + the autosave × 3 chunks (+1 spare object) × A/B =
 20 sectors, 80 KiB at `0xE7000` (SLOOP's USR4 sample slot).
+
+## 1c. FM1 Move 0.3 (SLOOP 2.6 merged)
+
+Measured by `FM1MOVE=1 sh build.sh` after the SLOOP 2.6 merge (d7590be) [BUILD]:
+
+| Region | Capacity | Used | Free |
+| --- | --- | --- | --- |
+| Flash app slot (image) | 581 564 | 569 828 | 11 736 |
+| RAM .data+.bss | 98 304 | 96 496 | **1 808** |
+| POOL | 344 064 | 333 160 | **10 904** (≥ 8 192 must stay spare: kept) |
+
+What made SLOOP 2.6 fit the RAM:
+- **INSERT in 4 shared states** (`fx.c` `INS_SLOTS`): one state is ~580 B, 8 would not fit. A track takes a free slot
+  while its INSERT is on; a 5th track stays dry and the panel says "INSERT: 4 TRACKS MAX".
+- **SLOOP 1.x project import** converts in the idle flash buffer instead of its own (2.6 KiB back).
+- **MIDI note-routing table packed to nibbles** (1 KiB back).
+
+1 808 B of RAM is the tightest margin so far: a new feature has to bring its RAM back (or live in `.pool`).
 
 ## 2. What eight tracks cost
 

@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FM1 Move Manual</title>
-<meta name="description" content="The FM1 Move manual: a quick start and every feature of the eight-track groovebox firmware for the M-VAVE FM-1 — panel, screens, layers, sequencer, Groove Engine, sounds, mixer, projects, MIDI, the device page and recovery.">
+<meta name="description" content="The FM1 Move manual: a quick start and every feature of the eight-track groovebox firmware for the M-VAVE FM-1, based on SLOOP 2.6 — panel, screens, layers, tempo, sequencer, Groove Engine, sounds, effects, mixer, projects, MIDI, the device page and recovery.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -152,7 +152,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 <div class="wrap">
 <header>
   <a class="brand" href="./">FM1 MOVE <span>Manual</span></a>
-  <span class="pill">EXPERIMENTAL · 0.1</span>
+  <span class="pill">EXPERIMENTAL · 0.3</span>
   <nav><a href="../device/">Install &amp; manage</a><a href="../sim/">Simulator</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">GitHub</a></nav>
 </header>
 <div id="mtoc"><select aria-label="Jump to a chapter" onchange="location.hash = this.value"></select></div>
@@ -163,8 +163,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 
 <div class="hero">
   <h1>FM1 Move</h1>
-  <p class="lead">An eight-track groovebox for the M-VAVE FM-1. Any track can be a synth or a drum machine, every pattern can breathe with the Groove
-    Engine, and every function is one press away.</p>
+  <p class="lead">An eight-track groovebox for the M-VAVE FM-1, with SLOOP 2.6 inside. Any track can be a synth or a drum machine, every pattern can breathe
+    with the Groove Engine, and every function is one press away.</p>
   <div class="strip"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="cta"><a class="btn primary" href="#quick-start">Quick start</a><a class="btn" href="../sim/">Try it in the browser</a><a class="btn" href="../device/">Install &amp; manage</a></div>
   <div class="note warn"><b>Experimental.</b> FM1 Move is tested in simulation (host tests and the browser simulator, which runs the firmware's own code). It has
@@ -188,7 +188,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li><b class="t">Give it a groove</b>Press <kbd>ARP</kbd> (the GROOVE screen). Turn <kbd>ALGORITHM</kbd> for a template (MPC 16, HOUSE, UK GARAGE…), <kbd>KNOB 1</kbd> for swing,
       <kbd>KNOB 4</kbd> for a human feel.</li>
     <li><b class="t">Mix and perform</b>Press <kbd>GLO</kbd> (MIXER): <kbd>KNOB 1</kbd>–<kbd>4</kbd> are volume, pan, reverb, delay of the selected track. Hold <kbd>GLO</kbd> and press
-      keys 1–8 to mute, 9–16 to solo. Hold <kbd>FX</kbd> and press a key for a punch-in effect.</li>
+      keys 1–8 to mute, 9–16 to solo. Hold <kbd>FX</kbd> and press a key for a punch-in effect. On PLAY, <kbd>ALGORITHM</kbd> turns the <a href="#tempo">tempo</a>.</li>
     <li><b class="t">Keep it</b>Stop, leave the FM-1 alone 2.5 s: the autosave keeps your work, even through a power-off. To keep a version: hold <kbd>HOME</kbd> (PROJECT),
       pick a slot with <kbd>ALGORITHM</kbd>, press <kbd>SAVE</kbd>.</li>
   </ol>
@@ -202,12 +202,12 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <div class="panel">
     <div class="rowlbl">TOP ROW · SOUND &amp; MIX</div>
     <div class="prow">
-      <div class="pbtn"><div class="k">FX</div><div class="f">PERFORM</div><div class="h">hold: punch-in effects</div></div>
+      <div class="pbtn"><div class="k">FX</div><div class="f">PERFORM</div><div class="h">hold: 27 effects · throws</div></div>
       <div class="pbtn"><div class="k">SEL</div><div class="f">TRACKS</div><div class="h">hold: track 1–8, key</div></div>
       <div class="pbtn"><div class="k">ENV</div><div class="f">SOUND·ENV</div><div class="h">envelope</div></div>
       <div class="pbtn"><div class="k">LFO</div><div class="f">SOUND·LFO</div><div class="h">modulation</div></div>
       <div class="pbtn"><div class="k">EDIT</div><div class="f">SOUND</div><div class="h">hold: erase · undo</div></div>
-      <div class="pbtn"><div class="k">GLO</div><div class="f">MIXER</div><div class="h">hold: mute / solo / fill</div></div>
+      <div class="pbtn"><div class="k">GLO</div><div class="f">MIXER</div><div class="h">hold: mute / solo / fill / learn</div></div>
     </div>
     <div class="rowlbl" style="margin-top:16px">BOTTOM ROW · TIME &amp; ARRANGE</div>
     <div class="prow">
@@ -221,7 +221,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <div class="knobs">
       <div class="knob"><div class="c"></div><b>SELECT</b><span>track · held button: tempo</span></div>
       <div class="knob"><div class="c"></div><b>PRESETS</b><span>sound / kit</span></div>
-      <div class="knob"><div class="c"></div><b>ALGORITHM</b><span>the screen's navigator</span></div>
+      <div class="knob"><div class="c"></div><b>ALGORITHM</b><span>the screen's navigator · tempo</span></div>
       <div class="knob"><div class="c"></div><b>KNOB 1</b><span>knob strip</span></div>
       <div class="knob"><div class="c"></div><b>KNOB 2</b><span>knob strip</span></div>
       <div class="knob"><div class="c"></div><b>KNOB 3</b><span>knob strip</span></div>
@@ -233,9 +233,10 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><th>Control</th><th>What it does</th></tr>
     <tr><td>SELECT</td><td>Selects track 1–8, one detent each (no wrap). With any function button held: the tempo, one BPM a detent.</td></tr>
     <tr><td>PRESETS</td><td>The selected track's sound — factory sounds, then your user presets. On a drum track: the kit.</td></tr>
-    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, STEP cursor, clip row, groove template, engine, list row.</td></tr>
+    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, STEP cursor, clip row, groove template, engine, list row. On PLAY, TRACKS, MIXER and PERFORM, where there is nothing to navigate: the <a href="#tempo">tempo</a>.</td></tr>
     <tr><td>KNOB 1–4</td><td>The four values at the bottom of the screen. Turning one shows it large for a moment (the focus overlay; not on CLIPS and the STEP page, where what you edit stays in view). Fast turns go further.</td></tr>
-    <tr><td>OCT− / OCT+</td><td>Octave of the keys (both together: back to 0). On a drum track, held while playing: ghost / hard hits.</td></tr>
+    <tr><td>OCT− / OCT+</td><td>Octave of the keys. On a drum track, held while playing: ghost / hard hits. Both together: the octave back to 0 — and tapped in time, <a href="#tempo">tap tempo</a>.</td></tr>
+    <tr><td>FX + OCT− / OCT+</td><td>REV THROW / ECHO THROW: every track's reverb / echo send full while held.</td></tr>
     <tr><td>PLAY · REC</td><td>Start / stop all eight tracks · record (see <a href="#recording">Recording</a>).</td></tr>
     <tr><td>EDIT + OCT− / OCT+</td><td>Undo / redo.</td></tr>
     <tr><td>MASTER</td><td>The volume.</td></tr>
@@ -256,27 +257,36 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <figure><img src="../ui/live/05-groove.png" alt="GROOVE screen" loading="lazy"><figcaption><b>GROOVE · ARP</b>Template, swing, quantize strength, groove amount, humanize.</figcaption></figure>
     <figure><img src="../ui/live/07b-clips-live.png" alt="CLIPS screen" loading="lazy"><figcaption><b>CLIPS · SAVE</b> <span class="tag new">NEW</span> Eight tracks × six clips: what plays, what is queued, the cursor.</figcaption></figure>
     <figure><img src="../ui/live/08-mixer.png" alt="MIXER screen" loading="lazy"><figcaption><b>MIXER · GLO</b>Volume, pan, reverb and delay send of the selected track; eight meters.</figcaption></figure>
-    <figure><img src="../ui/live/09-sound.png" alt="SOUND screen" loading="lazy"><figcaption><b>SOUND · EDIT</b>Pages PRESET → ENV → LFO → SENDS (EDIT again turns them).</figcaption></figure>
-    <figure><img src="../ui/live/11-perform.png" alt="PERFORM screen" loading="lazy"><figcaption><b>PERFORM · FX</b>DJ filter, dust, duck, track filter; hold FX for the effects.</figcaption></figure>
+    <figure><img src="../ui/live/09-sound.png" alt="SOUND screen" loading="lazy"><figcaption><b>SOUND · EDIT</b>Pages PRESET → ENVELOPE → LFO → SYNC → SENDS → INSERT → INSERT 2 (EDIT again turns them).</figcaption></figure>
+    <figure><img src="../ui/live/09b-sound-insert.png" alt="SOUND INSERT page" loading="lazy"><figcaption><b>SOUND · INSERT</b> <span class="tag new">NEW</span> The track's insert effect: TYPE and its A · B · C, values large.</figcaption></figure>
+    <figure><img src="../ui/live/11-perform.png" alt="PERFORM screen" loading="lazy"><figcaption><b>PERFORM · FX</b>The white keys' effects; DJ filter, dust, duck, track filter. FX again: the next page.</figcaption></figure>
+    <figure><img src="../ui/live/11d-perform-black.png" alt="PERFORM black-key effects page" loading="lazy"><figcaption><b>PERFORM · page 2</b> <span class="tag new">NEW</span> The 11 black keys' effects, each tile named by its key.</figcaption></figure>
+    <figure><img src="../ui/live/11c-texture.png" alt="PERFORM TEXTURE page" loading="lazy"><figcaption><b>PERFORM · TEXTURE</b> <span class="tag new">NEW</span> A bed under the mix: source, level, tone, movement.</figcaption></figure>
     <figure><img src="../ui/live/12-project-live.png" alt="PROJECT screen" loading="lazy"><figcaption><b>PROJECT · HOME held</b>Two project slots: save, load, delete.</figcaption></figure>
     <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Metronome, count-in, clock, MIDI, lights, USB audio, version.</figcaption></figure>
   </div>
   <h3>The knobs on each screen</h3>
   <div class="tablewrap"><table>
     <tr><th>Screen</th><th>ALGORITHM</th><th>KNOB 1</th><th>KNOB 2</th><th>KNOB 3</th><th>KNOB 4</th></tr>
-    <tr><td>PLAY (synth)</td><td>—</td><td colspan="4">the sound's four macros (they change with the engine)</td></tr>
-    <tr><td>PLAY (drums)</td><td>—</td><td>KIT</td><td>LEVEL</td><td>PAN</td><td>FILTER</td></tr>
-    <tr><td>TRACKS</td><td>—</td><td>TYPE (asks; SEL confirms)</td><td>TRANSPOSE</td><td>LENGTH</td><td>DIV</td></tr>
+    <tr><td>PLAY (synth)</td><td>tempo</td><td colspan="4">the sound's four macros (they change with the engine)</td></tr>
+    <tr><td>PLAY (drums)</td><td>tempo</td><td>KIT</td><td>LEVEL</td><td>PAN</td><td>FILTER</td></tr>
+    <tr><td>TRACKS</td><td>tempo</td><td>TYPE (asks; SEL confirms)</td><td>TRANSPOSE</td><td>LENGTH</td><td>DIV</td></tr>
     <tr><td>SEQUENCER</td><td>step page</td><td>DIV</td><td>SWING</td><td>LENGTH</td><td>SHIFT</td></tr>
-    <tr><td>SEQUENCER · STEP</td><td>cursor</td><td>STEP (cursor)</td><td>NOTE</td><td>TIME: NOTE / TIE / REST</td><td>FLAG: – / ACC / SLIDE / A+S</td></tr>
+    <tr><td>SEQUENCER · STEP</td><td>cursor</td><td>STEP (cursor)</td><td>NOTE</td><td>TIME: NOTE / TIE / REST; on a note: LEN</td><td>FLAG: – / ACC / SLIDE / A+S</td></tr>
     <tr><td>GROOVE</td><td>template</td><td>SWING</td><td>QUANTIZE strength</td><td>GROOVE amount</td><td>HUMANIZE</td></tr>
     <tr><td>CLIPS</td><td>clip cursor</td><td>CLIP (cursor)</td><td colspan="3">buttons: CLIPS launch · EDIT copy · REC clear (copy over a clip and clear ask first)</td></tr>
-    <tr><td>MIXER</td><td>—</td><td>VOLUME</td><td>PAN</td><td>REVERB</td><td>DELAY</td></tr>
+    <tr><td>MIXER</td><td>tempo</td><td>VOLUME</td><td>PAN</td><td>REVERB</td><td>DELAY</td></tr>
     <tr><td>SOUND · PRESET</td><td>engine</td><td colspan="4">the four macros</td></tr>
-    <tr><td>SOUND · ENV</td><td>—</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
-    <tr><td>SOUND · LFO</td><td>—</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
-    <tr><td>SOUND · SENDS</td><td>—</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
-    <tr><td>PERFORM</td><td>—</td><td>DJ FILTER</td><td>DUST</td><td>DUCK</td><td>TRACK FILTER</td></tr>
+    <tr><td>SOUND · ENVELOPE</td><td>engine</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
+    <tr><td>SOUND · LFO</td><td>engine</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
+    <tr><td>SOUND · SYNC <span class="tag new">NEW</span></td><td>engine</td><td>LFO SYNC</td><td>LFO TRIG</td><td>LFO POL</td><td>ENV SYNC</td></tr>
+    <tr><td>SOUND · SENDS</td><td>engine</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
+    <tr><td>SOUND · INSERT <span class="tag new">NEW</span></td><td>engine</td><td>INSERT (type)</td><td>A</td><td>B</td><td>C</td></tr>
+    <tr><td>SOUND · INSERT 2 <span class="tag new">NEW</span></td><td>engine</td><td>INS MIX</td><td>FLT TYPE (ANALOG)</td><td colspan="2">—</td></tr>
+    <tr><td>SOUND (drums)</td><td>—</td><td colspan="4">KIT page: KIT · LEVEL · PAN · FILTER; INSERT page as above; INSERT 2: INS MIX</td></tr>
+    <tr><td>PERFORM 1 · 2</td><td>tempo</td><td>DJ FILTER</td><td>DUST</td><td>DUCK</td><td>TRACK FILTER</td></tr>
+    <tr><td>PERFORM 3 · TEXTURE <span class="tag new">NEW</span></td><td>tempo</td><td>TEXTURE (source)</td><td>LEVEL</td><td>TONE</td><td>MOVE</td></tr>
+    <tr><td>PERFORM 4 · TEXTURE 2 <span class="tag new">NEW</span></td><td>tempo</td><td>RATE</td><td>PLAYS</td><td>DUCK</td><td>—</td></tr>
     <tr><td>PROJECT</td><td>slot 1–2</td><td colspan="4">buttons: SAVE save · EDIT load · REC delete (each asks when it would lose something)</td></tr>
     <tr><td>SETTINGS</td><td>row</td><td>VALUE</td><td colspan="3">—</td></tr>
   </table></div>
@@ -290,15 +300,16 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <b>STEPS</b> and <b>KEY</b> (below).</p>
   <div class="tablewrap"><table>
     <tr><th>Hold</th><th>The keys</th><th>The knobs</th></tr>
-    <tr><td>FX</td><td>16 punch-in effects on the whole mix, while the key is held</td><td>DJ FILTER · DUST · DUCK · TRACK FILTER</td></tr>
+    <tr><td>FX</td><td>27 punch-in effects on the whole mix, while the key is held: 16 on the white keys, 11 on the black keys · OCT− / OCT+: REV / ECHO THROW</td><td>DJ FILTER · DUST · DUCK · TRACK FILTER</td></tr>
     <tr><td>SEQ</td><td>white keys 1–16: write / clear steps of the page · first four black keys: pages 1–4</td><td>NOTE (or drum sound) · DIV · SWING · LENGTH</td></tr>
-    <tr><td>SEQ + a step key held</td><td>—</td><td>NOTE / sound · LEVEL · RATCHET · NUDGE; PRESETS: lock value; ALGORITHM: lock parameter; OCT+: fill condition; OCT−: clear nudge, locks, condition</td></tr>
-    <tr><td>EDIT</td><td>erase that note / drum sound as the loop plays (stopped: from the whole pattern)</td><td>SHIFT · LENGTH ×2 / ½ · TRANSPOSE; OCT− undo, OCT+ redo</td></tr>
+    <tr><td>SEQ + a step key held</td><td>—</td><td>NOTE / sound · LEVEL (synth steps: VELO 1–127) · RATCHET · NUDGE; PRESETS: lock value; ALGORITHM: lock parameter; OCT+: fill condition; OCT−: clear nudge, locks, condition</td></tr>
+    <tr><td>EDIT</td><td>erase that note / drum sound as the loop plays (stopped: from the whole pattern) · on a drum track, a black key switches the white keys to <b>muting</b> lanes (a black key again: erasing)</td><td>SHIFT · LENGTH ×2 / ½ · TRANSPOSE; OCT− undo, OCT+ redo</td></tr>
     <tr><td>ARP</td><td>note repeat (roll) at the rate, recorded as ratchets</td><td>KNOB 1: RATE 1/8 … 1/64</td></tr>
     <tr><td>SAVE (CLIPS)</td><td>white keys 1–6: launch clip 1–6 of the selected track · keys 9–14: scene 1–6 (clip <i>n</i> on every track). Playing: on the next bar</td><td>—</td></tr>
     <tr><td>SEL</td><td>white keys 1–8: select track · keys 9–16 and black keys: the key (root) of the song</td><td>CHORD · SCALE · KEYS (snap) · TRANSPOSE</td></tr>
-    <tr><td>GLO</td><td>keys 1–8 mute, 9–16 solo · black keys: C# fill while held, D# fill on the next bar, F# tap tempo</td><td>VOLUME · PAN · REVERB · DELAY of the selected track</td></tr>
+    <tr><td>GLO</td><td>keys 1–8 mute, 9–16 solo · black keys: F# fill while held, G# fill on the next bar, A# tap tempo, C# <a href="#midi">MIDI LEARN</a> (the four black keys on the left: F#3, G#3, A#3, C#4)</td><td>VOLUME · PAN · REVERB · DELAY of the selected track</td></tr>
     <tr><td>Any button</td><td>—</td><td>SELECT: the tempo, one BPM a detent</td></tr>
+    <tr><td>OCT− + OCT+</td><td>pressed together, tapped in time: tap tempo</td><td>—</td></tr>
   </table></div>
   <div class="screens">
     <figure><img src="../ui/live/16-steps-held.png" alt="STEPS page, SEQ held" loading="lazy"><figcaption><b>SEQ held · STEPS</b> <span class="tag new">NEW</span>
@@ -321,13 +332,45 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <div class="a" style="--c:var(--t5)">S1</div><div class="a" style="--c:var(--t5)">S2</div><div class="a" style="--c:var(--t5)">S3</div><div class="a" style="--c:var(--t5)">S4</div>
     <div class="a" style="--c:var(--t5)">S5</div><div class="a" style="--c:var(--t5)">S6</div><div></div><div></div>
   </div>
-  <h4>The 16 punch-in effects (FX held, white keys 1–16)</h4>
+  <h4>The 27 punch-in effects (FX held): white keys 1–16</h4>
   <div class="keys16">
     <div>LP4</div><div>LP8</div><div>L16</div><div>L32</div><div>STUT</div><div>REV</div><div>STOP</div><div>HALF</div>
     <div>LOW</div><div>HIGH</div><div>PHON</div><div>CRSH</div><div>ALIA</div><div>GATE</div><div>ECHO</div><div>WOBL</div>
   </div>
   <p class="small" style="color:var(--text-2)">Loops of 1/4, 1/8, 1/16 and 1/32 · stutter · reverse · tape stop · half speed · low-pass and high-pass sweeps · phone · bit crush ·
     alias · gate · echo · tape wobble. All locked to the tempo; the mix is exactly dry again when you let go.</p>
+  <h4>… and the 11 black keys <span class="tag new">NEW</span></h4>
+  <div class="tablewrap"><table>
+    <tr><th>Key</th><th>Effect</th><th>Key</th><th>Effect</th></tr>
+    <tr><td>F#3</td><td>KILL LOW (DJ band kill)</td><td>G#4</td><td>AUTO-PAN</td></tr>
+    <tr><td>G#3</td><td>KILL MID</td><td>A#4</td><td>FREEZE (the mix held in the reverb)</td></tr>
+    <tr><td>A#3</td><td>KILL HIGH</td><td>C#5</td><td>LOOP 8T</td></tr>
+    <tr><td>C#4</td><td>REWIND</td><td>D#5</td><td>MONO</td></tr>
+    <tr><td>D#4</td><td>OCT UP</td><td>F#5</td><td>FADE OUT</td></tr>
+    <tr><td>F#4</td><td>FLANGER</td><td></td><td></td></tr>
+  </table></div>
+  <p class="small" style="color:var(--text-2)">The PERFORM screen shows them on page 2 (tap <kbd>FX</kbd> again), each tile named by its key; holding one shows its page.
+    <b>Throws:</b> <kbd>FX</kbd> held + <kbd>OCT−</kbd> sends every track full into the reverb, + <kbd>OCT+</kbd> into the echo, while held; the OCT lights show them and
+    the sends you set are untouched.</p>
+</section>
+
+<!-- ================================================================== TEMPO -->
+<section class="chap" id="tempo">
+  <h2>Tempo <span class="tag new">NEW</span></h2>
+  <p class="sub">The tempo is always one hand away, with no menu: turn it, tap it, or set it exactly.</p>
+  <div class="shot"><img src="../ui/live/18-tempo.png" alt="TEMPO readout" loading="lazy">
+    <div>
+      <ul style="margin-top:0">
+        <li><b>Turn it:</b> on PLAY, TRACKS, MIXER and PERFORM — the screens with nothing to navigate — turn <kbd>ALGORITHM</kbd>, no button held. One detent is one
+          BPM; fast turns go further. The BPM shows in large numerals for about 1.5 s.</li>
+        <li><b>Tap it:</b> press <kbd>OCT−</kbd> and <kbd>OCT+</kbd> together, in time, a few times. Pressing both still puts the octave back to 0, as before.
+          <kbd>GLO</kbd> held + black key A# taps too.</li>
+        <li><b>Exactly, from any screen:</b> hold any function button and turn <kbd>SELECT</kbd>, one BPM a detent (as on SLOOP).</li>
+        <li><b>From the computer:</b> the <a href="../device/">device page</a>, Global › BPM.</li>
+      </ul>
+      <p>When SETTINGS › CLOCK IN is USB or TRS, the tempo follows the incoming MIDI clock: the readout says <b>FOLLOWS CLOCK IN</b> and its numerals are dimmed.</p>
+    </div>
+  </div>
 </section>
 
 <!-- ================================================================== TRACKS -->
@@ -374,7 +417,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <div class="tablewrap"><table>
     <tr><th>Control</th><th>On the held steps</th></tr>
     <tr><td>KNOB 1</td><td>Note (synth) or drum sound</td></tr>
-    <tr><td>KNOB 2</td><td>Level: ghost, soft, normal, hard</td></tr>
+    <tr><td>KNOB 2</td><td>Synth step: VELO, its velocity 1–127 <span class="tag new">NEW</span> · drum step: level ghost, soft, normal, hard</td></tr>
     <tr><td>KNOB 3</td><td>Ratchet ×1 – ×4</td></tr>
     <tr><td>KNOB 4</td><td>Nudge (micro timing): half a step early to half a step late, in 1/64</td></tr>
     <tr><td>PRESETS / ALGORITHM</td><td>Parameter lock: ALGORITHM picks a sound parameter (the one you touched last first), PRESETS gives it a value for this step only. 24 locks per track.</td></tr>
@@ -393,7 +436,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
         <tr><th>Control</th><th>STEP page</th></tr>
         <tr><td>KNOB 1 · ALGORITHM</td><td>STEP: moves the cursor</td></tr>
         <tr><td>KNOB 2</td><td>NOTE: transposes the step (an empty step gets the last note entered)</td></tr>
-        <tr><td>KNOB 3</td><td>TIME: NOTE / TIE / REST</td></tr>
+        <tr><td>KNOB 3</td><td>On a note: <b>LEN</b>, how many steps it lasts <span class="tag new">NEW</span> (at the limit the panel says NOTE AHEAD or END OF PATTERN). On an empty step: TIME, NOTE / TIE / REST</td></tr>
         <tr><td>KNOB 4</td><td>FLAG: – / ACC (accent) / SLIDE / A+S</td></tr>
         <tr><td>Keys</td><td>The keys you press together become the cursor's step (a chord of up to 4 notes; mono voice mode: the last key; chord mode: the chord as it sounds). Let go of every key and the cursor moves on.</td></tr>
         <tr><td>EDIT</td><td>Clears the cursor's step and moves on</td></tr>
@@ -409,7 +452,9 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li><b>Shift:</b> SEQUENCER <kbd>KNOB 4</kbd>, or <kbd>EDIT</kbd> held + <kbd>KNOB 1</kbd>.</li>
     <li><b>Length ×2 / ½</b> and <b>transpose:</b> <kbd>EDIT</kbd> held + <kbd>KNOB 2</kbd> / <kbd>KNOB 3</kbd>.</li>
     <li><b>Erase:</b> <kbd>EDIT</kbd> held + the key of a note or drum sound removes it as the loop plays it; stopped, from the whole pattern.</li>
-    <li><b>Fills:</b> steps marked "fill only" play only during a fill; <kbd>GLO</kbd> held + C# plays a fill while held, + D# fills the next bar.</li>
+    <li><b>Fills:</b> steps marked "fill only" play only during a fill; <kbd>GLO</kbd> held + F# plays a fill while held, + G# fills the next bar.</li>
+    <li><b>Mute drum sounds live:</b> on a drum track, hold <kbd>EDIT</kbd> and press a black key: the white keys now mute and unmute their sounds in the sequencer
+      (nothing erased). A black key again, or letting go of <kbd>EDIT</kbd>, goes back to erasing. The mutes apply to every drum track.</li>
     <li><b>Undo / redo:</b> <kbd>EDIT</kbd> + <kbd>OCT−</kbd> / <kbd>OCT+</kbd>.</li>
   </ul>
   <h3>Chords and the key</h3>
@@ -524,16 +569,35 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h3>On the panel</h3>
   <ul>
     <li><kbd>PRESETS</kbd> browses sounds by kind, then your user presets; on a drum track, the kits.</li>
-    <li>SOUND (<kbd>EDIT</kbd>): <kbd>ALGORITHM</kbd> picks the engine; the knobs are the engine's four macros. Tap <kbd>EDIT</kbd> again for ENV, LFO and SENDS.</li>
-    <li><kbd>ENV</kbd> and <kbd>LFO</kbd> jump straight to those pages.</li>
+    <li>SOUND (<kbd>EDIT</kbd>): <kbd>ALGORITHM</kbd> picks the engine; the knobs are the engine's four macros. Tap <kbd>EDIT</kbd> again for the next page.</li>
+    <li><kbd>ENV</kbd> and <kbd>LFO</kbd> jump straight to those pages. Pages without a picture show their four values large.</li>
     <li>PLAY shows the macros too, so the sound is always under your hands.</li>
   </ul>
+  <h3>The SOUND pages</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Page</th><th>KNOB 1</th><th>KNOB 2</th><th>KNOB 3</th><th>KNOB 4</th></tr>
+    <tr><td>PRESET</td><td colspan="4">the engine's four macros (PRESETS browses the sounds)</td></tr>
+    <tr><td>ENVELOPE</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
+    <tr><td>LFO</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
+    <tr><td>SYNC <span class="tag new">NEW</span></td><td>LFO SYNC: free, or 4 bars … 1/32 (triplets too)</td><td>LFO TRIG: NOTE / FREE</td><td>LFO POL: bipolar / unipolar</td><td>ENV SYNC: attack, decay, release as note values</td></tr>
+    <tr><td>SENDS</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
+    <tr><td>INSERT <span class="tag new">NEW</span></td><td>INSERT: OFF, SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR</td><td colspan="3">A · B · C, named by the type</td></tr>
+    <tr><td>INSERT 2 <span class="tag new">NEW</span></td><td>INS MIX: dry / wet</td><td>FLT TYPE: ANALOG's filter LP / BP / HP (ANALOG only)</td><td colspan="2">—</td></tr>
+  </table></div>
+  <p>A drum track has three pages: KIT (KIT, LEVEL, PAN, FILTER), INSERT and INSERT 2 (MIX). Its insert works on the kit's mono mix, before pan and sends.</p>
+  <div class="note"><b>INSERT: up to 4 tracks at once.</b> Every track can have an insert effect, but the FM-1's memory holds four of them: the tracks share four
+    insert slots. A fifth track's insert stays dry and the panel says <b>INSERT: 4 TRACKS MAX</b>; turn one off to free its slot.</div>
+  <h3>TEXTURE <span class="tag new">NEW</span></h3>
+  <p>A looping bed under the mix: VINYL, TAPE, RAIN, WIND, RADIO, ROOM, or one of your sample slots. On PERFORM, tap <kbd>FX</kbd> until TEXTURE (page 3):
+    TEXTURE picks the source, LEVEL, TONE and MOVE (a slow breath); TEXTURE 2 (page 4) has RATE (1 to 16 bars), PLAYS (with the transport or always) and DUCK
+    (it pumps with the kick). Saved with the project.</p>
   <h3>Everything else, from the device page <span class="tag web">WEB</span></h3>
   <p>Some parameters have no panel page yet. The <a href="../device/">device page</a> reaches every parameter of every track: the eight engine parameters, envelope
     destinations, the rest of the LFO, the slicer, the arpeggiator, voice mode and glide, strum and voice leading, the global delay, reverb and chorus, and the tempo.</p>
   <h3>Master</h3>
   <p>PERFORM (<kbd>FX</kbd>): <b>DJ filter</b> (low-pass ← off → high-pass), <b>DUST</b> (an old sampler and a record: bits, rate, crackle), <b>DUCK</b> (the kick pumps the synths),
-    and the selected track's filter. An output limiter keeps the mix safe.</p>
+    and the selected track's filter. An output limiter that looks 0.7 ms ahead keeps the mix safe without crackle. <kbd>FX</kbd> held + <kbd>OCT−</kbd> / <kbd>OCT+</kbd>:
+    reverb and echo throws (see <a href="#layers">Layers</a>).</p>
 </section>
 
 <!-- ================================================================== PROJECTS -->
@@ -546,6 +610,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li><b>Format:</b> FM1M — eight tracks and their six clips each, every parameter, the steps that hold anything, locks, nudges, fills and the groove. A save cut off by power loss leaves the previous version intact.</li>
     <li><b>From an earlier FM1 Move build with four slots</b> (before clips): project 1 and the autosave still load (each track's pattern becomes its clip 1); projects 2–4 do not carry over
       (slot 2 shows empty). Before updating, export the projects you want to keep from the <a href="../device/">device page</a>.</li>
+    <li><b>From FM1 Move 0.2:</b> projects, settings and backups load in 0.3 as they are; the new SLOOP 2.6 parameters (INSERT, TEXTURE, sync…) start off.</li>
     <li><b>From SLOOP:</b> at the first start, SLOOP's working project is imported onto tracks 1–4. SLOOP's four saved slots are not imported yet.</li>
     <li><b>On the computer:</b> the <a href="../device/">device page</a> exports and imports single projects (<code>.fm1m.json</code>) and makes a full backup.</li>
   </ul>
@@ -567,7 +632,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>LIGHTS</td><td>OFF · LOW · MID · HIGH</td><td>Every button glows for playing in the dark; what is active stays fully lit</td></tr>
     <tr><td>KEY LIGHTS</td><td>OFF · C KEYS · WHITE · ALL</td><td>Which keys glow too</td></tr>
     <tr><td>USB AUDIO</td><td>MAIN · FULL</td><td>The USB audio level follows MASTER, or a fixed full level</td></tr>
-    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.2</td></tr>
+    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.3</td></tr>
   </table></div>
 </section>
 
@@ -576,11 +641,27 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h2>MIDI and USB</h2>
   <ul>
     <li><b>USB MIDI</b> in and out, class compliant (no driver), and the <b>3.5 mm TRS MIDI IN</b> jack (with a TRS-to-DIN adapter).</li>
-    <li><b>Channels in:</b> channel 1–8 plays synth track 1–8; the drum channel (10, changeable on the device page) plays drum track 1; any other channel plays the selected track.</li>
+    <li><b>Channels:</b> channel <i>n</i> plays synth track <i>n</i> (1–8), and track <i>n</i> sends on it; drum tracks use the drum channel (10, changeable on the device page), which
+      plays track 1; any other channel plays the selected track. (SLOOP 2.6's CH1–CH3 settings do not apply in FM1 Move.)</li>
     <li><b>MIDI CCs:</b> 7 level, 10 pan, 74 filter, 71 resonance, 73 / 75 / 72 attack / decay / release, 5 glide, 91 / 93 / 94 the reverb, chorus and delay sends.</li>
+    <li><b>Sustain pedal</b> (CC 64) <span class="tag new">NEW</span>: holds the notes you let go while it is down, recorded as you hear them.</li>
+    <li><b>Pitch bend</b> <span class="tag new">NEW</span>: bends the track the channel plays, by up to BEND semitones (1–12, device page › MIDI 2).</li>
+    <li><b>MIDI IN on one channel</b> <span class="tag new">NEW</span>: device page › MIDI 2 › IN = CH 1 … 16 answers that channel only, on the selected track. The panel's SETTINGS › MIDI IN shows NOTES / CLOCK only.</li>
+    <li>The MIDI settings (drum channel, IN, OTHER, BEND) belong to the FM-1, not to the project: loading a project leaves them as they are.</li>
     <li><b>Clock in:</b> USB or TRS (SETTINGS › CLOCK IN), pulse by pulse with no drift.</li>
     <li><b>USB audio:</b> the FM-1 is also a USB audio input (44.1 or 48 kHz stereo) — record it in a DAW or a phone over the same cable.</li>
   </ul>
+  <h3>MIDI LEARN <span class="tag new">NEW</span></h3>
+  <ol>
+    <li>Hold <kbd>GLO</kbd> and press black key <b>C#</b> (C#4, the fourth black key): MIDI LEARN is on.</li>
+    <li>Turn a knob of the FM-1 (a sound or mix parameter of the track), then move a knob of your controller: that CC is learned. Turn the next knob, and so on.</li>
+    <li><kbd>GLO</kbd> + C# again turns it off.</li>
+  </ol>
+  <p>Up to 16 CCs, kept through power-off with the settings. In FM1 Move a learned CC moves its parameter <b>on the selected track</b>, like the panel's knobs: select another
+    track and the same controller knob plays that track's parameter. The mod wheel, the sustain pedal and the like cannot be learned (CC NOT LEARNABLE).</p>
+  <div class="note">FM1 Move has no panel item to forget the learned CCs yet (SLOOP has HOME › SYSTEM › MIDI LEARN CLEAR).</div>
+  <p><b>Program Change</b> (SLOOP 2.6) loads a sound on the track its channel plays: the n-th sound of the PRESETS list, kit n on a drum track. On the STEP page
+    (<kbd>SEQ</kbd> again), a <b>MIDI keyboard</b> on the selected track writes the cursor's step as the FM-1's keys do: notes held together make a chord, letting go moves on.</p>
 </section>
 
 <!-- ================================================================== DEVICE PAGE -->
@@ -589,7 +670,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <p class="sub"><a href="../device/">nicodesy06.github.io/FM1-MOVE/device</a> — Chrome or Edge on a computer, the FM-1 on a USB data cable. Every tab also works on the
     <b>virtual FM1</b> (the firmware running in the browser), without a device.</p>
   <div class="grid2">
-    <div class="card"><h4 style="margin-top:0">Install</h4>FM1 Move (experimental, behind a warning you must tick), SLOOP 2.5 (stable), or back to the official V15 with M-VAVE's own file.</div>
+    <div class="card"><h4 style="margin-top:0">Install</h4>FM1 Move 0.3 (experimental, behind a warning you must tick), SLOOP 2.6 (stable), or back to the official V15 with M-VAVE's own file.</div>
     <div class="card"><h4 style="margin-top:0">Tracks &amp; sounds</h4>The eight tracks; engine, sound or kit; every parameter of the track and the song (those the panel does not reach are marked "web only").</div>
     <div class="card"><h4 style="margin-top:0">User presets</h4>Store a track's sound in one of 32 slots, load, rename, erase, export and import them.</div>
     <div class="card"><h4 style="margin-top:0">Samples &amp; kits</h4>Three sample slots (USR1–3, about 3.7 s each). Build a drum kit by dropping sounds on 16 pads, or a multi-sampled instrument — WAV, MP3, AIFF…</div>
@@ -629,13 +710,18 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 <section class="chap" id="from-sloop">
   <h2>Coming from SLOOP</h2>
   <ul>
-    <li>Every engine, sound and sequencer feature of SLOOP 2.5 is still there; the panel is new and has eight tracks of any kind.</li>
-    <li>SEL held + keys 1–8 now selects tracks (the song key moved to keys 9–16 and the black keys); GLO held: keys 1–8 mute, 9–16 solo, fill and tap tempo on black keys.</li>
+    <li>FM1 Move 0.3 is built on <b>SLOOP 2.6</b>: every engine, sound and sequencer feature is still there, including 2.6's 27 punch-ins, throws, INSERT, LFO sync,
+      ENV SYNC, note LEN and velocity, TEXTURE, live drum mutes, MIDI LEARN, sustain and pitch bend. The panel is new and has eight tracks of any kind.</li>
+    <li>SEL held + keys 1–8 now selects tracks (the song key moved to keys 9–16 and the black keys); GLO held: keys 1–8 mute, 9–16 solo; black keys F# fill, G# fill next bar,
+      A# tap tempo, C# MIDI LEARN (SLOOP: GLO + F#3).</li>
+    <li>Tempo: <kbd>ALGORITHM</kbd> on PLAY, TRACKS, MIXER and PERFORM, or <kbd>OCT−</kbd> + <kbd>OCT+</kbd> tapped together; button held + <kbd>SELECT</kbd> as on SLOOP.</li>
+    <li>MIDI: track <i>n</i> on channel <i>n</i> (SLOOP 2.6's GLO › MIDI page is not on the panel); a learned CC acts on the selected track; Program Change and MIDI-keyboard step entry work as in SLOOP 2.6.</li>
+    <li>INSERT on four tracks at once at most (memory).</li>
     <li>SLOOP's song mode (sections A–D, chains, SONG REC) is gone; <a href="#clips">clips and scenes</a> replace it (six clips per track, six scenes, launched on the bar).</li>
     <li>SLOOP's layer pages for <kbd>SEQ</kbd> (STEPS, 4 × 4) and <kbd>SEL</kbd> (the chords on the keys) are back: hold the button.</li>
     <li>SLOOP's STEP page is back as the SEQUENCER's <a href="#sequencer">STEP page</a> (<kbd>SEQ</kbd> again), with accent and slide.</li>
     <li>Sample slots: three (USR1–3). SLOOP's USR4 flash now holds FM1 Move's projects.</li>
-    <li>The visualiser, colour palettes, zoom and the calibration page are gone from the panel.</li>
+    <li>The visualiser, colour palettes, zoom and the calibration page are gone from the panel; SLOOP's offline editor and song-section erase are SLOOP-only.</li>
   </ul>
   <p>The full list, feature by feature: <a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/SLOOP_PARITY.md">what was kept, changed and removed</a>.</p>
 </section>
@@ -645,8 +731,12 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h2>Questions</h2>
   <h3>Can I write a sequence without recording?</h3>
   <p>Yes: hold <kbd>SEQ</kbd> and tap the white keys — see <a href="#sequencer">The sequencer</a>.</p>
+  <h3>How do I change the tempo?</h3>
+  <p>On PLAY, TRACKS, MIXER or PERFORM, turn <kbd>ALGORITHM</kbd> — no button needed; the BPM shows large. Or tap <kbd>OCT−</kbd> + <kbd>OCT+</kbd> together in time. See <a href="#tempo">Tempo</a>.</p>
   <h3>How do I set an exact tempo?</h3>
-  <p>Hold any function button and turn <kbd>SELECT</kbd> (one BPM a detent), or tap the tempo with <kbd>GLO</kbd> held + F#, or set BPM on the device page.</p>
+  <p>Hold any function button and turn <kbd>SELECT</kbd> (one BPM a detent) from any screen, or set BPM on the device page. <kbd>GLO</kbd> held + A# taps it too.</p>
+  <h3>Why does a track's INSERT do nothing?</h3>
+  <p>Four tracks can have an insert effect at once; the panel says "INSERT: 4 TRACKS MAX". Turn another track's INSERT off.</p>
   <h3>Why does a fourth GRAIN / FM6 / PHYS track not get its engine?</h3>
   <p>Three heavy engines can run at once; change one of them to free its memory.</p>
   <h3>How do I switch between patterns while playing?</h3>
@@ -658,7 +748,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 </section>
 
 <footer>
-  FM1 Move is based on <a href="https://github.com/isod89/sloop-fm1">SLOOP</a> by Leo Kuroshita (@kurogedelic), Hügelton Instruments, itself based on Felucca. GPL-3.0, no warranty.
+  FM1 Move is based on <a href="https://github.com/isod89/sloop-fm1">SLOOP</a> 2.6 by isod89, itself based on <a href="https://github.com/hugelton/Felucca">Felucca</a> by Leo Kuroshita, Hügelton Instruments. GPL-3.0, no warranty.
   Inter font: SIL Open Font License. M-VAVE and FM-1 are trademarks of their respective owners. Screens on this page are rendered by the firmware's own code on a simulated FM-1.
 </footer>
 </main>

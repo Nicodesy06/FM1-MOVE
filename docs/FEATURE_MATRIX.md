@@ -1,13 +1,14 @@
 # FM1 Move — Feature matrix
 
-Status values: **SLOOP** = present in the SLOOP 2.5 baseline (verified in code and host tests);
+Status values: **SLOOP** = present in SLOOP (2.5 baseline; **SLOOP 2.6** = added by 2.6, merged in FM1 Move 0.3;
+verified in code and host tests);
 **FM1M** = implemented and host-tested in FM1 Move (with the commit); **PART** = partial; **PLAN** = planned,
 not implemented; **N/A** = not possible on this hardware. Nothing is "done on hardware" yet: no FM1 Move build has
 run on a device.
 
 Reference products: Groove OS (8 tracks, groove features), Ableton Move (workflow), Felucca/SLOOP (base).
 
-Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and how each is reached on the panel):
+Feature by feature against SLOOP 2.6 (kept / changed / web only / not yet / removed, and how each is reached on the panel):
 [`SLOOP_PARITY.md`](SLOOP_PARITY.md).
 
 ## Tracks and engines
@@ -18,7 +19,7 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Track kind configurable (synth / drums / MIDI out) | PART (FM1M, host) | `trk_set_kind`; synth and drums done, MIDI-out kind pending |
 | Per-track pattern, length 1–64, division | SLOOP | `P_SLEN`, `P_SDIV` |
 | Per-track volume, pan, mute, solo | SLOOP | four tracks |
-| Per-track MIDI channel | PART | SLOOP: fixed map (1–3 parts, DRUMS channel) |
+| Per-track MIDI channel | PART | FM1 Move: fixed map, track *n* on channel *n*, drum tracks on DRUMS CH (10); SLOOP 2.6's CH1–CH3 settings do not apply |
 | Global voice allocation, priority, stealing, shedding | SLOOP + FM1M | 8-voice budget across parts, bass/lead protected; last-resort steal for 8 parts |
 | 12 synth engines, 153 presets | SLOOP | FM6 with DX7 import, PHYS, NOISE… |
 | Drum kits (16 sounds, levels, ratchets, choke hat) | SLOOP + FM1M | any number of drum tracks sharing 6 voices, own kit / mix / choke |
@@ -49,8 +50,11 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Fill conditions | SLOOP | FILL / NOT FILL |
 | Probability, A:B conditions | PLAN | memory: 1 byte/step |
 | Flam | PLAN | |
-| Gate length per step | PLAN | track gate exists (`P_SGATE`) |
+| Gate length per step | PART | track gate (`P_SGATE`); note LEN in steps (SLOOP 2.6) |
 | Live record, overdub, step record, count-in, metronome | SLOOP | metronome and count-in on SETTINGS (FM1 Move) |
+| Note length per step (LEN), step velocity 1–127 | SLOOP 2.6 (host) | STEP page KNOB 3 on a note; SEQ held + synth step held: KNOB 2 VELO |
+| Live drum mutes (EDIT + black key) | SLOOP 2.6 (host) | one mute set for every drum track |
+| Step entry from a MIDI keyboard | PART | SLOOP 2.6; not applied in FM1 Move yet (`ui_input.c` left out) |
 | Step editor with cursor (piano roll, acid-style entry, accent / slide) | SLOOP + FM1M (host, ced992f) | SEQUENCER STEP page on synth tracks |
 | Layer pages: steps while SEQ held, chords on the keys while SEL held | SLOOP + FM1M (host, a125cb0) | STEPS (4 × 4) and KEY pages over any screen |
 | Undo / redo (one level, one track) | SLOOP | |
@@ -73,7 +77,13 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Sends: chorus, tempo delay, reverb | SLOOP | shared buses |
 | Per-track drive, slicer, filter | SLOOP | |
 | Master DJ filter, DUST, sequenced kick ducking, limiter | SLOOP | |
-| 16 punch-in FX (loops, stutter, tape stop…) | SLOOP | |
+| 27 punch-in FX (16 white keys + 11 black keys: kills, rewind, freeze, flanger…) | SLOOP 2.6 (host) | PERFORM pages 1–2 |
+| REV THROW / ECHO THROW | SLOOP 2.6 (host) | FX held + OCT− / OCT+ |
+| INSERT effect per track (8 types, mix) | SLOOP 2.6 + FM1M (host) | 4 tracks at once (4 shared states; RAM) |
+| TEXTURE bed | SLOOP 2.6 (host) | PERFORM pages 3–4, saved with the project |
+| LFO sync / trigger / polarity, ENV SYNC, ANALOG filter type | SLOOP 2.6 (host) | SOUND › SYNC, SOUND › INSERT 2 |
+| Performance tempo (ALGORITHM, OCT− + OCT+ tap, large readout) | FM1M (host, d7590be) | PLAY, TRACKS, MIXER, PERFORM |
+| Look-ahead master limiter | SLOOP 2.6 | 0.7 ms |
 | Scale / chord mode, CHORD+, strum, voice leading, arpeggiator, note repeat | SLOOP | |
 
 ## System
@@ -81,6 +91,9 @@ Feature by feature against SLOOP 2.5 (kept / changed / web only / removed, and h
 | Feature | Status | Notes |
 | --- | --- | --- |
 | USB MIDI in/out, TRS MIDI in, MIDI clock in | SLOOP | no TRS MIDI out (N/A without hardware) |
+| Sustain pedal, pitch bend, MIDI IN on one channel | SLOOP 2.6 (host) | BEND and IN on the device page (MIDI 2); settings of the FM-1, not the project |
+| MIDI LEARN (16 CCs) | SLOOP 2.6 + FM1M (host) | GLO + C#; acts on the selected track; no panel clear yet |
+| MIDI Program Change | SLOOP + FM1M (host) | a track's sound (n-th of PRESETS), kit n on a drum track |
 | MIDI clock **out** | PLAN | |
 | Project save/load, CRC, A/B copies, autosave, migration of old formats | SLOOP | 4 tracks |
 | 8-track project format | FM1M (host) | `PROJECT_FORMAT.md` (stream v2 with clips); 2 slots + the autosave, 3 chunks each; import of SLOOP slots 1–4 pending (the SLOOP autosave is imported) |

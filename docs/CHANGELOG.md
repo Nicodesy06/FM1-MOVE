@@ -2,6 +2,60 @@
 
 ## Unreleased (fm1-move/dev)
 
+### FM1 Move 0.3 — SLOOP 2.6 inside (d7590be, host simulation)
+- Upstream SLOOP 2.6 (isod89/sloop-fm1 tag `v2.6`) merged; version **FM1 MOVE 0.3**. The device page offers
+  `docs/firmware/fm1move-0.3-dev.fwsc` (experimental) and `sloop-2.6.fwsc` (stable); the 0.2-dev and sloop-2.5
+  packages are removed. Projects, settings and backups of 0.2 load as they are (the new parameters start off; the
+  per-track parameter order is preserved; FM1 Move keeps REC QUANT in settings-word bits 21–23, 2.6's MIDI IN channel
+  moves to bits 26–30).
+- **27 punch-in effects:** FX held + the 11 black keys F#3…F#5: KILL LOW / MID / HIGH, REWIND, OCT UP, FLANGER,
+  AUTO-PAN, FREEZE, LOOP 8T, MONO, FADE OUT (white keys 1–16 as before). PERFORM has 4 pages (FX again turns them):
+  1 the white-key effects, 2 the black-key effects (tiles named by key F#, G#…; an effect held shows its page),
+  3 TEXTURE (source, LEVEL, TONE, MOVE), 4 TEXTURE 2 (RATE, PLAYS, DUCK).
+- **REV THROW / ECHO THROW:** FX held + OCT− (reverb) / OCT+ (echo): every send full while held; the OCT lights show it.
+- **INSERT on every track** (SOFT HARD FOLD FUZZ CRUSH PHASR FLANG CHOR; A B C named by the type; dry / wet MIX).
+  FM1 Move: **4 INSERT states shared by the 8 tracks** (8 × 580 B do not fit the RAM): a 5th track stays dry and the
+  panel says "INSERT: 4 TRACKS MAX". A drum track's INSERT runs on its mono mix, before pan and sends.
+- **SOUND pages**, synth tracks: PRESET, ENVELOPE, LFO, **SYNC** (LFO SYNC, LFO TRIG, LFO POL, ENV SYNC), SENDS,
+  **INSERT** (TYPE, A, B, C), **INSERT 2** (INS MIX, FLT TYPE: ANALOG's filter LP / BP / HP, ANALOG only). Drum
+  tracks: KIT, INSERT, INSERT 2 (MIX). Pages without a picture show the four values large.
+- **TEXTURE** bed (VINYL, TAPE, RAIN, WIND, RADIO, ROOM or a user sample slot), saved with the project.
+- **STEP page:** KNOB 3 on a note step = LEN (steps it lasts; "NOTE AHEAD" / "END OF PATTERN"), on an empty step TIME
+  as before. SEQ held + a synth step held: KNOB 2 = VELO (1–127).
+- **Live drum mutes:** EDIT + a black key on a drum track switches the white keys from erasing to muting lanes.
+- **MIDI LEARN:** GLO held + black key C# toggles it; turn a panel knob, send a CC: learned (up to 16, kept with the
+  settings). FM1 Move: a learned CC moves its parameter **on the selected track** (as the panel knobs). No panel item
+  clears them yet.
+- **GLO held black keys** (FM1 Move): F# fill while held, G# fill next bar, A# tap tempo, C# MIDI LEARN. (Earlier
+  docs said C# / D# / F# for fill / next bar / tap: that was wrong.)
+- **MIDI:** sustain pedal (CC 64), pitch bend (range BEND, device page › MIDI 2), MIDI IN on one channel (device
+  page). **Program Change** loads a track's sound (the n-th of PRESETS; kit n on a drum track) and a **MIDI keyboard**
+  writes the STEP page's cursor step (a chord held together, all up: the next step): FM1 Move's controller drains both
+  (SLOOP does it in `ui_input.c`, which the FM1MOVE build leaves out). FM1 Move keeps track *n* on channel *n* and drum tracks on DRUMS CH
+  (10); SLOOP 2.6's CH1–CH3 do not apply (not on the device page). The MIDI settings are the FM-1's, not the
+  project's (a project load leaves them).
+- **Engine fixes from 2.6:** look-ahead limiter, no click on a preset load over held notes, FREEZE level, the
+  synth-kit kick whistle, arp latch (#191), delay TIME 1/4D.
+- SLOOP-only (not in FM1 Move): SLOOP's offline web editor, song section erase, the GLO › MIDI page.
+
+### Performance tempo (host simulation)
+- **ALGORITHM turns the tempo** on PLAY, TRACKS, MIXER and PERFORM with no button held (fast turns go further); the
+  BPM shows in large numerals for ~1.5 s ("TEMPO"; "FOLLOWS CLOCK IN" when CLOCK IN is USB / TRS).
+- **OCT− + OCT+ pressed together, tapped in time = TAP TEMPO** (the octave goes back to 0 as before). Any button held +
+  SELECT and GLO + A# still work.
+
+### Memory (FM1MOVE build, 0.3)
+- Image 569 828 / 581 564 B; RAM .data+.bss 96 496 / 98 304 B (1 808 B free); pool 333 160 / 344 064 B (10 904 B
+  spare). RAM found for 2.6: INSERT in 4 shared slots; SLOOP 1.x project import converts in the idle flash buffer
+  (2.6 KiB back); the MIDI note-routing table packed to nibbles (1 KiB back).
+
+### Tests (host simulation)
+- `fm1move_ui_test`: ALGORITHM tempo and its readout, OCT tap tempo, THROWs, a black-key punch-in, PERFORM pages and
+  TEXTURE, SOUND pages SYNC / INSERT / INSERT 2, the 4-slot INSERT limit, MIDI LEARN (a CC moves REVERB on the selected
+  track), STEP page LEN. Live renders `18-tempo`, `11c-texture`, `11d-perform-black`, `09b-sound-insert`.
+- SLOOP-layout suite: 182 golden renders identical to SLOOP 2.6's; the only failure is the known baseline
+  `fm1_alnk0_irq` (+54 %). Nothing here ran on an FM-1.
+
 ### REC on the cycle, as Ableton (host simulation)
 - Playing, REC starts the take on the next cycle's first beat and REC during a take ends it when the cycle closes
   (never mid-bar); REC again while it waits cancels, STOP drops it; the REC light blinks while it waits. The cycle:

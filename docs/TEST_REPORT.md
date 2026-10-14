@@ -123,3 +123,38 @@ rebuilt wasm firmware. Host simulation only: nothing here ran on an FM-1.
 
 ### Layer pages (STEPS, KEY) — host simulation
 `tests/fm1move_ui_test.c`: SEQ just pressed shows nothing (no flash on a tap); held 0.3 s: STEPS with note / tie / accent marks and DIV · SWING · LENGTH values; SEQ + key still writes the step; let go: back to the screen; SEL held: KEY with a chord on every white key, each label fits its tile; KNOB 2 turns the scale two steps (the fixed base); the drum track's STEPS. All checks ok, also under ASan + UBSan. Not run on an FM-1.
+
+
+### FM1 Move 0.3: SLOOP 2.6 merged, performance tempo (2026-10-14) — host simulation
+
+Commit d7590be (upstream SLOOP `v2.6` merged into `fm1-move/dev`).
+
+Build `FM1MOVE=1`: OK — image **569 828 B** of the 581 564 B app slot, RAM .data+.bss 96 496 / 98 304 B (1 808 B free),
+pool 333 160 / 344 064 B (10 904 B spare: the 8 KiB rule kept). See `MEMORY_BUDGET.md` §1c.
+
+`tests/fm1move_ui_test.c` (virtual FM1), new checks:
+
+| Area | What it checks |
+| --- | --- |
+| Tempo | PLAY: ALGORITHM turns the tempo with no button held and the TEMPO readout shows, then goes; OCT− + OCT+ tapped in time sets the tempo and leaves the octave at 0 |
+| THROWs | FX + OCT− held: REV THROW; with OCT+ too: ECHO THROW as well |
+| Punch-in | FX + the first black key (F#): KILL LOW (27 effects) |
+| PERFORM | page 2 the black keys' effects (4 pages); page 3 TEXTURE (OFF, then KNOB 1 picks a bed) |
+| SOUND | page 4 SYNC (LFO SYNC / TRIG / POL, ENV SYNC), page 6 INSERT, page 7 INS MIX and ANALOG's FLT TYPE |
+| INSERT limit | four tracks get an INSERT, a fifth stays dry and the panel says so |
+| MIDI LEARN | GLO + C# turns it on; a knob, then CC 21: learned; the CC moves REVERB on the selected track |
+| STEP page | KNOB 3 on a note sets its LEN |
+
+Live renders: `docs/ui/live/18-tempo.png`, `11c-texture.png`, `11d-perform-black.png`, `09b-sound-insert.png`.
+
+Full suite (`SOAK_MIN=2 SKIP_CPU_VALGRIND=1 sh tests/run_tests.sh`, SLOOP-layout `build/`, after the merge): run; every
+test passes except the known baseline below.
+SLOOP-layout golden renders: 182, identical to SLOOP 2.6's; the only failure is the known baseline
+`target cost … fm1_alnk0_irq` (+54 %, unchanged).
+
+Found by reading the code (the docs pass), then fixed: MIDI Program Change and 2.6's step entry from a MIDI keyboard
+were queued by `seq.c` but drained only in SLOOP's `ui_input.c`; FM1 Move's controller now drains both. Checked in
+`tests/fm1move_ui_test.c` (a chord from a MIDI keyboard on the STEP page, the next step on release; Program Change
+loads the n-th sound).
+
+Host simulation only: **no FM1 Move build has run on a physical FM-1.**
