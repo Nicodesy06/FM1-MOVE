@@ -507,7 +507,7 @@ static int fmp_parse_r(fmp_r_t *rp, int apply, uint32_t *refused)
     for (i = 0; i < ng; i++) {
         uint32_t v = fmp_get16(&r);
         if (apply && i < G_COUNT && i != G_SLOT && i != G_LOAD && i != G_SAVE && i != G_SYNC && i != G_MIDI &&
-            i != G_ROUTE)
+            i != G_ROUTE && (i < G_CH1 || i > G_CHOTH) && i != G_BEND)   /* (2.6: the MIDI settings stay the FM-1's) */
             song.g[i] = (int16_t)clamp((int16_t)v, GP[i].min, GP[i].max);
     }
     {

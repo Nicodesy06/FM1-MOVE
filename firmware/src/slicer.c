@@ -175,13 +175,21 @@ static int slicer_busy(const track_t *t)
     return s->w || (t->p[P_SLCR] == SL_STUT && s->loop);
 }
 
+#if FM1MOVE
+static void track_insert(track_t *t, int32_t *b, uint32_t n);   /* fx.c */
+#endif
 /* the drum track: as drums_render, through the SLICER when it is on (or still fading) */
 static void slicer_drums(track_t *t, int32_t a0, int32_t a1, int32_t *ml, int32_t *mr, int32_t *rev, int32_t *dly,
                          uint32_t n)
 {
     const sl_t *s = &sl[(uint32_t)(t - trk) % NTRK];
     uint32_t i;
-    if (t->p[P_SLCR] == SL_OFF && !s->gc && !s->w) {
+#if FM1MOVE
+    int ins_on = (t->p[P_ITYPE] | t->ins_run) != 0;      /* (2.6 INSERT: on the mono mix, before the pan and sends) */
+#else
+    int ins_on = 0;
+#endif
+    if (t->p[P_SLCR] == SL_OFF && !s->gc && !s->w && !ins_on) {
         slicer_track(t, 0, n);
         drums_render(t, a0, a1, ml, mr, rev, dly, n);
         return;
@@ -190,8 +198,12 @@ static void slicer_drums(track_t *t, int32_t a0, int32_t a1, int32_t *ml, int32_
         sl_dbuf[i] = 0;
     drums_render_mono(t, a0, a1, sl_dbuf, n);
     slicer_track(t, sl_dbuf, n);
+#if FM1MOVE
+    if (ins_on)
+        track_insert(t, sl_dbuf, n);
+#endif
     {
-        int32_t send = DRUM_REV(t) * 258, dsend = DRUM_DLY(t) * 258, pan = t->p[P_PAN];
+        int32_t send = send_thr(DRUM_REV(t) * 258, thr_rev), dsend = send_thr(DRUM_DLY(t) * 258, thr_dly), pan = t->p[P_PAN];
         int32_t gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
         for (i = 0; i < n; i++) {
             int32_t x = sl_dbuf[i];

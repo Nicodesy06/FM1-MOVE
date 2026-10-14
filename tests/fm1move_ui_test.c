@@ -674,6 +674,137 @@ int main(int argc, char **argv)
     tap(B_PLAY);
     frames(10);
 
+    /* SLOOP 2.6 on the FM1 Move panel, and the performance tempo */
+    {
+        uint32_t both = BT(B_OCTDN) | BT(B_OCTUP), n;
+        int16_t bpm0;
+        tap(B_HOME);
+        frames(100);
+        bpm0 = song.g[G_BPM];
+        turn(EN_ALGO, 3);
+        check(song.g[G_BPM] == bpm0 + 3 && mv.tempo_ov, "PLAY: ALGORITHM turns the TEMPO (no button), its readout large");
+        ppm("18-tempo");
+        frames(100);
+        check(!mv.tempo_ov, "... the readout goes after a moment");
+        for (n = 0; n < 4u; n++) {                        /* OCT- + OCT+ tapped together every 512 ms: ~117 BPM */
+            edges_btn |= both;
+            fm1_in.buttons |= both;
+            frame();
+            fm1_in.buttons &= ~both;
+            frames(31);
+        }
+        check(song.g[G_BPM] >= 116 && song.g[G_BPM] <= 118 && song.octave == 0, "OCT- + OCT+ tapped in time: TAP TEMPO");
+        song.g[G_BPM] = bpm0;
+        press(B_FX);
+        press(B_OCTDN);
+        check(thr_req == 1u, "FX + OCT- held: REV THROW");
+        press(B_OCTUP);
+        check(thr_req == 3u, "... and OCT+: ECHO THROW too");
+        release(B_OCTDN);
+        release(B_OCTUP);
+        release(B_FX);
+        check(thr_req == 0u && ctl.screen != SC_PERFORM, "... let go: the sends back, FX did not open its screen");
+        press(B_FX);
+        {
+            uint32_t kb = 1u;                             /* F#: the first black key, KILL LOW */
+            fm1_in.notes |= 1u << kb;
+            frames(6);
+            check(punch.cur == 16 || punch.req == 16, "FX + the first black key: KILL LOW (27 punch-ins)");
+            tap(B_HOME);
+            fm1_in.notes &= ~(1u << kb);
+            frames(6);
+        }
+        release(B_FX);
+        frames(4);
+        tap(B_FX);
+        tap(B_FX);
+        frames(2);
+        check(ctl.screen == SC_PERFORM && ctl.page[SC_PERFORM] == 1u && mv.npages == 4u, "PERFORM page 2: the black keys' effects");
+        frames(100);                                      /* (the TEMPO readout of the taps gone) */
+        ppm("11d-perform-black");
+        tap(B_FX);
+        frames(2);
+        check(!strcmp(mv.k[0].label, "TEXTURE") && !strcmp(mv.k[0].value, "OFF"), "PERFORM page 3: TEXTURE, OFF");
+        turn(EN_K1, 1);
+        check(song.g[G_TXSRC] == 1 && strcmp(mv.k[0].value, "OFF"), "... KNOB 1: a texture bed");
+        frames(100);
+        ppm("11c-texture");
+        turn(EN_K1, -1);
+        tap(B_FX);
+        tap(B_FX);
+        check(ctl.page[SC_PERFORM] == 0u, "... FX again: round to the white keys");
+        track_select(1);
+        tap(B_EDIT);
+        while (ctl.page[SC_SOUND] != 5u)
+            tap(B_EDIT);
+        frames(2);
+        check(!strcmp(mv.k[0].label, "INSERT") && !strcmp(mv.pgname, "INSERT"), "SOUND page 6: the track's INSERT");
+        turn(EN_K1, 1);
+        check(TSEL->p[P_ITYPE] == 1 && mv.k[1].label && mv.k[1].value[0], "... TYPE on: A B C named by the type");
+        frames(100);
+        ppm("09b-sound-insert");
+        tap(B_EDIT);
+        frames(2);
+        check(!strcmp(mv.k[0].label, "INS MIX") && !strcmp(mv.k[1].label, "FLT TYPE"), "SOUND page 7: INSERT MIX, ANALOG's filter TYPE");
+        TSEL->p[P_ITYPE] = 0;
+        tap(B_EDIT);
+        tap(B_EDIT);
+        tap(B_EDIT);
+        tap(B_EDIT);
+        frames(2);
+        check(ctl.page[SC_SOUND] == 3u && !strcmp(mv.k[0].label, "LFO SYNC") && !strcmp(mv.k[3].label, "ENV SYNC"),
+              "SOUND page 4: LFO SYNC / TRIG / POL, ENV SYNC");
+        {
+            uint32_t k2, got = 0;
+            for (k2 = 0; k2 < 5u; k2++) {
+                trk[k2].p[P_ITYPE] = 1;
+                got += ins_slot(&trk[k2]) != 0;
+            }
+            check(got == INS_SLOTS && ins_full, "INSERT: four tracks at once, a fifth stays dry and the panel says so");
+            for (k2 = 0; k2 < 5u; k2++) {
+                trk[k2].p[P_ITYPE] = 0;
+                ins_of[k2] = 0;
+            }
+            frames(2);
+            check(!ins_full, "... (the message shown)");
+        }
+        press(B_GLO);
+        {
+            uint32_t kc = 8u;                             /* C#: MIDI LEARN */
+            fm1_in.notes |= 1u << kc;
+            frames(2);
+            fm1_in.notes &= ~(1u << kc);
+            frames(2);
+        }
+        release(B_GLO);
+        check(mlu.on, "GLO + C#: MIDI LEARN on");
+        tap(B_EDIT);
+        while (ctl.page[SC_SOUND] != 4u)
+            tap(B_EDIT);
+        turn(EN_K4, 1);                                   /* REVERB picked */
+        check(ml_arm, "... a knob turned: its parameter waits for a CC");
+        midi_learned(21, 64);
+        frames(2);
+        check(!ml_arm && ml_count() == 1u, "... CC 21 learned");
+        track_select(2);
+        midi_learned(21, 127);
+        check(trk[2].p[P_REV] == TP[P_REV].max, "... CC 21 moves REVERB on the selected track");
+        ml_toggle();
+        ml_clear_all();
+        track_select(3);
+        tap(B_SEQ);
+        if (ctl.page[SC_SEQ] != 1u)
+            tap(B_SEQ);
+        steps_clear(TSEL);
+        cursor_set(0);
+        keyw(0);
+        cursor_set(0);
+        turn(EN_K3, 2);
+        check(note_len(TSEL, 0) == 3u && !strcmp(mv.k[2].label, "LEN"), "STEP page: KNOB 3 on a note sets its LEN (2.6)");
+        steps_clear(TSEL);
+        tap(B_HOME);
+    }
+
     /* fuzz: random use */
     {
         uint32_t seed = 12345u, f, over = 0;

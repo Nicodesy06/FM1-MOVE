@@ -49,6 +49,7 @@ static struct {
     uint32_t t0[NB];                            /* button press times */
     uint8_t used[NB];                           /* a key / knob touched while the button was held */
     uint8_t layer_shown;
+    uint32_t tempo_ms;                          /* the tempo was changed (ALGORITHM, a tap): its readout shows a while */
 } ctl = {.hot = -1, .kind_req = TK_COUNT, .force = 1};
 
 /* clip.c (included by projfmt.c, after this file) */
@@ -128,6 +129,15 @@ static kbind_t ctl_bind(uint32_t k)
                                    {KB_TP, P_LD_FLT, "FILTER"}};
     static const kbind_t SND[4] = {{KB_TP, P_DIST, "DRIVE"}, {KB_TP, P_CHOR, "CHORUS"}, {KB_TP, P_DLY, "DELAY"},
                                    {KB_TP, P_REV, "REVERB"}};
+    /* SLOOP 2.6: LFO 2 and ENV SYNC; the INSERT (A B C named by its TYPE: label 0 = the descriptor's); ANALOG's TYPE */
+    static const kbind_t SYN[4] = {{KB_TP, P_LSYNC, "LFO SYNC"}, {KB_TP, P_LTRIG, "LFO TRIG"}, {KB_TP, P_LPOL, "LFO POL"},
+                                   {KB_TP, P_ESYNC, "ENV SYNC"}};
+    static const kbind_t INS[4] = {{KB_TP, P_ITYPE, "INSERT"}, {KB_TP, P_IA, 0}, {KB_TP, P_IB, 0}, {KB_TP, P_IC, 0}};
+    static const kbind_t IN2[4] = {{KB_TP, P_IMIX, "INS MIX"}, {KB_TP, P_FTYPE, "FLT TYPE"}, {KB_NONE, 0, 0}, {KB_NONE, 0, 0}};
+    static const kbind_t TX1[4] = {{KB_GP, G_TXSRC, "TEXTURE"}, {KB_GP, G_TXLVL, "LEVEL"}, {KB_GP, G_TXTONE, "TONE"},
+                                   {KB_GP, G_TXMOVE, "MOVE"}};
+    static const kbind_t TX2[4] = {{KB_GP, G_TXRATE, "RATE"}, {KB_GP, G_TXWHEN, "PLAYS"}, {KB_GP, G_TXDUCK, "DUCK"},
+                                   {KB_NONE, 0, 0}};
     static const kbind_t PRF[4] = {{KB_GP, G_FILT, "FILTER"}, {KB_GP, G_DUST, "DUST"}, {KB_GP, G_DUCK, "DUCK"},
                                    {KB_TP, P_TFLT, "TRK FLT"}};
     static const kbind_t DRM[4] = {{KB_KIT, 0, "KIT"}, {KB_TP, P_LEVEL, "LEVEL"}, {KB_TP, P_PAN, "PAN"},
@@ -151,15 +161,21 @@ static kbind_t ctl_bind(uint32_t k)
     case SC_GROOVE: return GRV[k];
     case SC_MIXER: return MIX[k];
     case SC_SOUND:
-        if (sel_kind() == TK_DRUM)
-            return DRM[k];
-        switch (ctl.page[SC_SOUND] & 3u) {
+        if (sel_kind() == TK_DRUM) {                     /* the drum track: KIT, its INSERT, the INSERT's MIX */
+            uint32_t pg = ctl.page[SC_SOUND] % 3u;
+            return pg == 1u ? INS[k] : pg == 2u ? (k ? (kbind_t){KB_NONE, 0, 0} : IN2[0]) : DRM[k];
+        }
+        switch (ctl.page[SC_SOUND] % 7u) {
         case 1: return ENV[k];
         case 2: return LFO[k];
-        case 3: return SND[k];
+        case 3: return SYN[k];
+        case 4: return SND[k];
+        case 5: return INS[k];
+        case 6: return IN2[k];
         default: return (kbind_t){KB_MACRO, (uint8_t)k, 0};
         }
-    case SC_PERFORM: return PRF[k];
+    case SC_PERFORM:
+        return ctl.page[SC_PERFORM] == 2u ? TX1[k] : ctl.page[SC_PERFORM] == 3u ? TX2[k] : PRF[k];
     case SC_CLIPS: return !k ? (kbind_t){KB_CLIP, 0, "CLIP"} : NONE;
     default: return NONE;
     }
@@ -180,8 +196,8 @@ static const param_desc_t *ctl_tp(track_t *t, kbind_t b, int16_t **vp)
     } else if (b.kind != KB_TP) {
         return 0;
     }
-    if (id >= P_COUNT)
-        return 0;
+    if (id >= P_COUNT || (id == P_FTYPE && (!is_synth(t) || t->eng_req != 0u)))
+        return 0;                                        /* (FLT TYPE: ANALOG's filter only) */
     *vp = &t->p[id];
     return track_desc(t, id);
 }
@@ -321,8 +337,9 @@ static void ctl_do(uint32_t act, uint32_t arg)
 static void screen_go(uint32_t sc)
 {
     if (!ctl.menu && ctl.screen == sc) {                 /* the same button again: the next page */
-        static const uint8_t NP[SC_COUNT] = {1, 1, 2, 2, 1, 1, 4, 1, 1, 1};
-        ctl.page[sc] = (uint8_t)((ctl.page[sc] + 1u) % NP[sc]);
+        static const uint8_t NP[SC_COUNT] = {1, 1, 2, 2, 1, 1, 7, 4, 1, 1};
+        uint32_t np = sc == SC_SOUND && is_drum(TSEL) ? 3u : NP[sc];   /* (the drum track: KIT, INSERT, INSERT 2) */
+        ctl.page[sc] = (uint8_t)((ctl.page[sc] + 1u) % np);
     }
     ctl.menu = 0;
     ctl.screen = (uint8_t)sc;
@@ -361,7 +378,16 @@ static void ctl_step_edit(uint32_t k, int32_t s)
         st->time = ST_NOTE;
         last_note = st->note[0];
         break;
-    case 2:
+    case 2:                                              /* TIME; on a note: its LEN in steps (2.6, ui.c) */
+        if (step_on(st)) {
+            uint32_t was = note_len(t, ui.cursor % NSTEP), n;
+            fm1_irq_off();
+            n = note_set_len(t, ui.cursor % NSTEP, (uint32_t)clamp((int32_t)was + s, 1, NSTEP));
+            fm1_irq_on();
+            if (s > 0 && n == was)
+                ctl_toast(ui.cursor + n < trk_len(t) ? "NOTE AHEAD" : "END OF PATTERN", "");
+            break;
+        }
         st->time = (uint8_t)clamp((int32_t)st->time + (s > 0 ? 1 : -1), ST_NOTE, ST_REST);
         break;
     default:
@@ -474,8 +500,8 @@ static void ctl_tap(uint32_t b)
     case B_HOME: screen_go(SC_PLAY); break;
     case B_FX: screen_go(SC_PERFORM); break;
     case B_SCL: screen_go(SC_TRACKS); break;
-    case B_ENV: screen_go(SC_SOUND); ctl.page[SC_SOUND] = 1; break;
-    case B_LFO: screen_go(SC_SOUND); ctl.page[SC_SOUND] = 2; break;
+    case B_ENV: screen_go(SC_SOUND); ctl.page[SC_SOUND] = (uint8_t)(is_drum(TSEL) ? 0u : 1u); break;
+    case B_LFO: screen_go(SC_SOUND); ctl.page[SC_SOUND] = (uint8_t)(is_drum(TSEL) ? 0u : 2u); break;
     case B_EDIT:
         if (ctl.menu && ctl.screen == SC_PROJECT) {
             char t[24] = "LOAD PROJECT 1?";
@@ -596,6 +622,20 @@ static void ui_input(void)
             held = l;
     punch.hold = (uint8_t)(held == LY_FX);
     ui.layer = (uint8_t)held;
+    {   /* FX + OCT- / OCT+ held (2.6): REV THROW / ECHO THROW, every send full while held (fx.c) */
+        uint32_t q = 0;
+        if (held == LY_FX) {
+            q = ((fm1_in.buttons >> panel.btn[B_OCTDN]) & 1u) | ((fm1_in.buttons >> panel.btn[B_OCTUP]) & 1u) << 1;
+            if (q)
+                ctl.used[B_FX] = 1;
+        }
+        thr_req = (uint8_t)q;
+    }
+    ml_poll();                                           /* MIDI LEARN: a CC came for the picked parameter (2.6) */
+    if (ins_full) {
+        ins_full = 0;
+        ctl_toast("INSERT: 4 TRACKS MAX", "");
+    }
     while (lk_r != lk_w) {                               /* SEQ, SEL, GLO keys (seq.c lk_q) */
         uint32_t e = lk_q[lk_r % LKQ];
         lk_r++;
@@ -664,6 +704,12 @@ static void ui_input(void)
             }
         }
     }
+    if (held == LY_PLAY && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP))) &&
+        (fm1_in.buttons & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP))) == (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP))) {
+        tap_tempo();                                     /* OCT- + OCT+ together, tapped in time: TAP TEMPO (the octave
+                                                          * goes back to 0 as ever) */
+        ctl.tempo_ms = fm1_ms | 1u;
+    }
     if (held == LY_ERASE && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {   /* EDIT + OCT: undo / redo */
         ctl.used[B_EDIT] = 1;
         if (pressed & ctl_btn_bit(B_OCTDN))
@@ -677,7 +723,7 @@ static void ui_input(void)
             (pressed & ctl_btn_bit(B_OCTDN)) ? steps_held_clear() : steps_held_fill();
         else
             ui.step_page = (uint8_t)((ui.step_page + ((pressed & ctl_btn_bit(B_OCTUP)) ? 1u : pages - 1u)) % pages);
-    } else if (!is_drum(TSEL) && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {
+    } else if (held != LY_FX && !is_drum(TSEL) && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {
         uint32_t both = ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP);
         if ((fm1_in.buttons & both) == both)
             song.octave = 0;
@@ -704,6 +750,7 @@ static void ui_input(void)
             ui.hot_t = 0;
         }
         if ((s = panel_enc(EN_SELECT)) != 0) {          /* SELECT with a button held: the tempo, one BPM a detent (as SLOOP) */
+            ctl.tempo_ms = fm1_ms | 1u;
             char bpm[8];
             song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + s, GP[G_BPM].min, GP[G_BPM].max);
             ctl.used[lb] = 1;
@@ -729,7 +776,12 @@ static void ui_input(void)
     }
     if ((s = panel_enc(EN_ALGO)) != 0) {                 /* ALGORITHM: the screen's navigator */
         uint32_t sc = ctl.screen;
-        if (ctl.menu) {
+        if (!ctl.menu && (sc == SC_PLAY || sc == SC_TRACKS || sc == SC_MIXER || sc == SC_PERFORM)) {
+            /* the screens with nothing to navigate: the TEMPO, one hand, no button (fast turns go further) */
+            song.g[G_BPM] = (int16_t)clamp(song.g[G_BPM] + accel(EN_ALGO, s, GP[G_BPM].max - GP[G_BPM].min),
+                                           GP[G_BPM].min, GP[G_BPM].max);
+            ctl.tempo_ms = fm1_ms | 1u;
+        } else if (ctl.menu) {
             uint32_t n = sc == SC_PROJECT ? FMP_NPROJ : ST_COUNT;
             ctl.row[sc] = (uint8_t)clamp((int32_t)ctl.row[sc] + s, 0, (int32_t)n - 1);
         } else if (ctl_roll()) {                         /* STEP page: the cursor */
@@ -764,6 +816,7 @@ static void ui_input(void)
             const param_desc_t *d = ctl_tp(TSEL, kb, &vp);
             if (d) {
                 *vp = (int16_t)clamp(*vp + accel(EN_K1 + k, s, d->max - d->min), d->min, d->max);
+                ml_knob(TSEL, (uint32_t)(vp - TSEL->p));      /* MIDI LEARN (2.6): this parameter */
                 if (kb.kind == KB_MACRO && p_lockable(ENGINES[TSEL->eng_req % NENGINES]->macro[k]))
                     ui.lock_par = ENGINES[TSEL->eng_req % NENGINES]->macro[k];
             }
@@ -850,7 +903,10 @@ static void ui_leds(void)
     ctl_led(nl, panel.btn[ui.layer != LY_PLAY ? LAYER_BTN[ui.layer] : SC_BTN[ctl.screen % SC_COUNT]], 1);
     ctl_led(nl, panel.btn[B_PLAY], (int)beat);
     ctl_led(nl, panel.btn[B_REC], (song.rec != 0u && !rec_pend) || ft_on || ((rec_wait || rec_pend) && ((fm1_ms / 125u) & 1u)));
-    if (is_drum(TSEL)) {
+    if (ui.layer == LY_FX) {                             /* FX held: the THROWs */
+        ctl_led(nl, panel.btn[B_OCTDN], (thr_req & 1u) != 0u);
+        ctl_led(nl, panel.btn[B_OCTUP], (thr_req & 2u) != 0u);
+    } else if (is_drum(TSEL)) {
         ctl_led(nl, panel.btn[B_OCTDN], (fm1_in.buttons & dyn_bit[0]) != 0u);
         ctl_led(nl, panel.btn[B_OCTUP], (fm1_in.buttons & dyn_bit[1]) != 0u);
     } else {
@@ -933,7 +989,7 @@ static void mv_knob_b(uint32_t k, kbind_t kb)
             o->label = 0;
             break;
         }
-        if (kb.kind == KB_MACRO)
+        if (kb.kind == KB_MACRO || !kb.label)
             o->label = d->label;
         if (kb.kind == KB_KIT)
             str_cpy(o->value, DRUM_KIT_NAMES[clamp(*vp, 0, DRUM_KITS - 1)], sizeof o->value);
@@ -1001,7 +1057,14 @@ static void mv_knob_b(uint32_t k, kbind_t kb)
                 str_cpy(o->value, "--", sizeof o->value);
             }
             break;
-        case 2: str_cpy(o->value, TIME_N[st->time % 3u], sizeof o->value); break;
+        case 2:
+            if (step_on(st)) {                           /* a note: LEN, its steps (2.6) */
+                o->label = "LEN";
+                ds_itoa(o->value, (int32_t)note_len(TSEL, ui.cursor % NSTEP));
+            } else {
+                str_cpy(o->value, TIME_N[st->time % 3u], sizeof o->value);
+            }
+            break;
         default:
             str_cpy(o->value, FLAG_N[(st->flags & SF_ACCENT ? 1u : 0u) | (st->flags & SF_SLIDE ? 2u : 0u)], sizeof o->value);
             break;
@@ -1114,8 +1177,11 @@ static void mv_layer(void)
                     note_name(mv.k[0].value, st->note[0]);
                 else
                     str_cpy(mv.k[0].value, "--", sizeof mv.k[0].value);
-                str_cpy(mv.k[1].value, (st->flags & SF_ACCENT) ? "ACCENT" : step_on(st) ? "NORMAL" : "--",
-                        sizeof mv.k[1].value);
+                mv.k[1].label = "VELO";                  /* (2.6: the step's velocity, 1..127) */
+                if (step_on(st))
+                    ds_itoa(mv.k[1].value, (int32_t)step_vel_shown(st));
+                else
+                    str_cpy(mv.k[1].value, "--", sizeof mv.k[1].value);
                 e = ds_cat(mv.k[2].value, "X");
                 ds_itoa(e, (int32_t)(st->rat & 3u) + 1);
             }
@@ -1211,6 +1277,8 @@ static void mv_fill(void)
     mv.rec = (uint8_t)(song.rec != 0u && song.playing);
     mv.count_in = (uint8_t)(ci_on ? 4u - ci_beat : 0u);
     mv.bpm10 = (uint16_t)(song.g[G_BPM] * 10);
+    mv.tempo_ov = (uint8_t)(ctl.tempo_ms && fm1_ms - (ctl.tempo_ms & ~1u) < CTL_HOT_MS + 300u);
+    mv.tempo_ext = (uint8_t)(lights_sync != 0u);
     mv.quant_on = (uint8_t)(groove_strength(&ts->gv) > 0u);
     mv.groove_on = (uint8_t)(groove_active(&ts->gv, &song_groove) || ts->p[P_SSWING] || song.g[G_SWING]);
     mv.bar = (uint8_t)(song.playing ? (clk_beat / 4u) % 99u + 1u : 1u);
@@ -1349,7 +1417,16 @@ static void mv_fill(void)
         mv.preset_n = DRUM_KITS;
     }
     mv.page = ctl.page[ctl.screen];
-    mv.npages = ctl.screen == SC_SOUND ? 4u : ctl.screen == SC_SEQ && !is_drum(ts) ? 2u : 1u;
+    mv.npages = ctl.screen == SC_SOUND ? (is_drum(ts) ? 3u : 7u) : ctl.screen == SC_SEQ && !is_drum(ts) ? 2u
+                                                                  : ctl.screen == SC_PERFORM ? 4u : 1u;
+    if (ctl.screen == SC_SOUND) {                        /* (a drum track after a synth: its pages) */
+        static const char *const PGS[7] = {"PRESET", "ENVELOPE", "LFO", "SYNC", "SENDS", "INSERT", "INSERT 2"};
+        static const char *const PGD[3] = {"KIT", "INSERT", "INSERT 2"};
+        mv.page = (uint8_t)(mv.page % mv.npages);
+        str_cpy(mv.pgname, is_drum(ts) ? PGD[mv.page % 3u] : PGS[mv.page % 7u], sizeof mv.pgname);
+    }
+    if (ctl.screen == SC_PERFORM && mv.page < 2u && punch.cur >= 0)
+        mv.page = (uint8_t)(punch.cur >= 16 ? 1u : 0u); /* (an effect held: the keys it is on) */
     if (ctl.menu)
         mv.npages = 2, mv.page = ctl.screen == SC_SETTINGS;
     for (k = 0; k < 4u; k++) {
@@ -1358,9 +1435,12 @@ static void mv_fill(void)
         mv.env[k] = (uint8_t)((ts->p[ID[k]] - d->min) * 100 / (d->max - d->min ? d->max - d->min : 1));
     }
     /* PERFORM */
-    for (i = 0; i < 16u && i < PUNCH_NFX; i++)
-        mv.fx[i] = PUNCH_NAME[i];
-    mv.fx_on = (uint16_t)(punch.cur >= 0 ? 1u << punch.cur : 0u);
+    for (i = 0; i < MV_NFX && i < PUNCH_NFX; i++) {     /* (the black keys' names short enough for a tile) */
+        static const char *const SHORT[11] = {"KILL LO", "KILL MD", "KILL HI", "REWIND", "OCT UP", "FLANGE", "PANNER",
+                                              "FREEZE", "LOOP 8T", "MONO", "FADE"};
+        mv.fx[i] = i < 16u ? PUNCH_NAME[i] : SHORT[(i - 16u) % 11u];
+    }
+    mv.fx_on = punch.cur >= 0 ? 1u << punch.cur : 0u;
     /* CLIPS */
     mv.scene = 0xFF;
     for (k = 0; k < NCLIP; k++) {
@@ -1504,7 +1584,7 @@ static void fm1move_splash_scene(void)
     ds_track = 1;
     ds_text_in(&DS_F12, 0, 162, DS_W, DS_C, "8-TRACK GROOVEBOX", DS_TEXT2);
     ds_track = 0;
-    ds_text_in(&DS_F12, 0, 226, DS_W, DS_C, "0.2  BASED ON SLOOP + FELUCCA", DS_TEXT3);
+    ds_text_in(&DS_F12, 0, 226, DS_W, DS_C, "0.3  BASED ON SLOOP 2.6 + FELUCCA", DS_TEXT3);
 }
 static void fm1move_splash(void)
 {

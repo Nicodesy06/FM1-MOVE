@@ -341,7 +341,8 @@ static inline void drums_mix(track_t *t, int32_t a0, int32_t a1, int32_t *ml, in
                              int32_t *mono, uint32_t n)
 {
     uint32_t k, i, ti = (uint32_t)(t - trk) % NTRK;
-    int32_t lvl = drum_lvl(t), send = DRUM_REV(t) * 258, dsend = DRUM_DLY(t) * 258, pk = t->peak;
+    int32_t lvl = drum_lvl(t), send = send_thr(DRUM_REV(t) * 258, thr_rev), dsend = send_thr(DRUM_DLY(t) * 258, thr_dly),
+            pk = t->peak;   /* (2.6: the THROWs) */
     int32_t pan = t->p[P_PAN], gl = 4096 - (pan > 0 ? pan * 64 : 0), gr = 4096 + (pan < 0 ? pan * 64 : 0);
     int32_t tail = drums.tl[ti];
     for (i = 0; i < n && tail; i++) {               /* declick tail, ~0.4 ms */

@@ -23,6 +23,7 @@ enum { MVL_NONE, MVL_STEPS, MVL_KEY };                        /* a layer held: i
 #define MV_NTRK 8
 #define MV_NSTEP 16                            /* steps on screen: one page */
 #define MV_ROWS 6                              /* list rows (PROJECT, SETTINGS, presets) */
+#define MV_NFX 27                              /* punch-in effects */
 
 typedef struct {
     char name[10];                             /* "BASS" */
@@ -103,8 +104,11 @@ typedef struct {
     char around[2][16];                        /* the previous and next preset names (browser) */
     uint8_t env[4];                            /* A D S R 0..100 */
     /* PERFORM */
-    const char *fx[16];
-    uint16_t fx_on;                            /* bit per effect held */
+    const char *fx[MV_NFX];                    /* 16 on the white keys, 11 on the black (SLOOP 2.6) */
+    uint32_t fx_on;                            /* bit per effect held */
+    char pgname[12];                           /* SOUND: the page's name */
+    uint8_t tempo_ov;                          /* the TEMPO readout (ALGORITHM turned, a tap) */
+    uint8_t tempo_ext;                         /* the tempo follows CLOCK IN (the knob does nothing then) */
     /* PROJECT / SETTINGS lists */
     char row_l[MV_ROWS][16], row_r[MV_ROWS][16];
     uint8_t nrows, row_sel, row_cur;           /* rows, the selected row, the loaded one (PROJECT) */
@@ -714,13 +718,26 @@ static void sc_mixer(void)
 }
 
 /* SOUND: the engine, the preset browser (previous, current, next), or the envelope */
+/* the four knobs' values large, placed as the knobs (1 2 / 3 4), for the pages with no picture of their own */
+static void mv_bigvals(int32_t y0)
+{
+    uint32_t c;
+    for (c = 0; c < 4u; c++) {
+        const mv_knob_t *k = &mv.k[c];
+        int32_t x = MX + (int32_t)(c & 1u) * 114, y = y0 + (int32_t)(c >> 1) * 52;
+        if (!k->label)
+            continue;
+        ds_rrect(x - 2, y, 110, 48, 4, mv.hot == (int8_t)c ? DS_SURF2 : DS_SURF1);
+        ds_label(x + 4, y + 15, 100, k->label, DS_TEXT2);
+        ds_text(ds_fit(k->value, 100, &DS_F22, &DS_F16), x + 4, y + 40, k->value, DS_TEXT1);
+    }
+}
 static void sc_sound(void)
 {
-    static const char *const PG[4] = {"PRESET", "ENVELOPE", "LFO", "SENDS"};
     const mv_track_t *t = &mv.t[mv.sel];
     char b[12], *e;
     int32_t w;
-    mv_title(PG[mv.page & 3u]);
+    mv_title(mv.pgname);
     w = ds_text_w(&DS_F12, t->engine) + 14;
     ds_chip_line(MX, 48, w, 16, MV_SELC, DS_BG, &DS_F12, t->engine);
     ds_text(&DS_F12, MX + w + 8, 60, mv.cat, DS_TEXT3);
@@ -728,7 +745,9 @@ static void sc_sound(void)
     e = ds_cat(e, " / ");
     ds_itoa(e, mv.preset_n);
     ds_text_in(&DS_F12, 0, 60, 232, DS_R, b, DS_TEXT3);
-    if (mv.page == 0u) {
+    if (mv.page >= 2u || (t->kind == MK_DRUM && mv.page)) {   /* LFO, SYNC, SENDS, INSERT: the values large */
+        mv_bigvals(70);
+    } else if (mv.page == 0u) {
         ds_text(&DS_F16, MX, 88, mv.around[0], DS_TEXT3);
         ds_rrect(MX - 2, 96, 228, 36, 4, DS_SURF1);
         ds_rect(MX - 2, 102, 3, 24, MV_SELC);
@@ -752,18 +771,32 @@ static void sc_sound(void)
     }
 }
 
-/* PERFORM: the sixteen punch-in effects as the keys play them (hold FX + key) */
+/* PERFORM: the punch-in effects as the keys play them (hold FX + key): page 1 the 16 white keys, page 2 the 11 black
+ * keys (an effect held shows its page); pages 3 and 4 the TEXTURE bed under the mix (SLOOP 2.6) */
 static void sc_perform(void)
 {
-    uint32_t i;
+    static const char *const BK[11] = {"F#", "G#", "A#", "C#", "D#", "F#", "G#", "A#", "C#", "D#", "F#"};
+    uint32_t i, base, n;
     char b[4];
-    mv_title("HOLD FX + KEY");
-    for (i = 0; i < 16u; i++) {
-        int32_t x = 6 + (int32_t)(i % 4u) * 58, y = Y_BODY + (int32_t)(i / 4u) * 32, on = (mv.fx_on >> i) & 1u;
-        ds_rrect(x, y, 54, 29, 4, on ? DS_TEXT1 : DS_SURF1);
-        ds_itoa(b, (int32_t)i + 1);
-        ds_text(&DS_F12, x + 5, y + 12, b, on ? DS_BG : DS_TEXT3);
-        ds_label(x + 3, y + 25, 50, mv.fx[i] ? mv.fx[i] : "", on ? DS_BG : DS_TEXT1);
+    if (mv.page >= 2u) {
+        mv_title(mv.page == 2u ? "TEXTURE" : "TEXTURE 2");
+        mv_bigvals(52);
+        return;
+    }
+    mv_title(mv.page ? "BLACK KEYS" : "HOLD FX + KEY");
+    base = mv.page ? 16u : 0u;
+    n = mv.page ? 11u : 16u;
+    for (i = 0; i < n; i++) {
+        uint32_t f = base + i;
+        int32_t x = 6 + (int32_t)(i % 4u) * 58, y = Y_BODY + (int32_t)(i / 4u) * 32, on = (mv.fx_on >> f) & 1u;
+        ds_rrect(x, y, 54, 29, 4, on ? DS_TEXT1 : mv.page ? DS_SURF2 : DS_SURF1);
+        if (mv.page)
+            ds_text(&DS_F12, x + 5, y + 12, BK[i], on ? DS_BG : DS_TEXT3);
+        else {
+            ds_itoa(b, (int32_t)i + 1);
+            ds_text(&DS_F12, x + 5, y + 12, b, on ? DS_BG : DS_TEXT3);
+        }
+        ds_label(x + 3, y + 25, 50, mv.fx[f] ? mv.fx[f] : "", on ? DS_BG : DS_TEXT1);
     }
 }
 
@@ -809,10 +842,22 @@ static void mv_toast(void)
 static void (*const SCENES[SC_COUNT])(void) = {sc_play, sc_tracks, sc_seq, sc_groove, sc_clips,
                                                 sc_mixer, sc_sound, sc_perform, sc_project, sc_settings};
 
+/* TEMPO: the BPM in the largest numerals while it is being changed (ALGORITHM, OCT- + OCT+ tapped) */
+static void mv_tempo(void)
+{
+    char b[8];
+    ds_label(MX, Y_TITLE, 110, "TEMPO", DS_TEXT2);
+    ds_text_in(&DS_F12, 0, Y_TITLE, 232, DS_R, mv.tempo_ext ? "FOLLOWS CLOCK IN" : "TAP: OCT- + OCT+", DS_TEXT3);
+    ds_itoa(b, mv.bpm10 / 10u);
+    ds_text_in(&DS_F64, 0, 140, DS_W, DS_C, b, mv.tempo_ext ? DS_TEXT3 : DS_TEXT1);
+    ds_text_in(&DS_F16, 0, 166, DS_W, DS_C, "BPM", DS_TEXT2);
+}
 static void mv_scene(void)
 {
     mv_status();
-    if (mv.layer && !mv.modal) {                     /* a layer held: its page (SLOOP's layer pages) */
+    if (mv.tempo_ov && !mv.modal) {
+        mv_tempo();
+    } else if (mv.layer && !mv.modal) {              /* a layer held: its page (SLOOP's layer pages) */
         mv.layer == MVL_STEPS ? sc_lay_steps() : sc_lay_key();
     } else if (mv.hot >= 0 && !mv.modal && !mv.nofocus && mv.k[mv.hot & 3].label) {   /* (a knob with nothing to do opens nothing) */
         mv_title(0);

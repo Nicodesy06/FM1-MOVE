@@ -425,6 +425,7 @@ static void ed_bk_unhold(void) {}
 _Static_assert(sizeof proj_tmp >= sizeof(project_t) && sizeof proj_tmp >= sizeof(up_bank_t) &&
                sizeof proj_tmp >= sizeof(persist_t), "backup staging");
 static persist_t ed_bk_set;                             /* LIST's snapshot of the settings */
+static uint8_t ed_bk_ml[MIDI_PART];                     /* .. and of the MIDI part (2.6, object 10: project.c) */
 static uint8_t ed_bk_valid, ed_bk_put, ed_bk_id;
 static uint32_t ed_bk_len, ed_bk_crc, ed_bk_pos, ed_bk_ms;
 #if FM1MOVE
@@ -487,6 +488,14 @@ static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no such obj
         *len = sizeof dsu;
         return (const uint8_t *)&dsu;
     }
+    if (id == 10u) {                                      /* SLOOP 2.6: the MIDI part (the MIDI LEARN map, GLO > MIDI's
+                                                         * channels): listed only while it is not the default (a backup
+                                                         * without it stays one an older editor reads; its restore leaves
+                                                         * them as they are) */
+        if (!midi_part_default(ed_bk_ml))
+            *len = sizeof ed_bk_ml;
+        return ed_bk_ml;
+    }
     if (id >= 32u && id < 32u + SMP_USER_SLOTS) {
         const smp_user_hdr_t *h = (const smp_user_hdr_t *)smp_user_xip(id - 32u);
         if (h->magic == SMP_USER_MAGIC && h->version == 1u && h->nz && h->nz <= 16u &&
@@ -497,9 +506,10 @@ static const uint8_t *ed_bk_obj(uint32_t id, uint32_t *len)   /* 0 = no such obj
     return 0;
 }
 #if FM1MOVE
-static const uint8_t ED_BK_IDS[] = {1, 6, 7, 8, 9, 16, 17, 18, 32, 33, 34};   /* (no USR4: its flash is the projects') */
+static const uint8_t ED_BK_IDS[] = {1, 6, 7, 8, 9, 10, 16, 17, 18, 32, 33, 34};   /* 10: MIDI LEARN (2.6) */   /* (no USR4: its flash is the projects') */
 #else
-static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5) */
+static const uint8_t ED_BK_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 32, 33, 34, 35};   /* 35: USR4 (2.4), 9: SYN kits (2.5),
+                                                                                      * 10: MIDI LEARN (2.6) */
 #endif
 
 /* a flash erase silences the audio for ~50 ms and stalls USB: only while stopped (as the panel) */
@@ -593,6 +603,19 @@ static uint32_t ed_bk_commit(void)
         persist_saved = p;
         return 0;
     }
+    if (id == 10u) {                                      /* SLOOP 2.6: the MIDI part, written with the settings */
+        persist_t p;
+        if (ed_flash_busy())
+            return 3;
+        if (n != MIDI_PART && n != 2u * ML_N && n != 2u * ML_N + 4u)
+            return 2;
+        midi_part_read(raw, n);                           /* (every entry and channel checked) */
+        persist_fill(&p);
+        if (!flash_ok || settings_write(&p))
+            return 4;
+        persist_saved = p;
+        return 0;
+    }
     return 1;
 }
 
@@ -618,12 +641,13 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
             proj_capture((project_t *)ED_BK_RAW);           /* the working project, as it is now */
 #endif
             persist_fill(&ed_bk_set);
+            midi_part_fill(ed_bk_ml);
             ed_bk_valid = 1;
             ed_bk_put = 0;
             ed_bk_unhold();
         }
         ed_b(rc);
-        ed_b(rc ? 0u : (uint32_t)sizeof ED_BK_IDS);
+        ed_b(rc ? 0u : (uint32_t)sizeof ED_BK_IDS - (ed_bk_obj(10u, &len) && !len ? 1u : 0u));
         for (i = 0; !rc && i < sizeof ED_BK_IDS; i++) {
 #if FM1MOVE
             if (ed_bk_fmp(ED_BK_IDS[i])) {
@@ -636,6 +660,8 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
             }
 #endif
             p = ed_bk_obj(ED_BK_IDS[i], &len);
+            if (ED_BK_IDS[i] == 10u && !len)
+                continue;                                 /* (nothing learned: not in the list) */
             ed_b(ED_BK_IDS[i]);
             ed_bk_u32(len);
             ed_bk_u32(st_crc32(p, len));
@@ -686,7 +712,7 @@ static int ed_backup(uint32_t cmd, const uint8_t *a, uint32_t na)   /* 1: a back
         rc = 1;
         if (!flash_ok) {
             rc = 4;
-        } else if (op == 0u && na == 12u && (id <= 9u || ED_BK_FMP(id))) {  /* begin: id, length (5), CRC-32 (5) */
+        } else if (op == 0u && na == 12u && (id <= 10u || ED_BK_FMP(id))) {  /* begin: id, length (5), CRC-32 (5) */
             len = ed_bk_r32(a + 2);
             if (ED_BK_FMP(id) ? id != 16u || len : (id >= 2u || len)) {   /* (the working project and the settings are never empty) */
 #if FM1MOVE

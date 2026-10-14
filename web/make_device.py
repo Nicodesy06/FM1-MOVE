@@ -14,7 +14,7 @@
 
   web/make_device.py FM1MOVE_PKG VERSION [SLOOP_PKG]
     FM1MOVE_PKG  build/felucca.fwsc of an FM1MOVE=1 build
-    SLOOP_PKG    default docs/firmware/sloop-2.5.fwsc (SLOOP's own stable release, as its installer offers it)
+    SLOOP_PKG    default docs/firmware/sloop-2.6.fwsc (SLOOP's own stable release, as its installer offers it)
 
 Nothing here talks to a device; the page writes to an FM-1 only when its owner presses Install.
 """
@@ -52,7 +52,8 @@ def param_groups():
         if scope not in ("SC_TRACK", "SC_ENGINE", "SC_GLOBAL"):
             continue
         tab = G if scope == "SC_GLOBAL" else P
-        nums = [tab[i] for i in ids if i in tab]
+        # FM1 Move: track n is MIDI channel n; SLOOP 2.6's CH1..CH3 (its three synth tracks) do not apply
+        nums = [tab[i] for i in ids if i in tab and i not in ("G_CH1", "G_CH2", "G_CH3")]
         if not nums:
             continue
         groups.append({"name": name, "fam": fam[4:].lower(), "scope": 1 if scope == "SC_GLOBAL" else 0,
@@ -72,7 +73,7 @@ def package(path, name_out, version, label, channel):
 
 
 def main(move_pkg, version, sloop_pkg=None):
-    sloop_pkg = Path(sloop_pkg or ROOT / "docs/firmware/sloop-2.5.fwsc")
+    sloop_pkg = Path(sloop_pkg or ROOT / "docs/firmware/sloop-2.6.fwsc")
     move_name = f"fm1move-{re.sub(r'[^A-Za-z0-9.-]', '-', version)}.fwsc"
     move_raw, move_meta = package(move_pkg, move_name, version, "FM1 Move", "experimental")
     _, sloop_meta = package(sloop_pkg, sloop_pkg.name, re.sub(r"^sloop-|\.fwsc$", "", sloop_pkg.name), "SLOOP", "stable")

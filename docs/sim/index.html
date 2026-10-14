@@ -112,7 +112,7 @@ button.act.ghost { background: transparent; color: var(--text-1); border: 1px so
   <h1>FM1 MOVE</h1>
   <span class="sub">Browser test view — the firmware's own code, compiled to WebAssembly</span>
   <span class="pill">SIMULATION</span>
-  <span class="pill" id="fwver" title="the firmware compiled into this page">FM1 MOVE 0.2</span>
+  <span class="pill" id="fwver" title="the firmware compiled into this page">FM1 MOVE 0.3</span>
   <button class="holdbtn" id="holdbtn" aria-pressed="false" title="Hold mode: a click (or F-key) latches a function button until you click it again">HOLD · OFF</button>
   <nav><a href="../manual/">Manual</a><a href="../device/">Device &amp; install</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">Repository</a><a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/UI_MAPPING.md">Control map</a></nav>
 </header>
@@ -389,7 +389,7 @@ async function boot() {
   buildPanel();
   addEventListener("resize", layoutKeys);
   try {
-    const r = await fetch("fm1sim.wasm?v=b962a1d1f218", { cache: "no-cache" });   /* (never an older firmware from the cache) */
+    const r = await fetch("fm1sim.wasm?v=c54f694fa25e", { cache: "no-cache" });   /* (never an older firmware from the cache) */
     const { instance } = await WebAssembly.instantiate(await r.arrayBuffer(), {});
     X = instance.exports; mem = X.memory;
     X.sim_init();
