@@ -3,7 +3,8 @@
 """The README's screen sheet and the promo images that show screens, from the firmware's own renders.
 
   python3 tools/ui_mockups.py      first: docs/ui/live/*.png (the virtual FM1 running the firmware's controls)
-  python3 tools/make_promo.py      -> assets/readme/screens.png, promo/2-screens.png, promo/7-clips-step.png
+  python3 tools/make_promo.py      -> assets/readme/screens.png, promo/2-screens.png, promo/7-clips-step.png,
+                                      promo/8-sloop26-tempo.png
 
 Every screen here is drawn by the firmware's UI code in host simulation (tests/fm1move_ui_test.c), so the images
 follow the firmware: run this again whenever the screens change. Not photos of an FM-1.
@@ -89,8 +90,31 @@ def promo_clips():
     out.save(ROOT / "promo/7-clips-step.png", optimize=True)
 
 
+def promo_v03():
+    out = Image.new("RGB", (1920, 1080), BG)
+    d = ImageDraw.Draw(out)
+    d.text((110, 70), "NEW IN 0.3", font=font("Inter-Bold.otf", 28), fill=AMBER)
+    d.text((108, 112), "SLOOP 2.6 inside, tempo in one hand", font=font("InterDisplay-Bold.otf", 72), fill=TEXT1)
+    d.text((112, 206), "27 punch-ins · INSERT on every track · TEXTURE · MIDI LEARN · ALGORITHM is the tempo",
+           font=font("Inter-SemiBold.otf", 32), fill=TEXT2)
+    s, gx = 360, 64
+    cols = [("18-tempo", "Turn ALGORITHM", "tap OCT− + OCT+ in time"),
+            ("11d-perform-black", "FX + black keys", "11 more punch-ins"),
+            ("11c-texture", "TEXTURE", "a bed under the mix"),
+            ("09b-sound-insert", "INSERT", "drive, fuzz, crush, phaser…")]
+    for i, (n, a, b) in enumerate(cols):
+        x = 110 + i * (s + gx)
+        card(out, shot(n, 6), x, 320)
+        d.text((x, 718), a, font=font("Inter-Bold.otf", 28), fill=TEXT1)
+        d.text((x, 758), b, font=font("Inter-SemiBold.otf", 24), fill=TEXT3)
+    d.text((110, 970), "Experimental · simulated on a computer, not yet tested on an FM-1 · nicodesy06.github.io/FM1-MOVE",
+           font=font("Inter-SemiBold.otf", 26), fill=TEXT3)
+    out.save(ROOT / "promo/8-sloop26-tempo.png", optimize=True)
+
+
 if __name__ == "__main__":
     readme_sheet()
     promo_screens()
     promo_clips()
-    print("make_promo: assets/readme/screens.png, promo/2-screens.png, promo/7-clips-step.png")
+    promo_v03()
+    print("make_promo: assets/readme/screens.png, promo/2-screens.png, promo/7-clips-step.png, promo/8-sloop26-tempo.png")
