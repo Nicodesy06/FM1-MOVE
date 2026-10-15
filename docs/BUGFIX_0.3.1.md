@@ -101,7 +101,7 @@ lengths and ratchets stay on the step grid. Not done either: groove settings in 
 | Clear-track path, filter locks while playing | pass | — |
 | Full suite (SLOOP layout) | pass but the known baseline `fm1_alnk0_irq` (+54 %, unchanged); 182 golden renders identical | — |
 | Device page vs firmware in WebAssembly (`test_device.mjs`) | all ok | — |
-| Target build (FM1MOVE=1, JieLi compiler) | image 574 676 B of 581 564, RAM 96 576 of 98 304, pool unchanged | — |
+| Target build (FM1MOVE=1, JieLi compiler) | image 574 884 B of 581 564, RAM 96 576 of 98 304, pool unchanged | — |
 
 ## 4. What needs a physical FM-1
 
