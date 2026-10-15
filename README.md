@@ -55,7 +55,9 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
   starts on its first step; stopped, it starts at once. Key lights show playing, queued, filled and empty clips.
 - Clips are written with the usual tools (step entry, live recording, erase, groove) and saved with the project.
 - **STEP page** (SLOOP's step editor, back): a piano roll with a cursor; play keys to write the step (chords too),
-  release to move on; STEP / NOTE / TIME / FLAG (accent, slide) on the knobs.
+  release to move on; STEP / NOTE / TIME / FLAG (accent, slide) on the knobs; ALGORITHM on a note moves it (a chord
+  played a step late goes back where it belongs, locks and all; one undo).
+- **Battery** in the status bar (three bars, a BATTERY LOW toast, SETTINGS › BATTERY).
 - **Layer pages** as on SLOOP: hold SEQ to see and write the page's steps as a 4 × 4 grid from any screen, hold SEL
   to see the chord every key plays (chord mode) with the key and scale.
 

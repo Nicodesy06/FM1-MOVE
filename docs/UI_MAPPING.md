@@ -62,7 +62,9 @@ that scene plays, dim = some track holds clip k.
 
 On the STEP page (synth tracks only; the drum track keeps its grid): no button held, the keys write the cursor's step
 (up to 4 notes; mono voice mode: the last key; chord mode: the chord as it sounds), not while recording or armed.
-EDIT clears the cursor's step and moves on; EDIT + OCT− undoes one entry / one step edited. Knobs on CLIPS and on the
+EDIT clears the cursor's step and moves on; EDIT + OCT− undoes one entry / one step edited / one move. ALGORITHM on a
+note MOVES it (the whole step: ties, flags, velocity, nudge, condition, locks) one step per click over the next note or
+rest, the cursor following; on an empty step it moves the cursor. Knobs on CLIPS and on the
 STEP page do not open the focus overlay (the edited thing stays visible).
 
 SOUND pages (EDIT again turns them; ENV and LFO jump to theirs): synth tracks PRESET → ENVELOPE → LFO → SYNC → SENDS →

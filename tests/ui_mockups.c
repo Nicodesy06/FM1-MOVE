@@ -122,6 +122,7 @@ static void demo(void)
     mv.bpm10 = 1240;
     mv.quant_on = 1;
     mv.groove_on = 1;
+    mv.batt = 3;
     mv.bar = 3;
     mv.beat = 2;
     mv.bars = 4;

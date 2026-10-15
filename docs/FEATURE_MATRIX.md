@@ -56,6 +56,8 @@ Feature by feature against SLOOP 2.6 (kept / changed / web only / not yet / remo
 | Live drum mutes (EDIT + black key) | SLOOP 2.6 (host) | one mute set for every drum track |
 | Step entry from a MIDI keyboard | PART | SLOOP 2.6; not applied in FM1 Move yet (`ui_input.c` left out) |
 | Step editor with cursor (piano roll, acid-style entry, accent / slide) | SLOOP + FM1M (host, ced992f) | SEQUENCER STEP page on synth tracks |
+| Move a note (the whole step, locks and nudge too) | FM1M (host) | STEP page: ALGORITHM on a note; one undo |
+| Battery level (3 bars, low toast, SETTINGS row) | SLOOP + FM1M (host) | status bar; SETTINGS › BATTERY |
 | Layer pages: steps while SEQ held, chords on the keys while SEL held | SLOOP + FM1M (host, a125cb0) | STEPS (4 × 4) and KEY pages over any screen |
 | Undo / redo (one level, one track) | SLOOP | |
 | Copy / paste / shift / double / halve | PART | shift, length ×2/½ exist |

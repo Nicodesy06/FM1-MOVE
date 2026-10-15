@@ -175,6 +175,7 @@ void sim_boot(void)
     sim_defaults();
     autosave_resume();
     layers_init();
+    song.batt_raw = 600;                                 /* (no battery in a browser: a full one, as main.c would read it) */
     ctl.force = 1;
     sim_ready = 1;
 }

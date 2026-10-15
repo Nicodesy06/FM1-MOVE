@@ -158,6 +158,7 @@ int main(int argc, char **argv)
     panel = PANEL_DEFAULT;
     host_tracks_init();
     song.g[G_BPM] = 122;
+    song.batt_raw = 600;                                  /* (a full battery, as main.c would read it: in every picture) */
     layers_init();
     project_default_tracks();
     frames(4);
@@ -552,8 +553,50 @@ int main(int argc, char **argv)
     }
     frames(100);                                          /* (the toast and the knob focus gone: a clean picture) */
     ppm("03b-sequencer-step");
-    turn(EN_ALGO, 1);
-    check(ui.cursor == 1u, "ALGORITHM moves the cursor too");
+    {                                                     /* ALGORITHM on a note: MOVE it (all it owns), one undo */
+        uint32_t n0 = TSEL->step[0].note[0], c1 = TSEL->step[1].note[1];
+        TSEL->micro[0] = 5;
+        step_fill_set(TSEL, 0, FC_FILL);
+        lock_set(TSEL, 0, P_ED_FLT, -30);
+        TSEL->step[2].time = ST_TIE;                      /* (the chord on step 2 lasts two steps) */
+        cursor_set(0);
+        turn(EN_ALGO, 1);
+        check(ui.cursor == 2u && TSEL->step[2].note[0] == n0 && (TSEL->step[2].flags & SF_ACCENT) &&
+              TSEL->step[0].note[1] == c1 && TSEL->step[1].time == ST_TIE, "ALGORITHM moves the note over the next one, ties and all");
+        check(TSEL->micro[2] == 5 && TSEL->micro[0] == 0 && step_fill(TSEL, 2) == FC_FILL && lock_find(TSEL, 2, P_ED_FLT, 0) >= 0 &&
+              lock_find(TSEL, 0, P_ED_FLT, 0) < 0, "... its nudge, condition and locks with it");
+        check(!strcmp(ctl.toast, "MOVED TO STEP 3"), "... a toast says where");
+        turn(EN_ALGO, -1);
+        check(ui.cursor == 0u && TSEL->step[0].note[0] == n0 && TSEL->step[1].note[1] == c1 && TSEL->step[2].time == ST_TIE &&
+              TSEL->micro[0] == 5, "back again");
+        turn(EN_ALGO, 2);
+        check(ui.cursor == 3u && TSEL->step[3].note[0] == n0 && TSEL->step[2].time == ST_REST, "further: over the rest that follows");
+        turn(EN_ALGO, -20);
+        check(ui.cursor == 0u && TSEL->step[0].note[0] == n0, "never past the first step");
+        turn(EN_ALGO, 2);
+        press(B_EDIT);
+        press(B_OCTDN);
+        release(B_OCTDN);
+        release(B_EDIT);
+        check(TSEL->step[0].note[0] == n0 && TSEL->step[1].note[1] == c1 && TSEL->micro[0] == 5 && TSEL->micro[3] == 0 &&
+              step_fill(TSEL, 0) == FC_FILL && lock_find(TSEL, 0, P_ED_FLT, 0) >= 0, "EDIT + OCT-: the move undone, everything back");
+        press(B_EDIT);
+        press(B_OCTUP);
+        release(B_OCTUP);
+        release(B_EDIT);
+        check(TSEL->step[3].note[0] == n0 && TSEL->micro[3] == 5 && lock_find(TSEL, 3, P_ED_FLT, 0) >= 0, "EDIT + OCT+: redone");
+        press(B_EDIT);
+        press(B_OCTDN);
+        release(B_OCTDN);
+        release(B_EDIT);
+        lock_del(TSEL, 0, P_COUNT);
+        TSEL->micro[0] = 0;
+        step_fill_set(TSEL, 0, FC_NORM);
+        TSEL->step[2].time = ST_REST;
+        cursor_set(3);
+        turn(EN_ALGO, -2);
+        check(ui.cursor == 1u && TSEL->step[0].note[0] == n0, "on an empty step ALGORITHM moves the cursor");
+    }
     tap(B_EDIT);
     check(!step_on(&TSEL->step[1]) && ui.cursor == 2u && ctl.screen == SC_SEQ, "EDIT clears the cursor's step and moves on");
     turn(EN_SELECT, -3);
@@ -899,6 +942,50 @@ int main(int argc, char **argv)
         check(!scale_lock(TSEL) && kb_map(TSEL, 8u) % 12u == 1u, "SCALE LOCK OFF: every key its own note again");
         (void)sc0;
         tap(B_HOME);
+    }
+
+    /* the battery (main.c: song.batt_raw), in the status bar and SETTINGS; empty: a toast, once */
+    {
+        int32_t raw0 = song.batt_raw;
+        tap(B_HOME);
+        frames(2);
+        check(mv.batt == 3u && !mv.batt_usb, "battery: full, three bars in the status bar");
+        song.batt_raw = 570;
+        frames(2);
+        check(mv.batt == 2u, "... 2 bars");
+        song.batt_raw = 520;
+        frames(2);
+        check(mv.batt == 0u && !strcmp(ctl.toast, "BATTERY LOW"), "... empty: no bars, a BATTERY LOW toast");
+        frames(200);
+        song.batt_raw = 535;
+        frames(2);
+        song.batt_raw = 520;
+        frames(2);
+        check(!mv.toast_t, "... said once (again only after a charge)");
+        ppm("15-battery-low");
+        ctl.menu = 1;
+        ctl.screen = SC_SETTINGS;
+        ctl.row[SC_SETTINGS] = ST_BATT;
+        frames(2);
+        {
+            uint32_t r, hit = 0;
+            for (r = 0; r < mv.nrows; r++)
+                hit |= !strcmp(mv.row_l[r], "BATTERY") && !strcmp(mv.row_r[r], "EMPTY");
+            check(ctl.menu && hit, "SETTINGS: BATTERY says EMPTY");
+        }
+        usb.config = 1;
+        usb.suspended = 0;
+        frames(2);
+        check(mv.batt_usb && mv.batt >= 1u && mv.batt <= 3u, "on USB: the bars fill in turn (USB powers it)");
+        usb.config = 0;
+        song.batt_raw = 0;
+        frames(2);
+        check(mv.batt == MV_BATT_NONE, "not read yet: no battery shown");
+        song.batt_raw = raw0;
+        ctl.row[SC_SETTINGS] = 0;
+        ctl.menu = 0;
+        ctl.screen = SC_PLAY;
+        frames(100);
     }
 
     /* fuzz: random use */

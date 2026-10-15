@@ -44,7 +44,7 @@ always say where you are.
 | --- | --- |
 | SELECT | select track 1–8 (one detent each, no wrap); with any function button held: the tempo, one BPM a detent (as SLOOP) |
 | PRESETS | browse the selected track's sounds (preset, kit, or MIDI program) |
-| ALGORITHM | the screen's navigator: step page, STEP cursor, clip row, list row, engine, groove template; on PLAY, TRACKS, MIXER and PERFORM (nothing to navigate) the **tempo**, with a large BPM readout for ~1.5 s |
+| ALGORITHM | the screen's navigator: step page, STEP cursor (on a note: MOVE it), clip row, list row, engine, groove template; on PLAY, TRACKS, MIXER and PERFORM (nothing to navigate) the **tempo**, with a large BPM readout for ~1.5 s |
 | KNOB 1–4 | the four parameters in the knob strip |
 | PLAY | start / stop |
 | REC | arm / disarm recording (count-in per settings) |

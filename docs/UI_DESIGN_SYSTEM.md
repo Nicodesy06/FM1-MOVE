@@ -139,6 +139,7 @@ triangles, thick lines, blended text.
 | soloed | white chip with **S** |
 | recording | red disc in the status bar; armed: red ring; track armed: red dot on its card |
 | playing | green ▶ in the status bar, white playhead on steps, filled clip with ▶ |
+| battery | three bars right of the track name, left of Q / G; empty: an empty cell in the warning colour (shape, not colour alone); BATTERY LOW toast once |
 | count-in | amber chip with the beats left, in place of ▶ |
 | queued | outlined clip with a blinking ▶ (starts on the next bar) |
 

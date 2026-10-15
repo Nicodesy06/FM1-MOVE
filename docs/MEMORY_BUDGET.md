@@ -53,6 +53,9 @@ What made SLOOP 2.6 fit the RAM:
 - **SLOOP 1.x project import** converts in the idle flash buffer instead of its own (2.6 KiB back).
 - **MIDI note-routing table packed to nibbles** (1 KiB back).
 
+After the STEP page MOVE and the battery indicator [BUILD]: image 573 764 B (7 800 B free), RAM 96 544 B (1 760 free),
+pool unchanged.
+
 1 808 B of RAM is the tightest margin so far: a new feature has to bring its RAM back (or live in `.pool`).
 
 ## 2. What eight tracks cost

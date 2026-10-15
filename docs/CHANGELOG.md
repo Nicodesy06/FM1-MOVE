@@ -2,6 +2,20 @@
 
 ## Unreleased (fm1-move/dev)
 
+### Move a note on the STEP page; the battery (host simulation)
+- **MOVE:** on the STEP page, ALGORITHM on a note moves the whole step one step later / earlier per click: chord,
+  length and ties, accent / slide, velocity, nudge, raw timing, fill condition and parameter locks; the cursor follows,
+  the toast says MOVED TO STEP n. It jumps over the next note (with its ties) or rest, which slides the other way, and
+  stops at the pattern's ends. EDIT + OCT− undoes the whole move (EDIT + OCT+ redoes it), locks and nudges included.
+  On an empty step ALGORITHM still moves the cursor; KNOB 1 always does.
+- **Battery:** a three-bar cell in the status bar (SLOOP's reading of the PB1 divider and its thresholds: 3 FULL, 2 GOOD,
+  1 LOW, 0 EMPTY, drawn in the warning colour); a BATTERY LOW toast once when it empties (again only after a charge);
+  SETTINGS › BATTERY in words. On a USB host the bars fill in turn and SETTINGS says ON USB (no charge state is
+  readable, so none is claimed). The simulator shows a full battery. The track name in the status bar is narrower.
+- Checked in `tests/fm1move_ui_test.c` (move over a tied chord and a rest, back, the ends, undo / redo with nudge,
+  condition and lock; battery levels, toast once, SETTINGS, USB, not read); not run on an FM-1. Image 573 764 B
+  (+1 920), RAM unchanged.
+
 ### SCALE LOCK (host simulation)
 - As Ableton's scale mode. SEL held: KNOB 2 the scale (16), white keys 9–16 / black keys the root, **KNOB 3 SCALE
   LOCK** = OFF / LOCK (SNAP: every key into the scale) / WHITE, now for every synth track at once. With it on (a scale

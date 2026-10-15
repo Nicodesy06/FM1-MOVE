@@ -158,3 +158,13 @@ were queued by `seq.c` but drained only in SLOOP's `ui_input.c`; FM1 Move's cont
 loads the n-th sound).
 
 Host simulation only: **no FM1 Move build has run on a physical FM-1.**
+
+### STEP page MOVE and the battery (host simulation)
+
+`tests/fm1move_ui_test.c`, new checks: ALGORITHM on a note moves it over the next chord with its tie (the chord slides
+back, the tie stays with it), its nudge, fill condition and lock go with it, the toast reads MOVED TO STEP 3; back
+again; further over a rest; never past step 1; EDIT + OCT− undoes the whole move (notes, nudge, condition, lock),
+EDIT + OCT+ redoes it; on an empty step ALGORITHM moves the cursor. Battery: 3 bars at a full reading, 2, empty with a
+BATTERY LOW toast said once, SETTINGS › BATTERY reads EMPTY, USB animates, no reading: nothing shown. All checks ok,
+also under ASan + UBSan. Full suite run: every test passes except the known baseline `fm1_alnk0_irq` (+54 %); 182
+golden renders unchanged. The battery thresholds are SLOOP's and have not been checked on an FM-1 with FM1 Move.

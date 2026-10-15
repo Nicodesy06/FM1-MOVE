@@ -218,9 +218,29 @@ static groove_t *ctl_groove_own(void)
 }
 
 /* ------------------------------------------------------------ settings --- */
-enum { ST_CLICK, ST_COUNTIN, ST_RECQ, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_ABOUT, ST_COUNT };
+enum { ST_CLICK, ST_COUNTIN, ST_RECQ, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_BATT, ST_ABOUT, ST_COUNT };
 static const char *const ST_LABEL[ST_COUNT] = {"METRONOME", "COUNT-IN", "REC QUANT", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS",
-                                               "KEY LIGHTS", "USB AUDIO", "VERSION"};
+                                               "KEY LIGHTS", "USB AUDIO", "BATTERY", "VERSION"};
+/* the battery (main.c reads the divider on PB1 into song.batt_raw): SLOOP's three thresholds, 3 bars .. 0, -1 not read
+ * yet; on a USB host the reading says little (it powers the FM-1), so it is shown as USB */
+static int32_t ctl_batt(void)
+{
+    if (!song.batt_raw)
+        return -1;
+    return song.batt_raw >= 591 ? 3 : song.batt_raw >= 561 ? 2 : song.batt_raw >= 531 ? 1 : 0;
+}
+static int ctl_on_usb(void) { return usb.config && !usb.suspended; }
+static void ctl_batt_watch(void)                        /* empty: said once, again only after it was charged (2 bars) */
+{
+    static uint8_t said;
+    int32_t l = ctl_batt();
+    if (ctl_on_usb() || l >= 2)
+        said = 0;
+    else if (l == 0 && !said) {
+        said = 1;
+        ctl_toast("BATTERY LOW", "");
+    }
+}
 static void st_value(uint32_t r, char *b)
 {
     static const char *const SYNC[3] = {"INT", "USB", "TRS"};
@@ -240,6 +260,12 @@ static void st_value(uint32_t r, char *b)
     case ST_LIGHTS: str_cpy(b, LV[lights_lvl % 4u], 16); break;
     case ST_KEYS: str_cpy(b, KY[lights_keys % 4u], 16); break;
     case ST_USBAUDIO: str_cpy(b, usb_full ? "FULL" : "MAIN", 16); break;
+    case ST_BATT: {
+        static const char *const BN[4] = {"EMPTY", "LOW", "GOOD", "FULL"};
+        int32_t l = ctl_batt();
+        str_cpy(b, ctl_on_usb() ? "ON USB" : l < 0 ? "--" : BN[l], 16);
+        break;
+    }
     default: str_cpy(b, FELUCCA_VERSION, 16); break;
     }
 }
@@ -345,6 +371,98 @@ static void screen_go(uint32_t sc)
     ctl.screen = (uint8_t)sc;
     ctl.hot = -1;
     song.seq_mode = sc == SC_SEQ;
+}
+
+/* STEP page MOVE (ALGORITHM on a note): the cursor's note - its chord, its ties, flags, velocity, nudge, raw timing,
+ * condition and parameter locks - moves a step at a time, over the next note (with its ties) or rest, which slides
+ * the other way; the cursor follows. One undo puts it back. The rotation: positions lo..hi turn left by k (the one
+ * at lo + k goes to lo), everything a step owns with them. */
+static struct { uint8_t trk, start, len, at; uint32_t sess; } smove;
+static void step_rot(track_t *t, uint32_t lo, uint32_t hi, uint32_t k, int notes)   /* notes 0: what the undo leaves */
+{
+    uint32_t n = hi - lo + 1u, r, i, j, a, b, f;
+    if (!k || k >= n)
+        return;
+    fm1_irq_off();
+    for (r = 0; r < 3u; r++) {                           /* three reversals: [lo, lo+k), [lo+k, hi], [lo, hi] */
+        a = r == 1u ? lo + k : lo;
+        b = r == 0u ? lo + k - 1u : hi;
+        for (i = a, j = b; i < j; i++, j--) {
+            step_t x = t->step[i];
+            int8_t m = t->micro[i], o = t->roff[i];
+            if (notes) {
+                t->step[i] = t->step[j];
+                t->step[j] = x;
+            }
+            t->micro[i] = t->micro[j];
+            t->micro[j] = m;
+            t->roff[i] = t->roff[j];
+            t->roff[j] = o;
+            f = step_fill(t, i);
+            step_fill_set(t, i, step_fill(t, j));
+            step_fill_set(t, j, f);
+        }
+    }
+    for (i = 0; i < NLOCK; i++)                          /* the locks: their step numbers turn the same way */
+        if (t->lock[i].step != LOCK_FREE && t->lock[i].step >= lo && t->lock[i].step <= hi)
+            t->lock[i].step = (uint8_t)(lo + (t->lock[i].step - lo + n - k) % n);
+    fm1_irq_on();
+    sync_reload = 1;
+}
+/* ALGORITHM s on the STEP page: 1 = the note moved (0: an empty step, the cursor moves instead) */
+static int ctl_step_move(int32_t s)
+{
+    track_t *t = TSEL;
+    uint32_t len = trk_len(t), p = ui.cursor % NSTEP, l, g;
+    if (p >= len || !t->step[p].n || t->step[p].time == ST_TIE)
+        return 0;
+    l = note_len(t, p);
+    if (!(smove.sess && undo.valid && !undo.undone && undo.sess == smove.sess && undo.trk == trk_index(t) &&
+          smove.at == p && smove.len == l)) {            /* a new move: its own undo */
+        smove.sess = (undo_sess += 4u) | 3u;
+        smove.trk = (uint8_t)trk_index(t);
+        smove.start = (uint8_t)p;
+        smove.len = (uint8_t)l;
+        undo_mark(t, smove.sess);
+    }
+    for (; s > 0; s--) {                                 /* later: over the next note (and its ties) or rest */
+        if (p + l >= len)
+            break;
+        g = t->step[p + l].n && t->step[p + l].time == ST_NOTE ? note_len(t, p + l) : 1u;
+        if (p + l + g > len)
+            break;
+        step_rot(t, p, p + l + g - 1u, l, 1);
+        p += g;
+    }
+    for (; s < 0; s++) {                                 /* earlier: over the one before (a tie: its whole note) */
+        if (!p)
+            break;
+        for (g = 1; p - g > 0 && t->step[p - g].time == ST_TIE; g++)
+            ;
+        if (!t->step[p - g].n || t->step[p - g].time != ST_NOTE || note_len(t, p - g) != g)
+            g = 1;                                       /* (a lone tie or a rest: one step) */
+        step_rot(t, p - g, p + l - 1u, g, 1);
+        p -= g;
+    }
+    smove.at = (uint8_t)p;
+    t->seq_active = 1;
+    cursor_set((int32_t)p);
+    {
+        char b[8];
+        ds_itoa(b, (int32_t)p + 1);
+        ctl_toast("MOVED TO STEP ", b);
+    }
+    return 1;
+}
+/* EDIT + OCT-/OCT+ on a move: the notes come back with the undo (seq.c), what else the steps own here */
+static void ctl_step_move_undo(int redo)
+{
+    track_t *t = &trk[smove.trk % NTRK];
+    uint32_t s = smove.start, q = smove.at, l = smove.len;
+    if (q > s)
+        step_rot(t, s, q + l - 1u, redo ? l : q - s, 0);
+    else if (q < s)
+        step_rot(t, q, s + l - 1u, redo ? s - q : l, 0);
 }
 
 /* STEP page (SLOOP's STEP): the knobs edit the cursor's step. STEP the cursor, NOTE transposes it (an empty step:
@@ -705,6 +823,7 @@ static void ui_input(void)
     }
     ml_poll();                                           /* MIDI LEARN: a CC came for the picked parameter (2.6) */
     pc_poll();                                           /* MIDI Program Change: a track's sound (2.6, ui.c) */
+    ctl_batt_watch();
     ctl_midi_step_in();                                  /* the STEP page from a MIDI keyboard (2.6) */
     if (ins_full) {
         ins_full = 0;
@@ -791,10 +910,15 @@ static void ui_input(void)
     }
     if (held == LY_ERASE && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {   /* EDIT + OCT: undo / redo */
         ctl.used[B_EDIT] = 1;
-        if (pressed & ctl_btn_bit(B_OCTDN))
-            ctl_toast(undo_swap(0) ? "UNDO" : "NOTHING TO UNDO", "");
-        else
-            ctl_toast(undo_swap(1) ? "REDO" : "NOTHING TO REDO", "");
+        int redo = !(pressed & ctl_btn_bit(B_OCTDN));
+        int mvd = smove.sess && undo.valid && undo.sess == smove.sess && undo.trk == smove.trk;
+        if (undo_swap(redo)) {
+            if (mvd)
+                ctl_step_move_undo(redo);
+            ctl_toast(redo ? "REDO" : "UNDO", "");
+        } else {
+            ctl_toast(redo ? "NOTHING TO REDO" : "NOTHING TO UNDO", "");
+        }
     } else if (held == LY_STEP && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {   /* SEQ + OCT: page */
         uint32_t pages = (trk_len(TSEL) + 15u) / 16u;
         ctl.used[B_SEQ] = 1;
@@ -863,8 +987,9 @@ static void ui_input(void)
         } else if (ctl.menu) {
             uint32_t n = sc == SC_PROJECT ? FMP_NPROJ : ST_COUNT;
             ctl.row[sc] = (uint8_t)clamp((int32_t)ctl.row[sc] + s, 0, (int32_t)n - 1);
-        } else if (ctl_roll()) {                         /* STEP page: the cursor */
-            cursor_set((int32_t)ui.cursor + s);
+        } else if (ctl_roll()) {                         /* STEP page: on a note MOVE it, else the cursor */
+            if (!ctl_step_move(s))
+                cursor_set((int32_t)ui.cursor + s);
         } else if (sc == SC_SEQ) {
             uint32_t pages = (trk_len(TSEL) + 15u) / 16u;
             ui.step_page = (uint8_t)clamp((int32_t)ui.step_page + s, 0, (int32_t)pages - 1);
@@ -1379,6 +1504,11 @@ static void mv_fill(void)
     mv.tempo_ov = (uint8_t)(ctl.tempo_ms && fm1_ms - (ctl.tempo_ms & ~1u) < CTL_HOT_MS + 300u);
     mv.tempo_ext = (uint8_t)(lights_sync != 0u);
     mv.quant_on = (uint8_t)(groove_strength(&ts->gv) > 0u);
+    {
+        int32_t l = ctl_batt();
+        mv.batt_usb = (uint8_t)ctl_on_usb();
+        mv.batt = mv.batt_usb ? (uint8_t)(1u + (fm1_ms / 600u) % 3u) : l < 0 ? MV_BATT_NONE : (uint8_t)l;
+    }
     mv.groove_on = (uint8_t)(groove_active(&ts->gv, &song_groove) || ts->p[P_SSWING] || song.g[G_SWING]);
     mv.bar = (uint8_t)(song.playing ? (clk_beat / 4u) % 99u + 1u : 1u);
     mv.beat = (uint8_t)(song.playing ? clk_beat % 4u + 1u : 1u);

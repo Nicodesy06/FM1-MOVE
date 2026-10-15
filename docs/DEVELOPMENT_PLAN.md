@@ -116,6 +116,9 @@ only** (`tests/fm1move_ui_test.c`, the SLOOP-layout suite); not yet run on an FM
 - [x] Performance tempo: ALGORITHM on PLAY / TRACKS / MIXER / PERFORM, OCT− + OCT+ tap, a large TEMPO readout.
 - [x] MIDI Program Change and the STEP page from a MIDI keyboard: drained by FM1 Move's controller (`pc_poll`,
   `ctl_midi_step_in`).
+- [x] STEP page MOVE (ALGORITHM on a note: the whole step, locks and nudge included, one undo) and the battery
+  (status bar, SETTINGS › BATTERY, BATTERY LOW toast) — host simulation.
+- [ ] Hardware: battery thresholds (SLOOP's) and the USB display checked on an FM-1 running FM1 Move [TEST-HW].
 - [ ] MIDI LEARN clear on the panel (SLOOP: HOME › SYSTEM › MIDI LEARN CLEAR; FM1 Move has no item yet).
 - [ ] SETTINGS › MIDI IN on the panel shows NOTES / CLOCK only (the one-channel setting: device page).
 - [ ] Hardware: CPU of 4 INSERTs + 8 tracks, limiter, THROWs on a device [TEST-HW].

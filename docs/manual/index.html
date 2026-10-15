@@ -233,7 +233,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><th>Control</th><th>What it does</th></tr>
     <tr><td>SELECT</td><td>Selects track 1–8, one detent each (no wrap). With any function button held: the tempo, one BPM a detent.</td></tr>
     <tr><td>PRESETS</td><td>The selected track's sound — factory sounds, then your user presets. On a drum track: the kit.</td></tr>
-    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, STEP cursor, clip row, groove template, engine, list row. On PLAY, TRACKS, MIXER and PERFORM, where there is nothing to navigate: the <a href="#tempo">tempo</a>.</td></tr>
+    <tr><td>ALGORITHM</td><td>The screen's navigator: step page, STEP cursor (on a note: moves the note), clip row, groove template, engine, list row. On PLAY, TRACKS, MIXER and PERFORM, where there is nothing to navigate: the <a href="#tempo">tempo</a>.</td></tr>
     <tr><td>KNOB 1–4</td><td>The four values at the bottom of the screen. Turning one shows it large for a moment (the focus overlay; not on CLIPS and the STEP page, where what you edit stays in view). Fast turns go further.</td></tr>
     <tr><td>OCT− / OCT+</td><td>Octave of the keys. On a drum track, held while playing: ghost / hard hits. Both together: the octave back to 0 — and tapped in time, <a href="#tempo">tap tempo</a>.</td></tr>
     <tr><td>FX + OCT− / OCT+</td><td>REV THROW / ECHO THROW: every track's reverb / echo send full while held.</td></tr>
@@ -263,7 +263,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <figure><img src="../ui/live/11d-perform-black.png" alt="PERFORM black-key effects page" loading="lazy"><figcaption><b>PERFORM · page 2</b> <span class="tag new">NEW</span> The 11 black keys' effects, each tile named by its key.</figcaption></figure>
     <figure><img src="../ui/live/11c-texture.png" alt="PERFORM TEXTURE page" loading="lazy"><figcaption><b>PERFORM · TEXTURE</b> <span class="tag new">NEW</span> A bed under the mix: source, level, tone, movement.</figcaption></figure>
     <figure><img src="../ui/live/12-project-live.png" alt="PROJECT screen" loading="lazy"><figcaption><b>PROJECT · HOME held</b>Two project slots: save, load, delete.</figcaption></figure>
-    <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Metronome, count-in, clock, MIDI, lights, USB audio, version.</figcaption></figure>
+    <figure><img src="../ui/live/13-settings-live.png" alt="SETTINGS screen" loading="lazy"><figcaption><b>SETTINGS · HOME held twice</b>Metronome, count-in, clock, MIDI, lights, USB audio, battery, version.</figcaption></figure>
   </div>
   <h3>The knobs on each screen</h3>
   <div class="tablewrap"><table>
@@ -434,13 +434,14 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
         next note. The title reads "STEP <i>n</i> / <i>length</i>".</p>
       <div class="tablewrap"><table>
         <tr><th>Control</th><th>STEP page</th></tr>
-        <tr><td>KNOB 1 · ALGORITHM</td><td>STEP: moves the cursor</td></tr>
+        <tr><td>KNOB 1</td><td>STEP: moves the cursor</td></tr>
+        <tr><td>ALGORITHM</td><td>On a note: <b>MOVE</b> it <span class="tag new">NEW</span> — the whole step (chord, length and ties, accent / slide, velocity, nudge, fill condition, parameter locks) goes one step later or earlier per click, and the cursor follows it. It jumps over the next note (with its ties) or rest, which slides the other way; it stops at the pattern's first and last step. The toast says where it is: MOVED TO STEP <i>n</i>. On an empty step ALGORITHM moves the cursor.</td></tr>
         <tr><td>KNOB 2</td><td>NOTE: transposes the step (an empty step gets the last note entered)</td></tr>
         <tr><td>KNOB 3</td><td>On a note: <b>LEN</b>, how many steps it lasts <span class="tag new">NEW</span> (at the limit the panel says NOTE AHEAD or END OF PATTERN). On an empty step: TIME, NOTE / TIE / REST</td></tr>
         <tr><td>KNOB 4</td><td>FLAG: – / ACC (accent) / SLIDE / A+S</td></tr>
         <tr><td>Keys</td><td>The keys you press together become the cursor's step (a chord of up to 4 notes; mono voice mode: the last key; chord mode: the chord as it sounds). Let go of every key and the cursor moves on.</td></tr>
         <tr><td>EDIT</td><td>Clears the cursor's step and moves on</td></tr>
-        <tr><td>EDIT + OCT−</td><td>Undo: one entry, or one step's knob edits, at a time</td></tr>
+        <tr><td>EDIT + OCT−</td><td>Undo: one entry, one step's knob edits, or one move (all its clicks), at a time</td></tr>
       </table></div>
     </div>
   </div>
@@ -652,8 +653,21 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>LIGHTS</td><td>OFF · LOW · MID · HIGH</td><td>Every button glows for playing in the dark; what is active stays fully lit</td></tr>
     <tr><td>KEY LIGHTS</td><td>OFF · C KEYS · WHITE · ALL</td><td>Which keys glow too</td></tr>
     <tr><td>USB AUDIO</td><td>MAIN · FULL</td><td>The USB audio level follows MASTER, or a fixed full level</td></tr>
+    <tr><td>BATTERY <span class="tag new">NEW</span></td><td>FULL · GOOD · LOW · EMPTY · ON USB</td><td>Read only: the battery, as the three bars in the status bar show it (see below)</td></tr>
     <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.3</td></tr>
   </table></div>
+<div id="battery">
+  <h3>The battery <span class="tag new">NEW</span></h3>
+  <div class="shot"><img src="../ui/live/15-battery-low.png" alt="The status bar with an empty battery, drawn in orange" loading="lazy">
+    <div>
+      <p>The status bar shows the battery as a cell with three bars, left of the Q and G badges: 3 bars FULL, 2 GOOD, 1 LOW, none EMPTY (the empty cell turns orange).
+        When it gets empty a <b>BATTERY LOW</b> toast says so once; it says it again only after the battery has been charged. SETTINGS › BATTERY gives the same reading in words.</p>
+      <p>With the FM-1 on a computer's USB the bars fill one after another and SETTINGS says ON USB: the USB powers it, and the FM-1 tells us no charge state we can read,
+        so FM1 Move does not claim one. The levels are SLOOP's (the same battery reading and thresholds SLOOP shows); there is no percentage because the reading is not that precise. Not yet checked on a real FM-1 running FM1 Move.
+        The browser simulator has no battery: it always shows a full one.</p>
+    </div>
+  </div>
+</div>
 </section>
 
 <!-- ================================================================== MIDI -->

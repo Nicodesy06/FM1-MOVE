@@ -54,6 +54,7 @@ typedef struct {
     uint8_t playing, rec, count_in;            /* count_in: beats left, 0 = none */
     uint16_t bpm10;
     uint8_t quant_on, groove_on;
+    uint8_t batt, batt_usb;                    /* battery bars 0..3 (MV_BATT_NONE: not read yet); a USB host there */
     uint8_t bar, beat, bars;                   /* position (1-based), loop length in bars */
     uint8_t step16;                            /* the playing step inside the bar 0..15 */
     char key[10];                              /* "C MIN" */
@@ -151,6 +152,22 @@ static void mv_badge(int32_t x, int32_t y, const char *s, int on)
         ds_chip_line(x, y, 15, 15, DS_TEXT3, DS_BG, &DS_F12, s);
 }
 
+/* the battery: a cell of three bars; empty, it is drawn in the warning colour (and is empty: not by colour alone);
+ * on USB the bars fill one after another, as SLOOP shows it (the FM-1 tells no charge state we can read) */
+#define MV_BATT_NONE 0xFFu
+static void mv_batt(int32_t x, int32_t y)
+{
+    uint32_t n = mv.batt, k;
+    uint16_t c = !mv.batt_usb && !n ? DS_WARN : DS_TEXT1;
+    ds_rect(x, y, 16, 1, c);
+    ds_rect(x, y + 9, 16, 1, c);
+    ds_rect(x, y, 1, 10, c);
+    ds_rect(x + 15, y, 1, 10, c);
+    ds_rect(x + 16, y + 3, 2, 4, c);
+    for (k = 0; k < n && k < 3u; k++)
+        ds_rect(x + 2 + (int32_t)k * 4, y + 2, 3, 6, c);
+}
+
 static void mv_status(void)
 {
     const mv_track_t *t = &mv.t[mv.sel];
@@ -158,8 +175,7 @@ static void mv_status(void)
     int32_t x = 232;
     ds_itoa(b, mv.sel + 1);
     ds_chip(MX, 4, 22, 16, MV_SELC, DS_BG, &DS_F12, b);
-    ds_label(36, 17, 80, t->name, DS_TEXT1);
-    /* right to left: BPM, transport, REC, G, Q */
+    /* right to left: BPM, transport, REC, G, Q, the battery; the track's name in what is left */
     mv_bpm(b);
     x -= ds_text_w(&DS_F12, b);
     ds_text(&DS_F12, x, 17, b, DS_TEXT1);
@@ -183,6 +199,11 @@ static void mv_status(void)
     mv_badge(x, 5, "G", mv.groove_on);
     x -= 19;
     mv_badge(x, 5, "Q", mv.quant_on);
+    if (mv.batt != MV_BATT_NONE) {
+        x -= 24;
+        mv_batt(x, 8);
+    }
+    ds_label(36, 17, x - 40, t->name, DS_TEXT1);
 }
 
 /* page dots: the page shown filled, the others as rings */

@@ -18,7 +18,8 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | --- | --- | --- |
 | Step entry without recording (stopped or playing) | kept | SEQ held + white keys 1–16 write / clear steps: synth tracks the last note or chord played (or SEQ held + KNOB 1 picks the note), drum tracks the last sound played (or KNOB 1 picks the lane); a step key held: KNOB 1 note, 2 level (synth: VELO), 3 ratchet, 4 nudge |
 | 64 steps per track, own length and division (polymeter, 1/32 … 2 bars) | kept (8 tracks) | SEQUENCER: KNOB 1 DIV, KNOB 3 LENGTH; SEQ held: KNOB 2–4 |
-| STEP page: a cursor over the pattern, acid-style entry (keys together = the cursor's step, letting go moves on) | kept | SEQ again on the SEQUENCER screen of a synth track: piano roll + step cells; KNOB 1 STEP (or ALGORITHM), 2 NOTE, 3 TIME (NOTE / TIE / REST), 4 FLAG; EDIT clears the step; not while recording or armed. The drum track keeps its grid only |
+| STEP page: a cursor over the pattern, acid-style entry (keys together = the cursor's step, letting go moves on) | kept | SEQ again on the SEQUENCER screen of a synth track: piano roll + step cells; KNOB 1 STEP, 2 NOTE, 3 TIME (NOTE / TIE / REST), 4 FLAG; EDIT clears the step; not while recording or armed. The drum track keeps its grid only |
+| *New in FM1 Move* | — | STEP page MOVE: ALGORITHM on a note moves the whole step (ties, flags, velocity, nudge, condition, locks) over the next note or rest; the cursor follows; one undo. On an empty step ALGORITHM moves the cursor |
 | *2.6* Note LEN (how many steps a note lasts) | kept | STEP page: KNOB 3 on a note step is LEN ("NOTE AHEAD" / "END OF PATTERN" at the limit); on an empty step it stays TIME |
 | *2.6* Step velocity 1–127 | kept | SEQ held + a synth step held: KNOB 2 VELO (drum steps: KNOB 2 LEVEL) |
 | *2.6* Step entry from a MIDI keyboard on the STEP page | kept | the selected track's notes write the cursor's step (held together: a chord); another track: MIDI PLAYS TRACK n |
@@ -101,6 +102,7 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | SLOOP's pages, graphs, tiles, splash; *2.6* Terminus Bold capitals | **changed:** the FM1 Move design system (Inter), 10 screens (`docs/UI_NAVIGATION.md`) |
 | Visualiser (12 styles), 5 colour palettes, ZOOM | **gone** |
 | Settings: clock in, MIDI out (keys / seq), MIDI in (notes / clock), lights, key lights, USB audio level, version | kept (HOME held › SETTINGS) |
+| Battery: three bars in the top bar (animated on USB) | kept: three bars in the status bar, same reading and thresholds; new: SETTINGS › BATTERY in words, a BATTERY LOW toast once when empty |
 | Settings: speaker low cut, USB serial | **gone** from the panel (the stored values still apply) |
 | Settings: NOTES (playing notes light their keys), colour, zoom | **gone** (FM1 Move's lights and screens do not use them) |
 | Hardware calibration (panel table) | **gone** from the panel — the stored table still applies; a unit whose keys answer wrongly needs SLOOP to recalibrate |
