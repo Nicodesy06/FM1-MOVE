@@ -42,7 +42,7 @@ in host simulation only: no FM1 Move build has run on an FM-1 yet.
 | Tap tempo | changed | **OCT− + OCT+ pressed together**, tapped in time (the octave returns to 0 as before); also GLO held + black key A# (SLOOP: GLO + the last white key) |
 | Set the tempo exactly | changed | **ALGORITHM on PLAY, TRACKS, MIXER and PERFORM** with no button held (fast turns go further; a large TEMPO readout, "FOLLOWS CLOCK IN" under an external clock); any function button held + SELECT, one BPM a detent (as SLOOP's "inside a layer: tempo"); the web: GLOBAL › BPM |
 | REC screen: mode free / tempo, length 1-2-4 bars, start on note / count-in | count-in **kept** (SETTINGS › COUNT-IN); mode and length **gone** from the panel | the REC button arms and records; mode and length keep their stored value but no FM1 Move page sets them yet |
-| REC while playing | **changed** | on the next cycle boundary (SETTINGS › REC QUANT 1 / 2 / 4 / 8 bars; OFF = at once, as SLOOP); REC during a take finishes the cycle |
+| REC while playing | **changed** | on the next cycle boundary (SETTINGS › REC QUANT 1/16, 1/8, 1/4, 1/2, 1 / 2 / 4 / 8 bars; OFF = at once, as SLOOP); REC during a take finishes the cycle |
 | Metronome (GLO › GLOBAL › CLICK: OFF / REC / ON) | kept | SETTINGS › METRONOME; also the device page (Global › CLICK) |
 | Hold REC ~2 s to clear the track | **gone** | EDIT held + keys while stopped erases from the whole pattern; changing a track's kind clears it |
 | *New in FM1 Move* | — | Groove Engine: quantise strength, templates, humanize, per-track groove, commit with undo (GROOVE screen) |

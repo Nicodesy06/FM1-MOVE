@@ -500,8 +500,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h2>Recording</h2>
   <ul>
     <li><b>Playing:</b> <kbd>REC</kbd> starts the take on the next bar's first beat (its light blinks while it waits), and <kbd>REC</kbd> during a take lets it
-      finish the bar before it stops — never in the middle, as Ableton's quantisation. SETTINGS › REC QUANT sets the cycle: 1, 2, 4 or 8 bars (counted from PLAY), or OFF to
-      record at once. <kbd>REC</kbd> again while it waits cancels. Every pass is added on top (overdub). Notes land where you heard them — the keys' latency is taken back.</li>
+      finish the bar before it stops, as Ableton's quantisation. SETTINGS › REC QUANT sets the cycle: <b>1/16, 1/8, 1/4 (a beat), 1/2 bar</b>, 1, 2, 4 or 8 bars (counted
+      from PLAY), or OFF to record at once. The toast says where it starts or stops ("REC STARTS ON THE BEAT"). <kbd>REC</kbd> again while it waits cancels. Every pass is added on top (overdub). Notes land where you heard them — the keys' latency is taken back.</li>
     <li><b>Stopped:</b> <kbd>REC</kbd> arms (its light flashes); your first note — or <kbd>PLAY</kbd> — starts the loop and the recording.</li>
     <li><b>Stop recording:</b> <kbd>REC</kbd> again ("REC OFF").</li>
     <li><b>Metronome and count-in:</b> HOME held twice › SETTINGS › METRONOME (OFF · REC · ON) and COUNT-IN (OFF · 1 BAR).</li>
@@ -599,7 +599,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
       at any time, even after saving and loading.</li>
     <li><b>The grid is the track's step:</b> TRACKS (<kbd>SEL</kbd>) › <kbd>KNOB 4</kbd> DIV, 1/32 to 2 bars, triplets included. To record on an 1/8 grid, set DIV
       1/8 before recording (DIV also sets how fast the pattern plays, so set it first).</li>
-    <li><b>Not the same as REC QUANT:</b> SETTINGS › REC QUANT only decides when a take starts and stops (on 1, 2, 4 or 8 bars). It never moves notes.</li>
+    <li><b>Not the same as REC QUANT:</b> SETTINGS › REC QUANT only decides when a take starts and stops (1/16 up to 8 bars). It never moves notes.</li>
     <li><b>What stays on the grid:</b> note lengths (a note lasts whole steps) and ratchets. Only the start of a note keeps your timing.</li>
   </ul>
   <div class="note">Fixed in this update (host simulation): the free first take of an empty project now keeps each note's timing, like any other take (it used to land fully on the
@@ -675,7 +675,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><th>Row</th><th>Values</th><th>What it does</th></tr>
     <tr><td>METRONOME <span class="tag new">NEW</span></td><td>OFF · REC · ON</td><td>A click on every beat (higher on the bar's first): REC only while recording, ON whenever it plays. Saved with the project; its level follows the drum level</td></tr>
     <tr><td>COUNT-IN <span class="tag new">NEW</span></td><td>OFF · 1 BAR</td><td>Armed with <kbd>REC</kbd> while stopped, <kbd>PLAY</kbd> counts one bar of clicks before recording (a note then only sounds; the very first take of an empty project starts without it)</td></tr>
-    <tr><td>REC QUANT <span class="tag new">NEW</span></td><td>OFF · 1 BAR · 2 · 4 · 8 BARS</td><td>While playing, REC starts and stops the take on this cycle's boundary (1 BAR by default); OFF: at once</td></tr>
+    <tr><td>REC QUANT <span class="tag new">NEW</span></td><td>OFF · 1/16 · 1/8 · 1/4 · 1/2 · 1 BAR · 2 · 4 · 8 BARS</td><td>While playing, REC starts and stops the take on this cycle's boundary (1 BAR by default; 1/4 = the next beat); OFF: at once</td></tr>
     <tr><td>CLOCK IN</td><td>INT · USB · TRS</td><td>Follow your own tempo, or a DAW / drum machine's MIDI clock (start, stop, continue, tempo)</td></tr>
     <tr><td>MIDI OUT</td><td>KEYS · SEQ</td><td>The keys always go out; SEQ also sends the sequencer, the arp and the rolls</td></tr>
     <tr><td>MIDI IN</td><td>NOTES · CLOCK</td><td>CLOCK: follow the clock and ignore incoming notes</td></tr>

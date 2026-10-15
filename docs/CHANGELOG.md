@@ -16,6 +16,9 @@ Full status, causes and the hardware test list: [docs/BUGFIX_0.3.1.md](BUGFIX_0.
 - **Quantize:** the free first take keeps its timing (it was always fully quantized); an overdub keeps the timing of
   the notes already on a step; a step written by hand gets no stale recorded timing. Strength 0–100 % per track
   (GROOVE › KNOB 2) was already there; the manual now explains strength, grid (DIV) and REC QUANT apart.
+- **REC QUANT under a bar:** SETTINGS › REC QUANT now also offers 1/16, 1/8, 1/4 (the next beat) and 1/2 bar, besides
+  1, 2, 4, 8 bars and OFF; the toast says where the take starts or stops. Stored in the settings word's spare bits
+  21–25 (a 0.3 setting reads as it was; 0.3 reads the new values as 1 BAR).
 - **Clear a track:** SAVE opens CLIPS on the selected track's clip playing (SAVE, REC, REC); the question says
   NO UNDO. Read-only SETTINGS rows no longer show a VALUE knob.
 - **Installer:** Connect uses the updater's list of FM-1 port names (its copy missed SLOOP and Clipper).

@@ -434,14 +434,39 @@ int main(int argc, char **argv)
         check(!strcmp(mv.row_l[2], "REC QUANT") && !strcmp(mv.row_r[2], "1 BAR"), "REC QUANT: 1 BAR");
         turn(EN_K1, 1);
         turn(EN_K1, 1);
-        check(rec_q == 4u && !strcmp(mv.row_r[2], "4 BARS"), "... KNOB 1: 2 BARS, 4 BARS");
+        check(rec_q16 == 64u && !strcmp(mv.row_r[2], "4 BARS"), "... KNOB 1: 2 BARS, 4 BARS");
         {
-            uint32_t w = lights_word();
-            rec_q = 0;
+            uint32_t w = lights_word(), i, keep = 1;
+            rec_q16 = 0;
             lights_from_word(w);
-            check(rec_q == 4u, "... kept with the settings");
-            lights_from_word(w & ~(7u << 21));
-            check(rec_q == 1u, "... settings saved before it: 1 BAR");
+            check(rec_q16 == 64u, "... kept with the settings");
+            lights_from_word(w & ~(31u << 21));
+            check(rec_q16 == 16u, "... settings saved before it: 1 BAR");
+            for (i = 0; i < REC_Q_N; i++) {               /* every value, through the settings word and back */
+                rec_q16 = REC_Q16[i];
+                w = lights_word();
+                rec_q16 = 99;
+                lights_from_word(w);
+                keep &= rec_q16 == REC_Q16[i];
+            }
+            check(keep, "REC QUANT: every value (1/16 .. 8 BARS, OFF) kept with the settings");
+            lights_from_word((w & ~(31u << 21)) | 5u << 21);
+            check(rec_q16 == 128u, "... a 0.3 setting (8 BARS) reads as it was");
+            rec_q16 = 16;
+            frames(2);
+        }
+        {
+            static const char *const LADDER[5] = {"1/2", "1/4", "1/8", "1/16", "OFF"};
+            uint32_t i, ok = 1;
+            for (i = 0; i < 5u; i++) {                    /* one detent at a time (no acceleration) */
+                turn(EN_K1, -1);
+                frames(40);
+                ok &= !strcmp(mv.row_r[2], LADDER[i]);
+            }
+            check(ok && rec_q16 == 0u, "... under a bar: 1/2, 1/4, 1/8, 1/16, then OFF");
+            rec_q16 = 16;
+            frames(2);
+            check(!strcmp(mv.row_r[2], "1 BAR"), "... back to 1 BAR");
         }
         turn(EN_ALGO, -2);
         turn(EN_ALGO, 20);
@@ -455,7 +480,7 @@ int main(int argc, char **argv)
     /* REC while playing, on the cycle (SETTINGS > REC QUANT, 1 BAR by default) as Ableton's quantisation */
     {
         uint32_t n, ok;
-        check(rec_q == 1u, "REC QUANT: 1 BAR by default");
+        check(rec_q16 == 16u, "REC QUANT: 1 BAR by default");
         tap(B_PLAY);
         frames(40);                                       /* (inside the first bar) */
         tap(B_REC);
@@ -469,7 +494,7 @@ int main(int argc, char **argv)
         for (n = 0; n < 400u && song.rec; n++)
             frame();
         check(!song.rec && (clk_beat & 3u) == 0u, "... and ends as the bar closes");
-        rec_q = 4;
+        rec_q16 = 64;
         frames(20);
         tap(B_REC);
         for (n = 0; n < 1200u && !song.rec; n++)
@@ -490,7 +515,32 @@ int main(int argc, char **argv)
         tap(B_PLAY);
         frames(4);
         check(!song.playing && !rec_pend && !song.rec, "STOP drops a REC that waits");
-        rec_q = 0;
+        rec_q16 = 4;                                      /* 1/4: on the next beat */
+        tap(B_PLAY);
+        frames(40);
+        tap(B_REC);
+        check(song.playing && !song.rec && rec_pend == REC_PEND_ON && !strcmp(ctl.toast, "REC STARTS ON THE BEAT"),
+              "1/4: REC mid-beat waits for the beat (the toast says so)");
+        {
+            uint32_t b0 = clk_beat;
+            for (n = 0; n < 100u && !song.rec; n++)
+                frame();
+            check(song.rec && clk_beat == b0 + 1u && clk_pos < BEAT_U / 4u, "... and starts on the next beat, not the bar");
+        }
+        tap(B_REC);
+        tap(B_PLAY);
+        frames(4);
+        rec_q16 = 1;                                      /* 1/16: within a sixteenth */
+        tap(B_PLAY);
+        frames(41);
+        tap(B_REC);
+        for (n = 0; n < 20u && !song.rec; n++)
+            frame();
+        check(song.rec && n <= 9u, "1/16: the take starts within a sixteenth (~8 frames at 122 BPM)");
+        tap(B_REC);
+        tap(B_PLAY);
+        frames(4);
+        rec_q16 = 0;
         tap(B_PLAY);
         frames(40);
         tap(B_REC);
@@ -498,7 +548,7 @@ int main(int argc, char **argv)
         tap(B_REC);
         tap(B_PLAY);
         frames(4);
-        rec_q = 1;
+        rec_q16 = 16;
     }
 
     /* FX + key: punch-in while held */

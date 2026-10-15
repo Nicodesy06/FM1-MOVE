@@ -256,7 +256,7 @@ static void st_value(uint32_t r, char *b)
     case ST_CLICK: str_cpy(b, N_CLICK[clamp(song.g[G_CLOCK], 0, 2)], 16); break;   /* OFF / REC (while recording) / ON */
     case ST_COUNTIN: str_cpy(b, rec_count ? "1 BAR" : "OFF", 16); break;
     case ST_RECQ: {                                      /* REC while playing: on the cycle of 1 .. 8 bars, or at once */
-        static const char *const RQN[5] = {"OFF", "1 BAR", "2 BARS", "4 BARS", "8 BARS"};
+        static const char *const RQN[REC_Q_N] = {"OFF", "1/16", "1/8", "1/4", "1/2", "1 BAR", "2 BARS", "4 BARS", "8 BARS"};
         str_cpy(b, RQN[rec_q_idx()], 16);
         break;
     }
@@ -283,6 +283,11 @@ static void st_value(uint32_t r, char *b)
     default: str_cpy(b, FELUCCA_VERSION, 16); break;
     }
 }
+/* where a REC on the cycle happens, for its toast */
+static const char *rec_q_when(void)
+{
+    return rec_q16 >= 16u ? "THE BAR" : rec_q16 == 8u ? "1/2 BAR" : rec_q16 == 4u ? "THE BEAT" : rec_q16 == 2u ? "THE 1/8" : "THE 1/16";
+}
 static void st_turn(uint32_t r, int32_t s)
 {
     int32_t d = s > 0 ? 1 : -1;
@@ -294,8 +299,7 @@ static void st_turn(uint32_t r, int32_t s)
         rec_count = (uint8_t)!rec_count;
         break;
     case ST_RECQ: {
-        static const uint8_t RQ[5] = {0, 1, 2, 4, 8};
-        rec_q = RQ[clamp((int32_t)rec_q_idx() + d, 0, 4)];
+        rec_q16 = REC_Q16[clamp((int32_t)rec_q_idx() + d, 0, REC_Q_N - 1)];
         break;
     }
     case ST_SYNC:
@@ -899,16 +903,16 @@ static void ui_input(void)
             if (rec_pend) {                              /* REC again before the cycle: never mind */
                 ctl_toast(rec_pend == REC_PEND_ON ? "REC CANCELLED" : "REC GOES ON", "");
                 rec_pend = 0;
-            } else if (song.rec && song.playing && rec_q) {   /* the take ends when the cycle closes */
+            } else if (song.rec && song.playing && rec_q16) {   /* the take ends when the cycle closes */
                 rec_pend = REC_PEND_OFF;
-                ctl_toast("REC STOPS ON THE BAR", "");
+                ctl_toast("REC STOPS ON ", rec_q_when());
             } else if (song.rec || rec_wait) {
                 song.rec = 0;
                 rec_wait = 0;
                 ctl_toast("REC OFF", "");
-            } else if (song.playing && rec_q) {         /* the take starts on the next cycle */
+            } else if (song.playing && rec_q16) {       /* the take starts on the next cycle */
                 rec_pend = REC_PEND_ON;
-                ctl_toast("REC STARTS ON THE BAR", "");
+                ctl_toast("REC STARTS ON ", rec_q_when());
             } else if (song.playing) {
                 rec_begin();
             } else {

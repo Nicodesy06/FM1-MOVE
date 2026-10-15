@@ -12,7 +12,7 @@ physical FM-1 to confirm.
 | BUG-01 | A key sometimes plays another preset | **Root cause found and reproduced on the host; fixed** (+ two related defects) | needs retest [HW] |
 | BUG-02 | Rare glitches with PHYS + FM6 + ~3 tracks, drum transients | **Partly explained**: a voice-budget leak (host-reproduced, fixed) and overload handling that did not hold (fixed by policy); whether the device overruns is unknown without hardware | needs retest + AUDIO LOAD reading [HW] |
 | BUG-03 | Installer said "No FM-1 found" (later solved by the reporter) | **Already fixed** (4e0fb9d); a remaining gap closed (Connect's port list missed SLOOP / Clipper names); regression tests added | install / connect retest [HW] |
-| UX-01 | Quantize too aggressive; choose amount and grid | **Strength 0–100 % already existed** (per track, GROOVE › KNOB 2, non-destructive). Three timing defects found and fixed; grid = the track's DIV (documented); default left at 100 % | timing feel [HW] |
+| UX-01 | Quantize too aggressive; choose amount and grid | **Strength 0–100 % already existed** (per track, GROOVE › KNOB 2, non-destructive). Three timing defects found and fixed; grid = the track's DIV (documented); default left at 100 %. **The owner meant REC QUANT:** it now goes under a bar (1/16, 1/8, 1/4, 1/2, besides 1–8 bars and OFF) | timing feel [HW] |
 | UX-02 | Clearing a track hard to find | **Improved**: SAVE opens CLIPS on the selected track's clip playing (SAVE, REC, REC); the question says NO UNDO; manual + FAQ | — |
 | FEAT-01 | Per-step filter? | **Already exists** (parameter locks; the filters are lock targets); verified while playing; manual FAQ | — |
 | REG-01 | Clips "in development" | **Exists**; existing clip tests pass (`clip_test`, `fm1move_ui_test`) | scene changes under load [HW] |
@@ -64,6 +64,13 @@ physical FM-1 to confirm.
   OTA, composite) and not other gear; no stale copy in the page; the built page exports the list.
 
 ### UX-01 — quantize
+**REC QUANT (when a take starts / stops), the owner's request:** it offered only OFF and 1, 2, 4, 8 bars. It now also
+offers **1/16, 1/8, 1/4 (the next beat) and 1/2 bar** (`seq.c` `rec_cycle_block`: the cycle is counted in sixteenths
+from PLAY and checked in every audio block, before that block's steps, so the step on the boundary is in the take).
+Stored in the settings word's spare bits 21–25: a 0.3 value reads as it was, and 0.3 reads the new ones as 1 BAR.
+Tests (`fm1move_ui_test`): every value through the settings word and back, a 0.3 word, the knob ladder, 1/4 starts on
+the next beat (not the bar), 1/16 within a sixteenth; the bar and 4-bar tests unchanged.
+
 What exists (verified): per-track strength 0–100 % (GROOVE › KNOB 2), non-destructive (each step keeps its recorded
 deviation, `roff`, up to ±½ step), saved in projects; 0 / 25 / 50 / 75 / 100 % checked on real firing times
 (`groove_test`). Default 100 % (SLOOP's behaviour) — **not changed**: a moderate default is a proposal for user

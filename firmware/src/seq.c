@@ -709,18 +709,31 @@ static void rec_begin(void)
     rec_go = 1;
 }
 #if FM1MOVE
-/* FM1 Move: REC while playing, quantised as Ableton's global quantisation. rec_q bars make a cycle, counted from the
- * transport's start: REC starts the take on the next cycle's first beat, REC during a take ends it when the cycle
- * closes (never in the middle of a bar). 0: at once, as SLOOP. The UI asks (rec_pend); the audio interrupt does it
- * on the bar, before that block's steps, so the downbeat is in the take */
-static volatile uint8_t rec_q = 1;              /* bars a cycle: 0 (at once), 1, 2, 4, 8 */
+/* FM1 Move: REC while playing, quantised as Ableton's global quantisation. A cycle of rec_q16 sixteenths (1/16 ..
+ * 8 bars), counted from the transport's start: REC starts the take on the next cycle's boundary, REC during a take
+ * ends it when the cycle closes. 0: at once, as SLOOP. The UI asks (rec_pend); the audio interrupt does it in the
+ * block where the boundary falls, before that block's steps, so the step on it is in the take */
+static volatile uint8_t rec_q16 = 16;           /* sixteenths a cycle: 0 (at once), 1, 2, 4, 8, 16, 32, 64, 128 */
 static volatile uint8_t rec_pend;               /* REC_PEND_ON / REC_PEND_OFF on the next cycle, 0 none */
 #define REC_PEND_ON 1u
 #define REC_PEND_OFF 2u
-static uint32_t rec_q_idx(void) { return rec_q >= 8u ? 4u : rec_q >= 4u ? 3u : rec_q; }   /* 0 1 2 4 8 -> 0..4 */
-static void rec_cycle_bar(void)
+#define REC_Q_N 9u
+static const uint8_t REC_Q16[REC_Q_N] = {0, 1, 2, 4, 8, 16, 32, 64, 128};   /* SETTINGS > REC QUANT, in order */
+static uint32_t rec_q_idx(void)
 {
-    if (!rec_pend || (rec_q && (clk_beat >> 2) % rec_q))
+    uint32_t i;
+    for (i = 0; i < REC_Q_N && REC_Q16[i] != rec_q16; i++)
+        ;
+    return i < REC_Q_N ? i : 5u;                /* (1 BAR) */
+}
+static uint32_t rec_q_last = 0xFFFFFFFFu;       /* the sixteenth (from the transport's start) last looked at */
+static void rec_cycle_block(void)               /* every block while playing (events_block) */
+{
+    uint32_t s16 = clk_beat * 4u + clk_pos / (BEAT_U / 4u);
+    if (s16 == rec_q_last)
+        return;
+    rec_q_last = s16;                           /* a new sixteenth begins in this block */
+    if (!rec_pend || (rec_q16 && s16 % rec_q16))
         return;
     if (rec_pend == REC_PEND_ON)
         rec_begin();
@@ -2741,13 +2754,18 @@ static void events_block(uint32_t n)
         live_block();
     }
 #endif
+#if FM1MOVE
+    if (song.playing)
+        rec_cycle_block();                          /* a REC asked for on the cycle (before the clip: its take) */
+    else
+        rec_q_last = 0xFFFFFFFFu;                   /* (the next PLAY's first sixteenth is a new one) */
+#endif
     if (song.playing && !(clk_beat & 3u) && (clk_beat >> 2) != fill_last_bar) {   /* a new bar: the armed fill bar
                                                                                     * (after a section: its bar 0) */
         fill_last_bar = clk_beat >> 2;
         fill_bar_on = fill_arm;
         fill_arm = 0;
 #if FM1MOVE
-        rec_cycle_bar();                            /* a REC asked for on the cycle (before the clip: its take) */
         if (clip_bar_fn)
             clip_bar_fn();                          /* the clips asked for start (clip.c): before this block's steps */
 #endif

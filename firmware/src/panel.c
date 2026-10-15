@@ -90,6 +90,32 @@ static const uint16_t LIGHTS_NS[LIGHTS_N] = {0u, 500u, 1000u, 2000u};   /* the b
                                                 * LED ~95 us, the glow (landmarks) 4 us (fm1_input.h) */
 static uint8_t usb_serial;                      /* menu USB SERIAL: 1 = the serial console presented (usb.c) */
 static uint8_t vis_style;                       /* the visualiser's style, 0..11 (ui_vis.c) */
+#if FM1MOVE
+/* REC QUANT in the settings word, bits 21..25: bits 21..23 as FM1 Move 0.2 / 0.3 stored it (1 OFF, 2 1 BAR, 3 2 BARS,
+ * 4 4 BARS, 5 8 BARS; 0 none: 1 BAR), 6 1/2, 7 1/4; with 7, bits 24..25: 1 = 1/8, 2 = 1/16. A 0.3 reads 6 and 7 as
+ * 1 BAR (its default) */
+static uint32_t rec_q_word(void)
+{
+    switch (rec_q16) {
+    case 0: return 1u;
+    case 1: return 7u | 2u << 3;
+    case 2: return 7u | 1u << 3;
+    case 4: return 7u;
+    case 8: return 6u;
+    case 32: return 3u;
+    case 64: return 4u;
+    case 128: return 5u;
+    default: return 2u;                         /* (16: 1 BAR) */
+    }
+}
+static void rec_q_from_word(uint32_t f)
+{
+    static const uint8_t F[8] = {16, 0, 16, 32, 64, 128, 8, 4};
+    rec_q16 = F[f & 7u];
+    if ((f & 7u) == 7u && ((f >> 3) & 3u))
+        rec_q16 = ((f >> 3) & 3u) == 1u ? 2u : 1u;
+}
+#endif
 static uint32_t lights_word(void)
 {
     return (uint32_t)lights_lvl | (uint32_t)lights_keys << 4 | (uint32_t)(lights_notes != 0u) << 8 |
@@ -97,7 +123,7 @@ static uint32_t lights_word(void)
            (uint32_t)(lights_sync % 3u) << 12 | (uint32_t)(lights_mout != 0u) << 14 | (uint32_t)(lights_min == 1u) << 15 |
            (uint32_t)(usb_serial != 0u) << 16 | (uint32_t)(vis_style % 12u) << 17 |
 #if FM1MOVE   /* (FM1 Move 0.2 keeps REC QUANT in bits 21..23: the 2.6 MIDI IN channel moves to 26..30) */
-           (uint32_t)(rec_q_idx() + 1u) << 21 |
+           rec_q_word() << 21 |
            (uint32_t)(lights_min >= 2u && lights_min <= 17u ? lights_min - 1u : 0u) << 26;
 #else
            (uint32_t)(lights_min >= 2u && lights_min <= 17u ? lights_min - 1u : 0u) << 21;   /* 2.6: CH n (n 1..16; 0 none) */
@@ -123,11 +149,7 @@ static void lights_from_word(uint32_t w)
         lights_min = (uint8_t)(((w >> MIN_CH_SHIFT) & 31u) + 1u);   /* 2.6: CH n (an older SLOOP reads NOTES) */
     usb_serial = (uint8_t)((w >> 16) & 1u);
 #if FM1MOVE
-    {
-        static const uint8_t RQ[5] = {0, 1, 2, 4, 8};
-        uint32_t f = (w >> 21) & 7u;
-        rec_q = RQ[f >= 1u && f <= 5u ? f - 1u : 1u];
-    }
+    rec_q_from_word(w >> 21);
 #endif
     vis_style = (uint8_t)(((w >> 17) & 15u) % 12u);   /* the visualiser (ui_vis.c); 0 in 2.3 = OSCILLOSCOPE */     /* menu USB SERIAL (usb.c usb_cdc_on, at the next start); 0 in 2.3 = OFF */
 }
