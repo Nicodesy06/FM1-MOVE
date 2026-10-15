@@ -389,7 +389,7 @@ async function boot() {
   buildPanel();
   addEventListener("resize", layoutKeys);
   try {
-    const r = await fetch("fm1sim.wasm?v=04524bee4671", { cache: "no-cache" });   /* (never an older firmware from the cache) */
+    const r = await fetch("fm1sim.wasm?v=fb06873f10e8", { cache: "no-cache" });   /* (never an older firmware from the cache) */
     const { instance } = await WebAssembly.instantiate(await r.arrayBuffer(), {});
     X = instance.exports; mem = X.memory;
     X.sim_init();

@@ -146,6 +146,42 @@ static uint32_t scale_mask(const track_t *t)
 {
     return SCALE_MASK[clamp(t->p[P_SCALE], 0, NSCALES - 1)];
 }
+#if FM1MOVE
+/* FM1 Move SCALE LOCK (as Ableton's scale mode): KEYS on (SNAP, WHITE or chord mode) on a synth track with a scale
+ * other than CHR. Then the keys play in the scale (kb_pitch), light only its notes (ui_move_ctl.c), and the note
+ * knobs, the MIDI keyboard's step entry and FIT (SEL + OCT-) keep the pattern in it */
+static int scale_lock(const track_t *t)
+{
+    return !is_drum(t) && (t->p[P_QUANT] || t->p[P_CHORD]) && scale_mask(t) != 0xFFFu;
+}
+static int in_scale(const track_t *t, int32_t n)
+{
+    return (int)((scale_mask(t) >> (uint32_t)((n - t->p[P_ROOT] + 1200) % 12)) & 1u);
+}
+/* note n into the scale, rounded down (as SNAP does the keys); not locked: as it is */
+static uint32_t scale_snap(const track_t *t, int32_t n)
+{
+    uint32_t guard = 12;
+    if (scale_lock(t))
+        while (guard-- && !in_scale(t, n))
+            n--;
+    return (uint32_t)clamp(n, 0, 127);
+}
+/* note n moved s notes of the scale (locked) or s semitones */
+static uint32_t scale_step(const track_t *t, int32_t n, int32_t s)
+{
+    int32_t d = s > 0 ? 1 : -1, guard;
+    if (!scale_lock(t))
+        return (uint32_t)clamp(n + s, 0, 127);
+    n = (int32_t)scale_snap(t, n);
+    while (s) {
+        for (guard = 12, n += d; guard-- && !in_scale(t, n); n += d)
+            ;
+        s -= d;
+    }
+    return (uint32_t)clamp(n, 0, 127);
+}
+#endif
 
 /* ---------------------------------------------------------- layers --- */
 enum { LY_PLAY, LY_FX, LY_ERASE, LY_ROLL, LY_STEP, LY_SCALE, LY_MIX, LY_SONG, LY_COUNT };

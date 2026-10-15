@@ -81,6 +81,9 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 - **INSERT effect per track** (SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR, dry / wet MIX): up to 4 tracks at
   once (RAM), drum tracks included.
 - **TEXTURE**, a bed under the mix: VINYL, TAPE, RAIN, WIND, RADIO, ROOM or a user sample, saved with the project.
+- **SCALE LOCK** (as Ableton's scale mode): pick a key and one of 16 scales; every synth track's keys play in it and
+  light only its notes, the note knobs and a MIDI keyboard stay in it, and FIT (SEL + OCT−) moves existing notes into it.
+  Chord mode builds its chords from the same scale.
 
 ### Kept from SLOOP (2.6)
 USB-MIDI in/out, TRS MIDI in, MIDI clock in, sustain pedal, pitch bend, MIDI LEARN (16 CCs), USB

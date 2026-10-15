@@ -254,7 +254,11 @@ static void steps_held_edit(uint32_t knob, int32_t s)
             for (i = 0; i < st->n; i++) {
                 uint32_t sh = 2u * i, lv = (st->lvl >> sh) & 3u, rt = (st->rat >> sh) & 3u;
                 if (knob == 0u) {
+#if FM1MOVE
+                    st->note[i] = (uint8_t)scale_step(t, st->note[i], s);   /* (SCALE LOCK: through the scale) */
+#else
                     st->note[i] = (uint8_t)clamp(st->note[i] + s, 0, 127);
+#endif
                     continue;
                 }
                 if (knob == 1u)
@@ -589,7 +593,11 @@ static void layer_knobs(uint32_t layer)
                 if (is_drum(t)) {
                     pen_lane_move(s);
                 } else {
+#if FM1MOVE
+                    pen_note[0] = (uint8_t)scale_step(t, pen_note[0], s);   /* (SCALE LOCK: through the scale) */
+#else
                     pen_note[0] = (uint8_t)clamp(pen_note[0] + s, 0, 127);
+#endif
                     pen_n = 1;
                 }
             } else if (k == 1u) {
@@ -618,7 +626,17 @@ static void layer_knobs(uint32_t layer)
                         trk[i].p[P_SCALE] = v;
             } else if (k == 2u) {
                 if (!is_drum(t))
+#if FM1MOVE
+                {                                       /* SCALE LOCK: every synth track, as SCALE and the key */
+                    uint32_t i;
+                    int16_t v = (int16_t)clamp(t->p[P_QUANT] + s, 0, 2);
+                    for (i = 0; i < NTRK; i++)
+                        if (is_synth(&trk[i]))
+                            trk[i].p[P_QUANT] = v;
+                }
+#else
                     t->p[P_QUANT] = (int16_t)clamp(t->p[P_QUANT] + s, 0, 2);
+#endif
             } else if (!is_drum(t)) {
                 t->p[P_TRANS] = (int16_t)clamp(t->p[P_TRANS] + s, -24, 24);
             }

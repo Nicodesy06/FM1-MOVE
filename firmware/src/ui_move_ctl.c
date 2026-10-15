@@ -368,13 +368,13 @@ static void ctl_step_edit(uint32_t k, int32_t s)
         break;
     case 1:
         if (!st->n) {
-            st->note[0] = last_note;
+            st->note[0] = (uint8_t)scale_snap(t, last_note);
             st->n = 1;
             st->time = ST_NOTE;
             break;
         }
         for (i = 0; i < st->n; i++)
-            st->note[i] = (uint8_t)clamp(st->note[i] + s, 1, 127);
+            st->note[i] = (uint8_t)clamp((int32_t)scale_step(t, st->note[i], s), 1, 127);   /* (SCALE LOCK: in it) */
         st->time = ST_NOTE;
         last_note = st->note[0];
         break;
@@ -419,6 +419,8 @@ static void ctl_midi_step_in(void)
         }
         if (!on_page)
             continue;
+        if (&trk[tr] == t)
+            note = scale_snap(t, (int32_t)note);         /* (SCALE LOCK: the keyboard's note into the scale) */
         if (&trk[tr] != t) {
             char b[2] = {(char)('1' + tr), 0};
             ctl_toast("MIDI PLAYS TRACK ", b);
@@ -487,6 +489,31 @@ static void ctl_step_entry(uint32_t pressed)
     }
     if (ui.entry_open && !fm1_in.notes && !(ctl_mi_held[0] | ctl_mi_held[1] | ctl_mi_held[2] | ctl_mi_held[3]))
         cursor_set((int32_t)ui.cursor + 1);              /* (every key and MIDI note up: the next step) */
+}
+
+/* SEL + OCT-: FIT TO SCALE, the selected track's notes moved into the scale (rounded down, as the keys); one undo */
+static void ctl_fit_scale(void)
+{
+    track_t *t = TSEL;
+    uint32_t i, k, moved = 0;
+    char b[16], *e;
+    if (!scale_lock(t)) {
+        ctl_toast(is_drum(t) ? "DRUMS: NO SCALE" : "SCALE LOCK IS OFF", "");
+        return;
+    }
+    undo_mark(t, (undo_sess += 4u) | 3u);
+    fm1_irq_off();
+    for (i = 0; i < NSTEP; i++)
+        for (k = 0; k < t->step[i].n && k < 4u; k++) {
+            uint8_t n = (uint8_t)scale_snap(t, t->step[i].note[k]);
+            moved += n != t->step[i].note[k];
+            t->step[i].note[k] = n;
+        }
+    fm1_irq_on();
+    e = ds_cat(b, N_NOTE[(uint32_t)t->p[P_ROOT] % 12u]);
+    e = ds_cat(e, " ");
+    ds_cat(e, N_SCALE[clamp(t->p[P_SCALE], 0, NSCALES - 1)]);
+    ctl_toast(moved ? "FITTED TO " : "ALREADY IN ", b);
 }
 
 /* CLIPS: launch clip k of the selected track; playing, it starts on the next bar */
@@ -757,6 +784,11 @@ static void ui_input(void)
                                                           * goes back to 0 as ever) */
         ctl.tempo_ms = fm1_ms | 1u;
     }
+    if (held == LY_SCALE && (pressed & ctl_btn_bit(B_OCTDN))) {   /* SEL + OCT-: FIT TO SCALE */
+        ctl.used[B_SCL] = 1;
+        ctl_fit_scale();
+        pressed &= ~ctl_btn_bit(B_OCTDN);
+    }
     if (held == LY_ERASE && (pressed & (ctl_btn_bit(B_OCTDN) | ctl_btn_bit(B_OCTUP)))) {   /* EDIT + OCT: undo / redo */
         ctl.used[B_EDIT] = 1;
         if (pressed & ctl_btn_bit(B_OCTDN))
@@ -1001,6 +1033,20 @@ static void ui_leds(void)
                 keys |= 1u << key_of_white(k);
             if ((song.solo >> k) & 1u)
                 keys |= 1u << key_of_white(8u + k);
+        }
+    } else if (ui.layer == LY_PLAY && scale_lock(TSEL)) {   /* SCALE LOCK: the scale's keys glow, its roots lit, the
+                                                          * keys held lit; the others stay dark */
+        const track_t *t = TSEL;
+        int white = t->p[P_QUANT] == 2 || t->p[P_CHORD];  /* (WHITE, chord mode: the white keys walk the scale from
+                                                          * C = the root; the black keys play no note) */
+        for (k = 0; k < 27u; k++) {
+            int32_t n = 53 + (int32_t)k + t->p[P_TRANS];
+            uint32_t pc = (53u + k) % 12u, isw = !((0x54Au >> pc) & 1u);
+            int on = white ? (int)isw : in_scale(t, n), root = white ? isw && pc == 0u : (n - t->p[P_ROOT] + 1200) % 12 == 0;
+            if ((fm1_in.notes >> k) & 1u || (on && root))
+                keys |= 1u << k;
+            else if (on)
+                dim |= 1u << k;
         }
     }
     for (k = 0; k < 27u; k++) {
@@ -1256,8 +1302,10 @@ static void mv_layer(void)
         e = ds_cat(e, N_SCALE[sc]);
         if (chord) {
             e = ds_cat(e, "  ");
-            ds_cat(e, N_CHORD[clamp(ts->p[P_CHORD], 0, 5)]);
+            e = ds_cat(e, N_CHORD[clamp(ts->p[P_CHORD], 0, 5)]);
         }
+        if (scale_lock(ts))
+            ds_cat(e, "  LOCK");
         mv.lay_pages = 1;
         for (i = 0; i < 16u; i++) {
             uint32_t k = key_of_white(i), pc = (53u + k) % 12u, in = (mask >> ((pc + 12u - root) % 12u)) & 1u;
@@ -1280,7 +1328,11 @@ static void mv_layer(void)
         mv.k[0].ratio = (int16_t)(is_drum(ts) ? -1 : ts->p[P_CHORD] * 200);
         str_cpy(mv.k[1].value, N_SCALE[sc], sizeof mv.k[1].value);
         mv.k[1].ratio = (int16_t)(sc * 1000u / (NSCALES - 1u));
-        str_cpy(mv.k[2].value, is_drum(ts) ? "--" : N_QUANT[clamp(ts->p[P_QUANT], 0, 2)], sizeof mv.k[2].value);
+        {
+            static const char *const QN[3] = {"OFF", "LOCK", "WHITE"};   /* (SNAP: the SCALE LOCK) */
+            str_cpy(mv.k[2].value, is_drum(ts) ? "--" : QN[clamp(ts->p[P_QUANT], 0, 2)], sizeof mv.k[2].value);
+            mv.k[2].label = "SCALE LOCK";
+        }
         if (!is_drum(ts))
             mv_knob_b(3, (kbind_t){KB_TP, P_TRANS, "TRANSP"});
         else
@@ -1407,6 +1459,15 @@ static void mv_fill(void)
             uint32_t pad = (12u - (hi - lo)) / 2u;
             lo = lo > pad ? lo - pad : 0u;
             hi = lo + 12u;
+        }
+        mv.roll_lock = (uint8_t)scale_lock(ts);           /* (SCALE LOCK: the scale's rows, the root's) */
+        mv.roll_mask = (uint16_t)(((scale_mask(ts) << ((uint32_t)ts->p[P_ROOT] % 12u)) |
+                                   (scale_mask(ts) >> (12u - (uint32_t)ts->p[P_ROOT] % 12u))) & 0xFFFu);
+        mv.roll_root = (uint8_t)((uint32_t)ts->p[P_ROOT] % 12u);
+        if (mv.roll_lock) {
+            char *e2 = ds_cat(mv.key, N_NOTE[mv.roll_root]);
+            e2 = ds_cat(e2, " ");
+            ds_cat(e2, N_SCALE[clamp(ts->p[P_SCALE], 0, NSCALES - 1)]);
         }
         mv.roll_lo = (uint8_t)lo;
         mv.roll_hi = (uint8_t)(hi > 127u ? 127u : hi);

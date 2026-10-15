@@ -2,6 +2,15 @@
 
 ## Unreleased (fm1-move/dev)
 
+### SCALE LOCK (host simulation)
+- As Ableton's scale mode. SEL held: KNOB 2 the scale (16), white keys 9–16 / black keys the root, **KNOB 3 SCALE
+  LOCK** = OFF / LOCK (SNAP: every key into the scale) / WHITE, now for every synth track at once. With it on (a scale
+  other than CHR): the keys light the scale (roots lit, scale dim, the rest dark, held keys lit); NOTE on the STEP page,
+  SEQ + KNOB 1 and a held step's NOTE step through the scale; MIDI step entry is put into it; the piano roll shades the
+  rows out of it, marks the roots and reads the key in its title. **SEL + OCT−: FIT TO SCALE** (the selected track's
+  notes rounded down into the scale; one undo). Chord mode already builds its chords from the scale. Drums untouched.
+  Checked in `tests/fm1move_ui_test.c` (LEDs, keys, NOTE, roll, FIT + undo, MIDI); not run on an FM-1.
+
 ### FM1 Move 0.3 — SLOOP 2.6 inside (d7590be, host simulation)
 - Upstream SLOOP 2.6 (isod89/sloop-fm1 tag `v2.6`) merged; version **FM1 MOVE 0.3**. The device page offers
   `docs/firmware/fm1move-0.3-dev.fwsc` (experimental) and `sloop-2.6.fwsc` (stable); the 0.2-dev and sloop-2.5

@@ -461,6 +461,26 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <p>Steps hold chords of up to four notes. Hold <kbd>SEL</kbd>: white keys 9–16 and the black keys set the key of the song; the knobs set chord mode (one key plays a
     triad, 7th, 9th, sus4 or power chord of the scale), the scale (16, from major and minor to blues and whole tone), key snapping (off, snap, scale on the white keys) and
     transpose. In chord mode the black keys change the chord while it is held. While <kbd>SEL</kbd> is held the KEY page shows the chord every white key plays.</p>
+  <h3>SCALE LOCK <span class="tag new">NEW</span></h3>
+  <div class="shot"><img src="../ui/live/19-scale-lock-roll.png" alt="The STEP page with SCALE LOCK on: the rows out of C minor shaded" loading="lazy">
+    <div>
+      <p>As Ableton’s scale mode: pick a key and a scale, and the whole composition stays in it — every synth track, not the drums.</p>
+      <ol>
+        <li>Hold <kbd>SEL</kbd>: white keys 9–16 or the black keys set the root; <kbd>KNOB 2</kbd> the scale (16: major, minor, dorian, mixolydian, pentatonics,
+          harmonic and melodic minor, phrygian, lydian, locrian, blues, whole tone, diminished…).</li>
+        <li>Still holding <kbd>SEL</kbd>: <kbd>KNOB 3</kbd> <b>SCALE LOCK</b> = <b>LOCK</b> (every key into the scale, a key out of it plays the scale’s note below) or
+          <b>WHITE</b> (the white keys walk the scale from C = the root). It applies to every synth track at once, like the scale.</li>
+      </ol>
+      <ul>
+        <li><b>The keys light the scale:</b> its notes glow, the roots are lit, the keys you hold light up, the notes out of the scale stay dark.</li>
+        <li><b>Editing stays in the scale:</b> NOTE on the STEP page, <kbd>SEQ</kbd> + KNOB 1 and a held step's NOTE move from scale note to scale note; a MIDI
+          keyboard's notes on the STEP page are put into it. The piano roll shades the rows out of the scale and its title reads the key (C MIN 1 / 16).</li>
+        <li><b>FIT TO SCALE:</b> <kbd>SEL</kbd> + <kbd>OCT−</kbd> moves the notes already in the selected track's pattern into the scale (rounded down, as the keys);
+          <kbd>EDIT</kbd> + <kbd>OCT−</kbd> undoes it.</li>
+        <li><b>With chords:</b> chord mode builds its chords from the same scale, so every chord is in the key; the white keys play them, the black keys still change them (CHORD+).</li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <!-- ================================================================== RECORDING -->

@@ -823,6 +823,84 @@ int main(int argc, char **argv)
         tap(B_HOME);
     }
 
+    /* SCALE LOCK (as Ableton's scale mode): SEL held, KNOB 2 the scale, KNOB 3 LOCK; the keys light the scale */
+    {
+        uint32_t i2, ok = 1;
+        int16_t sc0 = 0;
+        track_select(1);
+        for (i2 = 0; i2 < NTRK; i2++)
+            if (is_synth(&trk[i2]))
+                trk[i2].p[P_ROOT] = 0, trk[i2].p[P_SCALE] = 1, trk[i2].p[P_CHORD] = 0;   /* (C MAJ) */
+        press(B_SCL);
+        frames(20);
+        turn(EN_K2, 1);                                   /* MAJ -> MIN */
+        turn(EN_K3, 1);                                   /* KEYS: LOCK */
+        frames(2);
+        for (i2 = 0; i2 < NTRK; i2++)
+            if (is_synth(&trk[i2]))
+                ok &= trk[i2].p[P_QUANT] == 1 && trk[i2].p[P_SCALE] == 2;
+        check(ok && !strcmp(mv.k[2].value, "LOCK") && strstr(mv.lay_ctx, "LOCK") != 0,
+              "SEL held: KNOB 3 SCALE LOCK on every synth track (C MIN), the KEY page says LOCK");
+        release(B_SCL);
+        frames(4);
+        {
+            uint8_t q;
+            uint32_t lit, dimv, k2;
+            int good = 1;
+            for (k2 = 7u; k2 <= 11u; k2++) {              /* C4 C# D Eb E: lit (root), off, dim, dim, off */
+                static const int8_t WANT[5] = {2, 0, 1, 1, 0};
+                q = ctl_led_pos[14u + k2];
+                lit = (fm1_led[q >> 3] >> (q & 7u)) & 1u;
+                dimv = (fm1_led_dim[q >> 3] >> (q & 7u)) & 1u;
+                good &= WANT[k2 - 7u] == 2 ? (int)lit : WANT[k2 - 7u] == 1 ? (dimv && !lit) : (!lit && !dimv);
+            }
+            check(good, "... the keys: the root lit, the scale's notes glow, the others dark");
+        }
+        check((kb_map(TSEL, 8u) % 12u) == 0u && (kb_map(TSEL, 11u) % 12u) == 3u, "... a key out of the scale plays the scale's note below (C#->C, E->Eb)");
+        tap(B_SEQ);
+        if (ctl.page[SC_SEQ] != 1u)
+            tap(B_SEQ);
+        steps_clear(TSEL);
+        {
+            uint8_t n = 60, e = 64;
+            put_step(TSEL, 0, 1, &n, ST_NOTE, 0);
+            put_step(TSEL, 3, 1, &e, ST_NOTE, 0);
+        }
+        cursor_set(0);
+        turn(EN_K2, 1);
+        turn(EN_K2, 1);
+        check(TSEL->step[0].note[0] == 63, "STEP page: NOTE moves through the scale (C -> D -> Eb)");
+        check(mv.roll_lock && mv.roll_root == 0u && ((mv.roll_mask >> 3) & 1u) && !((mv.roll_mask >> 4) & 1u),
+              "... the piano roll shades the rows out of the scale");
+        frames(100);
+        ppm("19-scale-lock-roll");
+        press(B_SCL);
+        press(B_OCTDN);
+        release(B_OCTDN);
+        release(B_SCL);
+        check(TSEL->step[3].note[0] == 63, "SEL + OCT-: FIT TO SCALE moves E into C minor (Eb)");
+        press(B_EDIT);
+        press(B_OCTDN);
+        release(B_OCTDN);
+        release(B_EDIT);
+        check(TSEL->step[3].note[0] == 64, "... EDIT + OCT- undoes it");
+        cursor_set(1);
+        step_in_push(61u | 0x80u | song.sel << 8);
+        frame();
+        step_in_push(61u | song.sel << 8);
+        frames(2);
+        check(TSEL->step[1].note[0] == 60, "... a MIDI keyboard's C# on the STEP page writes C");
+        steps_clear(TSEL);
+        press(B_SCL);
+        frames(2);
+        turn(EN_K3, -1);
+        release(B_SCL);
+        frames(2);
+        check(!scale_lock(TSEL) && kb_map(TSEL, 8u) % 12u == 1u, "SCALE LOCK OFF: every key its own note again");
+        (void)sc0;
+        tap(B_HOME);
+    }
+
     /* fuzz: random use */
     {
         uint32_t seed = 12345u, f, over = 0;

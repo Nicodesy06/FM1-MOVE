@@ -80,6 +80,8 @@ typedef struct {
     uint8_t roll_nt[MV_NSTEP][4];
     uint8_t roll_fl[MV_NSTEP];                 /* RF_* */
     uint8_t roll_lo, roll_hi;                  /* the note range drawn (the whole pattern's) */
+    uint8_t roll_lock, roll_root;              /* SCALE LOCK on: rows of the scale (roll_mask, by pitch class), its root */
+    uint16_t roll_mask;
     /* a layer held (SEQ: STEPS, SEL: KEY), drawn over the screen as SLOOP's layer pages */
     uint8_t layer;                             /* MVL_* */
     char lay_ctx[24];                          /* the title's context */
@@ -434,17 +436,20 @@ static void sc_roll(void)
     uint32_t i, j, n, span = (uint32_t)(mv.roll_hi - mv.roll_lo);
     uint16_t c = MV_SELC;
     int32_t ph = mv.playing && mv.step16 < MV_NSTEP ? (int32_t)mv.step16 : -1, semi = (int32_t)(RL_H - 8) / (int32_t)(span ? span : 1u);
-    e = ds_cat(b, "STEP ");
+    e = ds_cat(b, mv.roll_lock ? mv.key : "STEP");     /* (SCALE LOCK: the key in place of the word) */
+    e = ds_cat(e, " ");
     e = ds_itoa(e, mv.cur_abs + 1);
     e = ds_cat(e, " / ");
     ds_itoa(e, mv.len);
     mv_title(b);
-    if (semi >= 4)                                       /* the black keys' rows, when there is room for them */
+    if (semi >= 4)                                       /* the black keys' rows (SCALE LOCK: the rows out of the
+                                                          * scale), when there is room for them */
         for (n = mv.roll_lo; n <= mv.roll_hi; n++)
-            if ((0x54Au >> (n % 12u)) & 1u)
+            if (mv.roll_lock ? !((mv.roll_mask >> (n % 12u)) & 1u) : (0x54Au >> (n % 12u)) & 1u)
                 ds_rect(MX, roll_y(n) - semi / 2 + 2, 224, semi > 2 ? semi - 1 : 1, DS_SURF1);
-    for (n = (mv.roll_lo + 11u) / 12u * 12u; n <= mv.roll_hi; n += 12u)   /* the Cs */
-        ds_hline(MX, roll_y(n) + 2, 224, DS_LINE);
+    for (n = mv.roll_lo; n <= mv.roll_hi; n++)           /* the Cs (SCALE LOCK: the roots, in the track's colour) */
+        if (n % 12u == (mv.roll_lock ? mv.roll_root : 0u))
+            ds_hline(MX, roll_y(n) + 2, 224, mv.roll_lock ? DS_DIM(MV_SELC) : DS_LINE);
     if (ph >= 0)
         ds_rect(seq_x((uint32_t)ph) - 1, RL_Y0, 13, RL_H, DS_SURF1);
     if (mv.cur < MV_NSTEP) {
