@@ -152,7 +152,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
 <div class="wrap">
 <header>
   <a class="brand" href="./">FM1 MOVE <span>Manual</span></a>
-  <span class="pill">EXPERIMENTAL · 0.3</span>
+  <span class="pill">BETA · 0.3.1</span>
   <nav><a href="../device/">Install &amp; manage</a><a href="../sim/">Simulator</a><a href="https://github.com/Nicodesy06/FM1-MOVE/tree/fm1-move/dev">GitHub</a></nav>
 </header>
 <div id="mtoc"><select aria-label="Jump to a chapter" onchange="location.hash = this.value"></select></div>
@@ -169,7 +169,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <div class="cta"><a class="btn primary" href="#quick-start">Quick start</a><a class="btn" href="../sim/">Try it in the browser</a><a class="btn" href="../device/">Install &amp; manage</a></div>
   <div class="note warn"><b>Beta, experimental.</b> The maintainer tests FM1 Move in simulation (host tests and the browser simulator, which runs the firmware's own code).
     Community testers have installed earlier 0.3 builds on their FM-1s and reported bugs; this build's fixes are verified in simulation only and wait for their retest.
-    There has been <b>no structured hardware test pass</b> yet. Read <a href="#install">Install</a> and <a href="#recovery">Recovery</a> before you put it on your device.</div>
+    There has been <b>no structured hardware test pass</b> yet (<a href="https://github.com/Nicodesy06/FM1-MOVE/blob/fm1-move/dev/docs/BUGFIX_0.3.1.md">0.3.1: what was fixed,
+    what to retest</a>). Read <a href="#install">Install</a> and <a href="#recovery">Recovery</a> before you put it on your device.</div>
 </div>
 
 <!-- ================================================================== QUICK START -->
@@ -391,7 +392,16 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     All six of the track's <a href="#clips">clips</a> are emptied too (synth steps and drum lanes do not convert).</p>
   <h3>Heavy engines</h3>
   <p>The GRAIN, FM6 and PHYS engines each need a big memory area; three are available. A fourth heavy engine is refused with a message ("HEAVY ENGINES ALL IN USE")
-    until one of them changes engine; a project that asks for more loads them as ANALOG and says "HEAVY ENGINES: 3 MAX".</p>
+    until one of them changes engine; a project that asks for more loads them as ANALOG and says "HEAVY ENGINES: 3 MAX". Choosing a GRAIN, FM6 or PHYS sound then leaves
+    the track's sound as it was (before this update it loaded a different sound of the old engine).</p>
+  <h3 id="voices">Voices and heavy load</h3>
+  <p>The synth tracks share <b>8 voices</b>. Three heavy engines can be loaded, but that does not mean any mix of them plays without glitches at any voice count:
+    PHYS (MODAL, bowed and SYMP models especially) costs about twice an ANALOG voice, FM6 and GRAIN about 1.3×, and inserts, DIST and track filters add to it.
+    When the FM-1 measures that its audio has run late (two audio buffers in a row over 85 % of their time), it fades out one voice (the quietest releasing, else
+    the oldest held, never a track's lowest note or lead) and <b>holds the voice limit one lower</b>, so new notes do not refill it at once; the limit comes back one
+    voice a second while nothing runs late (never under 4). This only happens under real overload, and is a deliberate trade: a voice less instead of a click.
+    HOME held twice › SETTINGS › <b>AUDIO LOAD</b> shows the highest load of the audio since power-on (% of its time) and how many audio buffers came late:
+    "LATE 0" means the audio never ran out of time.</p>
   <h3>Mute, solo, mix</h3>
   <p>Hold <kbd>GLO</kbd>: keys 1–8 mute tracks 1–8, keys 9–16 solo them. The MIXER screen (tap <kbd>GLO</kbd>) sets the selected track's volume, pan, reverb and delay
     sends; choose the track with <kbd>SELECT</kbd>.</p>
@@ -673,7 +683,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>KEY LIGHTS</td><td>OFF · C KEYS · WHITE · ALL</td><td>Which keys glow too</td></tr>
     <tr><td>USB AUDIO</td><td>MAIN · FULL</td><td>The USB audio level follows MASTER, or a fixed full level</td></tr>
     <tr><td>BATTERY <span class="tag new">NEW</span></td><td>FULL · GOOD · LOW · EMPTY · ON USB</td><td>Read only: the battery, as the three bars in the status bar show it (see below)</td></tr>
-    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.3</td></tr>
+    <tr><td>AUDIO LOAD <span class="tag new">NEW</span></td><td>e.g. 62% LATE 0</td><td>Read only: the highest audio load since power-on, and the audio buffers that came late (a late one can be heard as a glitch). For glitch reports. The browser simulator does not measure it (0 %)</td></tr>
+    <tr><td>VERSION</td><td>—</td><td>FM1 MOVE 0.3.1</td></tr>
   </table></div>
 <div id="battery">
   <h3>The battery <span class="tag new">NEW</span></h3>
@@ -723,7 +734,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <p class="sub"><a href="../device/">nicodesy06.github.io/FM1-MOVE/device</a> — Chrome or Edge on a computer, the FM-1 on a USB data cable. Every tab also works on the
     <b>virtual FM1</b> (the firmware running in the browser), without a device.</p>
   <div class="grid2">
-    <div class="card"><h4 style="margin-top:0">Install</h4>FM1 Move 0.3 (experimental, behind a warning you must tick), SLOOP 2.6 (stable), or back to the official V15 with M-VAVE's own file.</div>
+    <div class="card"><h4 style="margin-top:0">Install</h4>FM1 Move 0.3.1 (beta, behind a warning you must tick), SLOOP 2.6 (stable), or back to the official V15 with M-VAVE's own file.</div>
     <div class="card"><h4 style="margin-top:0">Tracks &amp; sounds</h4>The eight tracks; engine, sound or kit; every parameter of the track and the song (those the panel does not reach are marked "web only").</div>
     <div class="card"><h4 style="margin-top:0">User presets</h4>Store a track's sound in one of 32 slots, load, rename, erase, export and import them.</div>
     <div class="card"><h4 style="margin-top:0">Samples &amp; kits</h4>Three sample slots (USR1–3, about 7.4 s each: mono, 22.05 kHz, 4-bit IMA ADPCM). Build a drum kit by dropping sounds on 16 pads, or a multi-sampled instrument — WAV, MP3, AIFF…</div>
@@ -793,6 +804,16 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <p>Four tracks can have an insert effect at once; the panel says "INSERT: 4 TRACKS MAX". Turn another track's INSERT off.</p>
   <h3>Why does a fourth GRAIN / FM6 / PHYS track not get its engine?</h3>
   <p>Three heavy engines can run at once; change one of them to free its memory.</p>
+  <h3>I hear a glitch with PHYS, FM6 and several other tracks</h3>
+  <p>Please tell us, with the project. Right after a glitch, look at SETTINGS › AUDIO LOAD: if LATE is above 0 the audio ran out of time (see
+    <a href="#voices">Voices and heavy load</a>); if it is 0 the cause is elsewhere. Fewer inserts, track filters or PHYS voices lighten the load.</p>
+  <h3>How do I clear a track?</h3>
+  <p><kbd>SAVE</kbd>, <kbd>REC</kbd>, <kbd>REC</kbd> on the selected track — see <a href="#clear-track">Clear a track</a>.</p>
+  <h3>Can quantize be gentler?</h3>
+  <p>Yes, per track: <kbd>ARP</kbd> › <kbd>KNOB 2</kbd>, from 100 % (on the grid) to 0 % (as played) — see <a href="#quantize">How much quantize</a>.</p>
+  <h3>Can one step have its own filter?</h3>
+  <p>Yes: hold <kbd>SEQ</kbd> and the step's key, turn <kbd>ALGORITHM</kbd> to the filter (the track FILTER, or the sound's filter) and <kbd>PRESETS</kbd> to its value
+    for that step. Up to 24 locks per track.</p>
   <h3>How do I switch between patterns while playing?</h3>
   <p>Hold <kbd>SAVE</kbd> and press white key 1–6 (a clip of the selected track) or 9–14 (a scene, every track): it changes on the next bar — see <a href="#clips">Clips and scenes</a>.</p>
   <h3>Where are my SLOOP projects?</h3>

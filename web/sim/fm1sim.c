@@ -88,6 +88,7 @@ static void fm1_wdt_feed(void) {}
 #include "../../firmware/src/ds.c"
 #include "../../firmware/src/ui_move.c"
 #include "../../firmware/src/ui_layers.c"
+static struct { uint32_t max_us, late; } felucca_dbg;   /* (audio.c's diagnostics: no render deadline here) */
 #include "../../firmware/src/ui_move_ctl.c"
 
 /* the flash: a 1 MiB array (nor, at the top) behind the storage layer and the flash driver calls (fm1_flash.h) */

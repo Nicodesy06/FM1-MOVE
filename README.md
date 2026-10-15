@@ -23,7 +23,8 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 > [!WARNING]
 > **Experimental beta.** Everything below is implemented and verified in host simulation and with the real JieLi
 > target compiler. Community testers have installed earlier 0.3 builds on their FM-1s and reported bugs (see
-> [the changelog](docs/CHANGELOG.md)); the fixes are verified in simulation and wait for their retest. No structured
+> [the changelog](docs/CHANGELOG.md) and [the 0.3.1 report](docs/BUGFIX_0.3.1.md)); the fixes are verified in
+> simulation and wait for their retest. No structured
 > hardware test pass has been made by the maintainer. Do not install it on a device you are not prepared to recover (see [Recovery](#recovery)). The stable firmware this project builds on is
 > [SLOOP](https://github.com/isod89/sloop-fm1).
 
@@ -31,11 +32,11 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 
 | | |
 | --- | --- |
-| Version | **0.3**, based on **SLOOP 2.6** (upstream tag `v2.6` merged): 27 punch-ins, INSERT on every track, TEXTURE, MIDI LEARN… |
+| Version | **0.3.1** (bug fixes from the testers' reports), based on **SLOOP 2.6** (upstream tag `v2.6` merged): 27 punch-ins, INSERT on every track, TEXTURE, MIDI LEARN… |
 | Firmware build (`FM1MOVE=1`) | ✅ compiles and links — 569 828 B of 581 564 B, RAM 96 496 / 98 304 B, pool 10 904 B spare |
 | Host tests | ✅ all FM1 Move suites pass (also under ASan + UBSan); the 182 reference renders identical to SLOOP 2.6's (host simulation) |
 | Browser test view | ▶ [nicodesy06.github.io/FM1-MOVE/sim](https://nicodesy06.github.io/FM1-MOVE/sim/) — the firmware compiled to WebAssembly on a simulated panel (simulation, not the device) |
-| Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move 0.3 experimental, SLOOP 2.6 stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly, not yet on an FM-1 |
+| Device page | [nicodesy06.github.io/FM1-MOVE/device](https://nicodesy06.github.io/FM1-MOVE/device/) — install (FM1 Move 0.3.1 beta, SLOOP 2.6 stable, official V15) and manage tracks, presets, samples and kits, FM6, projects, backup; tested against the firmware in WebAssembly; community testers have used it on their FM-1s, no structured hardware test yet |
 | Manual | [nicodesy06.github.io/FM1-MOVE/manual](https://nicodesy06.github.io/FM1-MOVE/manual/) — quick start and every feature |
 | SLOOP parity | [what was kept, changed, removed](docs/SLOOP_PARITY.md) against SLOOP 2.6 — every engine and sequencer feature kept; song arranger replaced by clips and scenes |
 | Hardware | ⏳ not tested yet |

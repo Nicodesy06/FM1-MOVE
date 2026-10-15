@@ -81,6 +81,7 @@ void fm1_alnk0_irq(void)                       /* via isr_alnk0 (hal/fm1_isr.S) 
             audio_max_us = us;
         if ((shed_over & 3u) == 3u)
             shed_req = 1;                               /* two in a row */
+        voice_cap_half(shed_over & 1u);                 /* (the voice cap comes back while no half is over) */
         song.cpu_q8 = (song.cpu_q8 * 15u + (us * 256u) / (HALF_FRAMES * 1000000u / FS)) / 16u;
         if (fm1_audio_free_half() != half)
             felucca_dbg.late++;                         /* the DMA moved on while we rendered */

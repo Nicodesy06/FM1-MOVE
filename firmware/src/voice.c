@@ -82,6 +82,32 @@ static uint32_t voices_busy(void)                       /* sounding voices of al
     return n;
 }
 
+/* FM1 Move (BUG-02): the budget in force. NVOICE, lowered only when the audio render has really run late (two
+ * halves in a row over 85 %, audio.c: shed_voice) to the voices still sounding, so the next notes do not fill the
+ * shed voice's place again and overrun the half once more (a lost half: a click). It comes back one voice a second
+ * while no half is over. Never under VCAP_MIN. The host never runs late: there it stays NVOICE. */
+#define VCAP_MIN 4u
+#define VCAP_QUIET 172u                                  /* halves (~1 s) with no overload before one voice back */
+static uint8_t voice_cap = NVOICE, vcap_low = NVOICE;     /* the cap; the lowest it went (console) */
+static uint16_t vcap_quiet;
+static void voice_cap_half(int over)                    /* audio.c, once a half */
+{
+    if (over) {
+        vcap_quiet = 0;
+    } else if (voice_cap < NVOICE && ++vcap_quiet >= VCAP_QUIET) {
+        vcap_quiet = 0;
+        voice_cap++;
+    }
+}
+static void voice_cap_shed(void)                        /* a voice was shed: the cap down to what still sounds */
+{
+    uint32_t b = voices_busy();
+    voice_cap = (uint8_t)(b < VCAP_MIN ? VCAP_MIN : b < voice_cap ? b : voice_cap);
+    vcap_quiet = 0;
+    if (voice_cap < vcap_low)
+        vcap_low = voice_cap;
+}
+
 static uint32_t lowest_held(const track_t *t)           /* index of the lowest held note (the bass), NVOICE = none */
 {
     uint32_t i, low = NVOICE;
@@ -171,6 +197,7 @@ static void shed_voice(void)
     if (best) {
         voice_kill(best);
         shed_count++;
+        voice_cap_shed();
         return;
     }
     for (p = 0; p < NPART; p++) {
@@ -186,6 +213,7 @@ static void shed_voice(void)
     if (best) {
         voice_kill(best);
         shed_count++;
+        voice_cap_shed();
     }
 }
 
@@ -194,7 +222,7 @@ static int voice_room(track_t *t, int soft)
 {
     track_t *vp = 0;
     uint32_t k;
-    if (voices_busy() < NVOICE)
+    if (voices_busy() < voice_cap)
         return 1;
     k = voice_victim(t, soft, &vp);
     if (k == NVOICE)
@@ -219,7 +247,7 @@ static voice_t *voice_alloc(track_t *t, uint32_t note)
             return &t->v[i];
         nfree += !t->v[i].active;
     }
-    if (nfree && voices_busy() >= NVOICE) {
+    if (nfree && voices_busy() >= voice_cap) {
         track_t *vp = 0;
         uint32_t k = voice_victim(t, 0, &vp);
         if (k < np && vp == t)
@@ -442,6 +470,9 @@ static void trk_note_on(track_t *t, uint32_t note, uint32_t vel)
     }
     if (mode == V_POLY) {
         voice_t *v = voice_alloc(t, note);
+        if ((!v->active || v->stage == 4u) && voices_busy() >= voice_cap)
+            (void)voice_room(t, 0);                     /* (BUG-02: a fading voice taken back for the same note was not
+                                                         * counted: room first, or the budget leaked to 10 voices) */
         t->nmono = 0;                                   /* no stale mono stack after a mode change */
         t->mono_note = 0;
         v->fine = 0;

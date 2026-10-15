@@ -286,6 +286,52 @@ int main(int argc, char **argv)
             trk_all_off(&trk[k]);
     }
 
+    /* BUG-02: the same note struck again on a voice fading out after a steal took it back without room: the budget
+     * leaked (host: up to 10 of 8 in a dense scene). Then the overload policy: a shed voice lowers the cap to what
+     * sounds, new notes keep under it, it comes back a voice a second with no overload */
+    {
+        uint32_t i, worst = 0, re = 0;
+        session();
+        transport_req = 2;
+        run(4);
+        for (k = 0; k < NTRK; k++)
+            trk_all_off(&trk[k]);
+        run(4);
+        trk_set_kind(&trk[1], TK_SYNTH);
+        trk_set_kind(&trk[2], TK_SYNTH);
+        host_preset(&trk[1], 0, 7);
+        host_preset(&trk[2], 0, 7);
+        trk[1].p[P_VOICE] = trk[2].p[P_VOICE] = V_POLY;
+        for (i = 0; i < 6u; i++)
+            trk_note_on(&trk[1], 60u + i, 100);
+        for (i = 0; i < 2u; i++)
+            trk_note_on(&trk[2], 40u + i, 100);
+        run(2);
+        trk_note_on(&trk[2], 50, 100);                /* the ninth: one of track 2's or track 1's voices fades */
+        for (k = 1; k <= 2u; k++)
+            for (i = 0; i < NVOICE; i++)
+                if (trk[k].v[i].active && trk[k].v[i].stage == 4u) {
+                    trk_note_on(&trk[k], trk[k].v[i].note, 100);   /* the fading voice's note again, at once */
+                    re++;
+                    if (busy_now() > worst)
+                        worst = busy_now();
+                }
+        printf("eight: a fading voice's note struck again: %u voices sound (budget %u)\n", busy_now(), NVOICE);
+        check(re > 0u && worst <= NVOICE && busy_now() <= NVOICE, "BUG-02: a fading voice taken back for its note stays inside the budget");
+        shed_voice();                                 /* (as audio.c does after two halves over 85 %) */
+        check(voice_cap == busy_now() && voice_cap < NVOICE, "BUG-02: a shed voice lowers the voice cap to what still sounds");
+        trk_note_on(&trk[1], 80, 100);
+        trk_note_on(&trk[1], 81, 100);
+        run(3);
+        check(busy_now() <= voice_cap, "... new notes keep under it (the overload is not filled again at once)");
+        for (i = 0; i < VCAP_QUIET * (NVOICE - VCAP_MIN); i++)
+            voice_cap_half(0);
+        check(voice_cap == NVOICE, "... and it comes back, a voice a second, while no half is late");
+        for (k = 0; k < NTRK; k++)
+            trk_all_off(&trk[k]);
+        run(4);
+    }
+
     /* stop: everything ends */
     transport_req = 2;
     run(2u * FS / CTL);

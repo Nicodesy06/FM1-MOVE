@@ -2,6 +2,27 @@
 
 ## Unreleased (fm1-move/dev)
 
+### FM1 Move 0.3.1 — the testers' reports (host simulation; awaiting hardware retest)
+Full status, causes and the hardware test list: [docs/BUGFIX_0.3.1.md](BUGFIX_0.3.1.md).
+- **Fixed: a key could play another track's sound (BUG-01).** The UI briefly made each synth track the selected one
+  while naming its preset, and a key pressed in that moment went to that track. It no longer touches the selection.
+- **Fixed: a GRAIN / FM6 / PHYS sound chosen with all three heavy-engine slots in use loaded a different sound** of
+  the old engine (also by Program Change and the device page). The sound now stays and the panel says why.
+- **Fixed: the PRESETS page named the wrong previous / next sounds.**
+- **Fixed: the voice budget could leak to 10 voices (BUG-02)** when a note was struck again while its voice faded
+  after a steal. **New overload policy:** when the FM-1 measures its audio running late, the voice it fades also
+  lowers the voice limit for a while (≥ 4, one voice back a second), so the load is not refilled at once.
+  **SETTINGS › AUDIO LOAD** shows the peak audio load and late buffers, for glitch reports.
+- **Quantize:** the free first take keeps its timing (it was always fully quantized); an overdub keeps the timing of
+  the notes already on a step; a step written by hand gets no stale recorded timing. Strength 0–100 % per track
+  (GROOVE › KNOB 2) was already there; the manual now explains strength, grid (DIV) and REC QUANT apart.
+- **Clear a track:** SAVE opens CLIPS on the selected track's clip playing (SAVE, REC, REC); the question says
+  NO UNDO. Read-only SETTINGS rows no longer show a VALUE knob.
+- **Installer:** Connect uses the updater's list of FM-1 port names (its copy missed SLOOP and Clipper).
+- **Docs:** user sample slots hold 7.4 s (not 3.7); per-step filter locks, clear-track, quantize and glitch FAQ;
+  beta status (community testers, no structured hardware QA).
+- No change to the flash layout, project format, sounds, kits, samples, bootloader, OTA loader or USB rescue.
+
 ### Move a note on the STEP page; the battery (host simulation)
 - **MOVE:** on the STEP page, ALGORITHM on a note moves the whole step one step later / earlier per click: chord,
   length and ties, accent / slide, velocity, nudge, raw timing, fill condition and parameter locks; the cursor follows,

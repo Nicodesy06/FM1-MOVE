@@ -112,6 +112,7 @@ static void project_delete_fmp(uint32_t slot)
 #include "../firmware/src/ds.c"
 #include "../firmware/src/ui_move.c"
 #include "../firmware/src/ui_layers.c"
+static struct { uint32_t max_us, late; } felucca_dbg;   /* (audio.c's diagnostics: no render deadline here) */
 #include "../firmware/src/ui_move_ctl.c"
 
 static const char *outdir;
@@ -982,6 +983,19 @@ int main(int argc, char **argv)
                 hit |= !strcmp(mv.row_l[r], "BATTERY") && !strcmp(mv.row_r[r], "EMPTY");
             check(ctl.menu && hit, "SETTINGS: BATTERY says EMPTY");
         }
+        felucca_dbg.max_us = (HALF_FRAMES * 1000000u / FS) / 2u;   /* (a peak at half the render's time, 3 late halves) */
+        felucca_dbg.late = 3;
+        ctl.row[SC_SETTINGS] = ST_AUDIO;
+        frames(2);
+        {
+            uint32_t r, hit = 0;
+            for (r = 0; r < mv.nrows; r++)
+                hit |= !strcmp(mv.row_l[r], "AUDIO LOAD") && !strcmp(mv.row_r[r], "50% LATE 3");
+            check(hit, "SETTINGS: AUDIO LOAD shows the peak render load and the late buffers (BUG-02 reports)");
+        }
+        ppm("13b-settings-audio");
+        felucca_dbg.max_us = 0;
+        felucca_dbg.late = 0;
         usb.config = 1;
         usb.suspended = 0;
         frames(2);

@@ -50,7 +50,7 @@ const rq = (r, o) => link.request(r, o);
 
 /* INFO and the tracks */
 const info = E.parse[E.CMD.INFO](await rq(E.req.info()));
-ok(E.isMove(info) && info.ntrk === 8 && info.proto === 10 && E.moveVersion(info) === "FM1 MOVE 0.3", `INFO: ${info.version}, ${info.ntrk} tracks, protocol ${info.proto}`);
+ok(E.isMove(info) && info.ntrk === 8 && info.proto === 10 && E.moveVersion(info) === "FM1 MOVE 0.3.1", `INFO: ${info.version}, ${info.ntrk} tracks, protocol ${info.proto}`);
 const tr = E.parse[E.CMD.TRACK](await rq(E.req.track()));
 const rows = E.trackRows(info, tr);
 ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && rows[1].kind === "synth", "TRACK: eight tracks, drums on 1 and 7 (the default project)");

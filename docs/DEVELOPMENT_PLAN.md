@@ -119,6 +119,13 @@ only** (`tests/fm1move_ui_test.c`, the SLOOP-layout suite); not yet run on an FM
 - [x] STEP page MOVE (ALGORITHM on a note: the whole step, locks and nudge included, one undo) and the battery
   (status bar, SETTINGS › BATTERY, BATTERY LOW toast) — host simulation.
 - [ ] Hardware: battery thresholds (SLOOP's) and the USB display checked on an FM-1 running FM1 Move [TEST-HW].
+- [x] 0.3.1, testers' reports (docs/BUGFIX_0.3.1.md): key routing race and heavy-preset refusal (BUG-01), voice
+  budget leak and overload voice cap, AUDIO LOAD (BUG-02), quantize timing fixes, installer port list, clear-track
+  path — host simulation.
+- [ ] Hardware retest of 0.3.1: BUG-01 on keys, BUG-02 with AUDIO LOAD readings, quantize feel, installer [TEST-HW].
+- [ ] After AUDIO LOAD readings: ack the audio half before rendering, cost-weighted voices, clip store out of the
+  bar-line interrupt (BUGFIX_0.3.1.md §2) [TEST-HW].
+- [ ] Groove settings (strength) in the browser editor.
 - [ ] MIDI LEARN clear on the panel (SLOOP: HOME › SYSTEM › MIDI LEARN CLEAR; FM1 Move has no item yet).
 - [ ] SETTINGS › MIDI IN on the panel shows NOTES / CLOCK only (the one-channel setting: device page).
 - [ ] Hardware: CPU of 4 INSERTs + 8 tracks, limiter, THROWs on a device [TEST-HW].

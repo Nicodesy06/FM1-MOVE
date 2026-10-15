@@ -112,6 +112,8 @@ static uint32_t sel_kind(void) { return trk_kind(TSEL); }
 /* the SEQUENCER's STEP page is shown (synth tracks: the drum track keeps its grid) */
 static int ctl_roll(void) { return !ctl.menu && ctl.screen == SC_SEQ && ctl.page[SC_SEQ] == 1u && !is_drum(TSEL); }
 
+/* SETTINGS rows (ST_LABEL below); from ST_BATT on they only show something */
+enum { ST_CLICK, ST_COUNTIN, ST_RECQ, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_BATT, ST_AUDIO, ST_ABOUT, ST_COUNT };
 /* what KNOB k does on the screen shown */
 static kbind_t ctl_bind(uint32_t k)
 {
@@ -145,7 +147,7 @@ static kbind_t ctl_bind(uint32_t k)
     static const kbind_t NONE = {KB_NONE, 0, 0};
     k &= 3u;
     if (ctl.menu)
-        return ctl.screen == SC_SETTINGS && !k ? (kbind_t){KB_SET, 0, "VALUE"} : NONE;
+        return ctl.screen == SC_SETTINGS && !k && ctl.row[SC_SETTINGS] < ST_BATT ? (kbind_t){KB_SET, 0, "VALUE"} : NONE;   /* (BATTERY on: read only) */
     switch (ctl.screen) {
     case SC_PLAY:
         if (sel_kind() == TK_DRUM)
@@ -218,9 +220,8 @@ static groove_t *ctl_groove_own(void)
 }
 
 /* ------------------------------------------------------------ settings --- */
-enum { ST_CLICK, ST_COUNTIN, ST_RECQ, ST_SYNC, ST_MIDIOUT, ST_MIDIIN, ST_LIGHTS, ST_KEYS, ST_USBAUDIO, ST_BATT, ST_ABOUT, ST_COUNT };
 static const char *const ST_LABEL[ST_COUNT] = {"METRONOME", "COUNT-IN", "REC QUANT", "CLOCK IN", "MIDI OUT", "MIDI IN", "LIGHTS",
-                                               "KEY LIGHTS", "USB AUDIO", "BATTERY", "VERSION"};
+                                               "KEY LIGHTS", "USB AUDIO", "BATTERY", "AUDIO LOAD", "VERSION"};
 /* the battery (main.c reads the divider on PB1 into song.batt_raw): SLOOP's three thresholds, 3 bars .. 0, -1 not read
  * yet; on a USB host the reading says little (it powers the FM-1), so it is shown as USB */
 static int32_t ctl_batt(void)
@@ -230,10 +231,15 @@ static int32_t ctl_batt(void)
     return song.batt_raw >= 591 ? 3 : song.batt_raw >= 561 ? 2 : song.batt_raw >= 531 ? 1 : 0;
 }
 static int ctl_on_usb(void) { return usb.config && !usb.suspended; }
+static uint32_t ctl_late0;                              /* felucca_dbg.late at power-on (it is kept across resets) */
 static void ctl_batt_watch(void)                        /* empty: said once, again only after it was charged (2 bars) */
 {
-    static uint8_t said;
+    static uint8_t said, late_set;
     int32_t l = ctl_batt();
+    if (!late_set) {                                     /* (the first frame: AUDIO LOAD counts from this start) */
+        late_set = 1;
+        ctl_late0 = felucca_dbg.late;
+    }
     if (ctl_on_usb() || l >= 2)
         said = 0;
     else if (l == 0 && !said) {
@@ -260,6 +266,14 @@ static void st_value(uint32_t r, char *b)
     case ST_LIGHTS: str_cpy(b, LV[lights_lvl % 4u], 16); break;
     case ST_KEYS: str_cpy(b, KY[lights_keys % 4u], 16); break;
     case ST_USBAUDIO: str_cpy(b, usb_full ? "FULL" : "MAIN", 16); break;
+    case ST_AUDIO: {                                     /* (BUG-02) the render's peak load since power-on, % of its time,
+                                                          * and the buffers that missed it: what a glitch report needs */
+        uint32_t pk = felucca_dbg.max_us * 100u / (HALF_FRAMES * 1000000u / FS), l = felucca_dbg.late - ctl_late0;
+        char *e = ds_itoa(b, (int32_t)(pk > 999u ? 999u : pk));
+        str_cpy(e, "% LATE ", 8);
+        ds_itoa(e + 7, (int32_t)(l > 999u ? 999u : l));
+        break;
+    }
     case ST_BATT: {
         static const char *const BN[4] = {"EMPTY", "LOW", "GOOD", "FULL"};
         int32_t l = ctl_batt();

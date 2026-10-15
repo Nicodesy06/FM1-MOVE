@@ -177,6 +177,8 @@ static void con_status(void)
     con_kv("cpu_pct", (int32_t)(song.cpu_q8 * 100u / 256u));
     con_kv("audio_max_us", (int32_t)felucca_dbg.max_us);
     con_kv("voices_shed", (int32_t)shed_count);
+    con_kv("voice_cap", (int32_t)voice_cap);             /* (BUG-02: the budget now, and the lowest it went) */
+    con_kv("voice_cap_low", (int32_t)vcap_low);
     con_kv("voices_given_up", (int32_t)voice_kills);
     con_kv("track", (int32_t)song.sel + 1);
     con_kv("batt_raw", song.batt_raw);
