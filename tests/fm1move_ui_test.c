@@ -65,7 +65,10 @@ static void fm1_wdt_feed(void) {}
 static int up_used(uint32_t k) { (void)k; return 0; }
 static int up_load(uint32_t k) { (void)k; return 0; }
 static int up_load_to(track_t *t, uint32_t k) { (void)t; (void)k; return 0; }
-static uint32_t up_count(void) { return 0; }
+/* BUG-01 watch: preset_pos_of asks up_count, so every value song.sel holds while the UI looks presets up is seen
+ * here; one other than the frame's own selection (at its start or end) is the race that sent keys to another track */
+static uint32_t sel_seen, sel_glitch;
+static uint32_t up_count(void) { sel_seen |= 1u << (song.sel & 31u); return 0; }
 static uint32_t up_nth(uint32_t n) { return n; }
 static uint32_t up_rank(uint32_t s) { return s; }
 static void up_name(uint32_t k, char *b) { (void)k; str_cpy(b, "USER", 8); }
@@ -134,9 +137,15 @@ static void frame(void)
     uint32_t q;
     for (q = 0; q < 22u; q++)
         mix_block(o, CTL);
-    ui_input();
-    ui_leds();
-    ui_draw();
+    {
+        uint32_t s0 = song.sel;
+        sel_seen = 0;
+        ui_input();
+        ui_leds();
+        ui_draw();
+        if (sel_seen & ~((1u << s0) | (1u << (song.sel & 31u))))
+            sel_glitch++;
+    }
     fm1_ms += 16;
 }
 static void frames(uint32_t n) { while (n--) frame(); }
@@ -988,6 +997,89 @@ int main(int argc, char **argv)
         frames(100);
     }
 
+    /* BUG-01: the UI never makes another track the selected one, not even for a moment (the audio ISR routes the
+     * keys, MIDI and auditions by song.sel); a heavy preset refused (all arenas in use) loads nothing else; the
+     * PRESETS browser names the entries next to the sound by their list position */
+    {
+        uint32_t i, n, total, pos, sel0 = song.sel, bad = 0, tried = 0, heavy[3] = {ENGI_PHYS, ENGI_FM6, ENGI_GRAIN};
+        check(sel_glitch == 0u, "BUG-01: no UI frame so far set song.sel to another track (keys stay on the selected one)");
+        tap(B_HOME);
+        frames(2);
+        for (i = 0; i < 3u; i++)                          /* tracks 2, 4, 5 take the three heavy-engine arenas */
+            set_engine_of(&trk[i == 0 ? 1u : i + 2u], heavy[i]);
+        track_select(2);
+        frames(2);
+        {
+            uint32_t e0 = TSEL->eng_req, p0 = TSEL->preset, k;
+            for (n = 0; n < NBANK; n++) {
+                if (!eng_heavy(BANK[n].e))
+                    continue;
+                tried++;
+                preset_go(n);
+                bad += TSEL->eng_req != e0 || TSEL->preset != p0;
+            }
+            check(tried > 0u && !bad, "BUG-01: a heavy preset refused (3 arenas in use) leaves the sound as it was");
+            check(!strncmp(ui.msg, "HEAVY ENGINES", 13), "... and the panel says HEAVY ENGINES ALL IN USE");
+            check(preset_go_to(TSEL, 0) == 0 && preset_at(0, &k) == TSEL->eng_req, "... a light preset still loads");
+        }
+        for (i = 0; i < 3u; i++)
+            set_engine_of(&trk[i == 0 ? 1u : i + 2u], 0);
+        tap(B_EDIT);                                      /* SOUND, PRESET page */
+        frames(2);
+        pos = preset_pos(&total);
+        check(!strcmp(mv.around[0], BANK[(pos + total - 1u) % total].name) && !strcmp(mv.around[1], BANK[(pos + 1u) % total].name),
+              "PRESETS browser: the previous and next names are the list's neighbours");
+        tap(B_HOME);
+        track_select(sel0);
+        frames(2);
+    }
+
+    /* UX-02: SAVE opens CLIPS on the selected track's clip playing, so SAVE, REC, REC clears that track (asks first) */
+    tap(B_HOME);
+    ctl.row[SC_CLIPS] = 5;
+    tap(B_SAVE);
+    frames(2);
+    check(ctl.screen == SC_CLIPS && ctl.row[SC_CLIPS] == clip_playing(song.sel), "UX-02: CLIPS opens on the selected track's clip playing");
+    tap(B_HOME);
+    frames(2);
+
+    /* FEAT-01: a step's filter lock (SEQ + step held, ALGORITHM the parameter, PRESETS the value) plays on that step
+     * only, while the loop plays: the track filter (every kind) and the sound's filter page are lockable */
+    {
+        track_t *t = &trk[1];
+        uint32_t f, on2 = 0, off_else = 1, base;
+        uint8_t n = 48;
+        check(p_lockable(P_TFLT) && p_lockable(P_ED_FLT) && p_lockable(P_LD_FLT), "FEAT-01: the filters are lock targets");
+        track_select(1);
+        steps_clear(t);
+        put_step(t, 0, 1, &n, ST_NOTE, 0);
+        put_step(t, 2, 1, &n, ST_NOTE, 0);
+        put_step(t, 4, 1, &n, ST_NOTE, 0);
+        t->p[P_SLEN] = 8;
+        base = (uint32_t)(t->p[P_TFLT] + 64);
+        fm1_irq_off();
+        lock_set(t, 2, P_TFLT, -40);
+        fm1_irq_on();
+        if (song.playing) {
+            tap(B_PLAY);
+            frames(2);
+        }
+        tap(B_PLAY);
+        for (f = 0; f < 200u; f++) {
+            frame();
+            if (t->seq_idx == 2u)
+                on2 |= t->p[P_TFLT] == -40;
+            else if (t->seq_idx == 4u || t->seq_idx == 5u)
+                off_else &= (uint32_t)(t->p[P_TFLT] + 64) == base;
+        }
+        tap(B_PLAY);
+        frames(2);
+        check(on2 && off_else && !song.playing, "FEAT-01: a filter lock on step 3 plays there, the filter comes back after it");
+        lock_del(t, 2, P_COUNT);
+        steps_clear(t);
+        t->p[P_SLEN] = 16;
+    }
+
     /* fuzz: random use */
     {
         uint32_t seed = 12345u, f, over = 0;
@@ -1020,6 +1112,7 @@ int main(int argc, char **argv)
         fm1_in.buttons = fm1_in.notes = 0;
         frames(20);
         check(!over, "12000 frames of random use: no crash, every blit on the screen, voice budget kept");
+        check(sel_glitch == 0u, "BUG-01: in all of it, no frame set song.sel to another track");
     }
     printf("fm1ui: frames rendered %u, blits %u\n", ds_frames, blits);
     printf(fails ? "fm1ui: %d FAILED\n" : "fm1ui: all checks ok\n", fails);

@@ -153,6 +153,7 @@ static void step_down(uint32_t w)
     }
     layer_undo_mark(t);
     fm1_irq_off();
+    step_hand(t, idx);
     if (is_drum(t)) {
         dstep_set(&t->dstep[idx], pen_lane, LV_NORM, 0);
     } else {

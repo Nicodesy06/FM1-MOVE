@@ -171,9 +171,9 @@ static void play_bars(uint32_t bars)
 
 static void t_quantize(void)
 {
-    static const int s_tab[3] = {100, 0, 50};
+    static const int s_tab[5] = {100, 0, 25, 50, 75};
     uint32_t k;
-    for (k = 0; k < 3u; k++) {
+    for (k = 0; k < 5u; k++) {
         double want, got;
         char w[96];
         reset();
@@ -210,6 +210,59 @@ static void t_record(void)
           "a live hit keeps its raw deviation (latency-compensated) in its step");
     check(groove_offset(&D->gv, &song_groove, D->roff[4], D->micro[4], 0, 4, 0, 4, 0xFF) == 0,
           "... and plays on the grid at the default strength (100 %)");
+}
+
+/* an overdub on a step that already holds a hit keeps that hit's recorded timing (one raw timing per step);
+ * a step written by hand on an empty step has no recorded timing (an old take's must not move it) */
+static void t_overdub(void)
+{
+    uint32_t b;
+    int8_t first;
+    reset();
+    groove_set_strength(&D->gv, 0);                   /* (played timing: what the raw values are for) */
+    song.rec = (uint8_t)(1u << trk_index(D));
+    transport_req = 1;
+    b = (uint32_t)(STEP_BLK * 4.0 + STEP_BLK / 8.0 + 512.0 / CTL);   /* bar 1: a kick on step 4, 1/8 of a 16th late */
+    while (blk < b)
+        run_block();
+    drum_input(D, 0, LV_NORM, 0, 1);
+    run_block();
+    first = D->roff[4];
+    b = (uint32_t)(STEP_BLK * 20.0 - STEP_BLK / 8.0 + 512.0 / CTL);  /* bar 2: a hat on step 4, 1/8 early */
+    while (blk < b)
+        run_block();
+    drum_input(D, 4, LV_NORM, 0, 1);
+    run_block();
+    transport_req = 2;
+    run_block();
+    printf("groove: overdub on step 4: kick recorded at %d / 64, after the early hat %d / 64\n", first, D->roff[4]);
+    check(first >= 6 && dstep_has(&D->dstep[4], 0) && dstep_has(&D->dstep[4], 4) && D->roff[4] == first,
+          "an overdub on a step with a hit keeps that hit's recorded timing");
+    D->roff[9] = 20;                                  /* (an old take's timing left on a step now empty) */
+    step_hand(D, 9);
+    D->roff[4] = 12;
+    step_hand(D, 4);
+    check(D->roff[9] == 0 && D->roff[4] == 12, "a step written by hand: no stale recorded timing (a step with hits keeps its own)");
+}
+
+/* the free first take of an empty project (no tempo yet): its notes keep how they were played, as a live take */
+static void t_free_take(void)
+{
+    uint32_t T = (uint32_t)(STEP_BLK * 16.0 + 0.5);   /* one bar at 120 BPM */
+    reset();
+    ft_start(D);
+    ft_ev[0].t = 0, ft_ev[0].note = 0, ft_ev[0].vel = LV_NORM, ft_ev[0].d = FT_OPEN;
+    ft_ev[1].t = (uint16_t)(STEP_BLK * 4.0 + STEP_BLK * 12.0 / 64.0), ft_ev[1].note = 2, ft_ev[1].vel = LV_NORM;   /* +12/64 */
+    ft_ev[1].d = FT_OPEN;
+    ft_ev[2].t = (uint16_t)(STEP_BLK * 8.0 - STEP_BLK * 10.0 / 64.0), ft_ev[2].note = 2, ft_ev[2].vel = LV_NORM;   /* -10/64 */
+    ft_ev[2].d = FT_OPEN;
+    ft_n = 3;
+    ft_t = T;
+    ft_close();
+    printf("groove: free take: steps 0 / 4 / 8 at %d / %d / %d (1/64 step)\n", D->roff[0], D->roff[4], D->roff[8]);
+    check(trk_len(D) == 16u && dstep_has(&D->dstep[4], 2) && dstep_has(&D->dstep[8], 2) && D->roff[0] == 0 &&
+              D->roff[4] >= 11 && D->roff[4] <= 13 && D->roff[8] >= -11 && D->roff[8] <= -9,
+          "the free first take keeps each note's played timing (strength under 100 % plays it back)");
 }
 
 static void t_swing_once(void)
@@ -340,6 +393,8 @@ int main(void)
     t_pure();
     t_quantize();
     t_record();
+    t_overdub();
+    t_free_take();
     t_swing_once();
     t_early_wrap();
     t_no_drift();

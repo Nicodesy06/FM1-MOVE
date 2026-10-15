@@ -198,6 +198,20 @@ ok(rows.length === 8 && rows[0].kind === "drums" && rows[6].kind === "drums" && 
   ok(l.factory > 0 && rc === 0 && l2.slots[l2.factory].used, `FM6: ${l.factory} factory patches, B1 stored`);
 }
 
+/* ---- the page's port detection (BUG-03 regression: "No FM-1 found" while other installers worked) ---- */
+{
+  const otaSrc = readFileSync(join(HERE, "fm1ota.js"), "utf8");
+  const page = readFileSync(join(HERE, "device.html"), "utf8");
+  const built = readFileSync(join(ROOT, "docs/device/index.html"), "utf8");
+  const re = new RegExp(otaSrc.match(/export const FM1_PORT = \/(.*)\/(\w*);/)[1], "i");
+  const fm1 = ["Felucca", "FM-1", "M-VAVE FM-1 MIDI 1", "SLOOP", "Clipper", "USB-MIDI", "OTA", "USB Composite Device"];
+  ok(fm1.every((n) => re.test(n)) && !re.test("IAC Driver Bus 1") && !re.test("Arturia KeyStep 37"),
+     "port names: every FM-1 firmware's name is probed, other gear never");
+  ok(/const FM1_PORT = OTA\.FM1_PORT;/.test(page) && !/const FM1_PORT = \//.test(page),
+     "the page's Connect uses the updater's own port list (no stale copy)");
+  ok(/sha256hex, FM1_PORT \}/.test(built), "the built device page exports FM1_PORT from the updater");
+}
+
 link.close();
 console.log(failed ? `\n${failed} FAILED` : "\nall ok");
 process.exit(failed ? 1 : 0);

@@ -460,7 +460,8 @@ static void select_engine(uint32_t e)
     if (is_drum(TSEL))
         return;
     set_engine(e);
-    ui_say("ENGINE ", ENGINES[TSEL->eng_req]->name);
+    if (TSEL->eng_req == e % NENGINES)               /* (refused: "HEAVY ENGINES ALL IN USE" stays on screen) */
+        ui_say("ENGINE ", ENGINES[TSEL->eng_req]->name);
     ui.force = 1;
 }
 
@@ -535,19 +536,22 @@ static void bank_resolve(void)
     }
     bank_ready = 1;
 }
-static uint32_t preset_pos(uint32_t *total)          /* list index of the selected track's preset */
+/* list index of track t's preset. Never by making t the selected track for a moment: the audio interrupt routes
+ * the keys, MIDI and auditions by song.sel, and a key pressed then played another track's sound (BUG-01) */
+static uint32_t preset_pos_of(const track_t *t, uint32_t *total)
 {
     uint32_t i, cur = 0;
     if (!bank_ready)
         bank_resolve();
     for (i = 0; i < NBANK; i++)
-        if (BANK[i].e == TSEL->eng_req && bank_pi[i] == TSEL->preset)
+        if (BANK[i].e == t->eng_req && bank_pi[i] == t->preset)
             cur = i;
-    if (user_of(TSEL) < UP_SLOTS)
-        cur = NBANK + up_rank(user_of(TSEL));
+    if (user_of(t) < UP_SLOTS)
+        cur = NBANK + up_rank(user_of(t));
     *total = NBANK + up_count();
     return cur;
 }
+static uint32_t preset_pos(uint32_t *total) { return preset_pos_of(TSEL, total); }   /* the selected track's */
 
 /* list index n (< total) -> engine, *k its preset; NENGINES = user preset, *k its slot */
 static uint32_t preset_at(uint32_t n, uint32_t *k)
@@ -579,6 +583,8 @@ static int preset_go_to(track_t *t, uint32_t n)
         return up_load_to(t, k);
     if (e != t->eng_req)
         set_engine_of(t, e);
+    if (e != t->eng_req)
+        return 1;                                    /* (refused: no heavy-engine arena free; k is not the old engine's) */
     apply_preset_to(t, k);
     ui.force = 1;
     return 0;
@@ -624,6 +630,9 @@ static void preset_go(uint32_t n)                    /* load list index n into t
     }
     if (e != TSEL->eng_req)
         select_engine(e);
+    if (e != TSEL->eng_req)
+        return;                                      /* refused (HEAVY ENGINES ALL IN USE): the sound stays as it was;
+                                                      * k is a preset of the other engine, never applied to this one */
     apply_preset(k);
     ui.force = 1;
 }

@@ -900,7 +900,8 @@ static void ed_handle(const uint8_t *f, uint32_t n)   /* f: the bytes between F0
             return;
         if (a[0] != TSEL->eng_req)
             set_engine(a[0]);
-        apply_preset(a[1]);
+        if (a[0] == TSEL->eng_req)                         /* (refused, no heavy-engine arena: the sound stays) */
+            apply_preset(a[1]);
         ui.force = 1;
         ed_b(ed_eng(TSEL));
         ed_b(TSEL->preset);

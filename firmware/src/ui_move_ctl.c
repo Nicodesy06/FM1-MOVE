@@ -366,6 +366,8 @@ static void screen_go(uint32_t sc)
         static const uint8_t NP[SC_COUNT] = {1, 1, 2, 2, 1, 1, 7, 4, 1, 1};
         uint32_t np = sc == SC_SOUND && is_drum(TSEL) ? 3u : NP[sc];   /* (the drum track: KIT, INSERT, INSERT 2) */
         ctl.page[sc] = (uint8_t)((ctl.page[sc] + 1u) % np);
+    } else if (sc == SC_CLIPS && clip_playing(song.sel) < NCLIP) {
+        ctl.row[SC_CLIPS] = (uint8_t)clip_playing(song.sel);   /* (on the track's clip playing: REC, REC clears it) */
     }
     ctl.menu = 0;
     ctl.screen = (uint8_t)sc;
@@ -486,6 +488,7 @@ static void ctl_step_edit(uint32_t k, int32_t s)
         break;
     case 1:
         if (!st->n) {
+            step_hand(t, ui.cursor);
             st->note[0] = (uint8_t)scale_snap(t, last_note);
             st->n = 1;
             st->time = ST_NOTE;
@@ -548,9 +551,10 @@ static void ctl_midi_step_in(void)
         if (!ui.entry_open) {
             ui.entry_open = 1;
             undo_mark(t, (undo_sess += 4u) | 3u);
-            st->n = 0;
+            st->n = 0;                                   /* (a new step: no recorded timing) */
             st->lvl = st->rat = 0;
             st->time = ST_NOTE;
+            t->roff[ui.cursor % NSTEP] = 0;
             t->seq_active = 1;
         }
         if (t->p[P_VOICE]) {
@@ -581,9 +585,10 @@ static void ctl_step_entry(uint32_t pressed)
         if (!ui.entry_open) {
             ui.entry_open = 1;
             undo_mark(t, (undo_sess += 4u) | 3u);
-            st->n = 0;
+            st->n = 0;                                   /* (a new step: no recorded timing) */
             st->lvl = st->rat = 0;
             st->time = ST_NOTE;
+            t->roff[ui.cursor % NSTEP] = 0;
             t->seq_active = 1;
         }
         if (t->p[P_CHORD] && !t->p[P_VOICE]) {           /* chord mode: the chord as it sounds, not only its root */
@@ -680,7 +685,7 @@ static void ctl_clip_clear(void)
         return;
     }
     t[11] = (char)('1' + k);
-    ctl_arm(ACT_CLIPCLEAR, B_REC, k, t, "ITS PATTERN GOES", "REC CLEAR");
+    ctl_arm(ACT_CLIPCLEAR, B_REC, k, t, "ITS PATTERN GOES, NO UNDO", "REC CLEAR");
 }
 
 /* a button tapped (released quickly, nothing touched while held) */
@@ -1308,10 +1313,7 @@ static void mv_name(uint32_t i, char *b, uint32_t n)
     } else if (trk_kind(t) == TK_MIDI) {
         str_cpy(b, "MIDI", n);
     } else {
-        uint32_t total, sel = song.sel, pos;
-        song.sel = (uint8_t)i;                           /* (preset_pos reads the selected track) */
-        pos = preset_pos(&total);
-        song.sel = (uint8_t)sel;
+        uint32_t total, pos = preset_pos_of(t, &total);  /* (never song.sel = i: the audio ISR routes the keys by it) */
         str_cpy(b, pos < total ? preset_kind(pos) : ENGINES[t->eng_req % NENGINES]->name, n);
     }
 }
@@ -1644,10 +1646,20 @@ static void mv_fill(void)
         str_cpy(mv.cat, pos < total ? preset_kind(pos) : "", sizeof mv.cat);
         if (total) {
             const char *nm;
-            nm = preset_at((pos + total - 1u) % total, &kk) < NBANK ? BANK[preset_at((pos + total - 1u) % total, &kk)].name : "USER";
-            str_cpy(mv.around[0], nm, sizeof mv.around[0]);
-            nm = preset_at((pos + 1u) % total, &kk) < NBANK ? BANK[preset_at((pos + 1u) % total, &kk)].name : "USER";
-            str_cpy(mv.around[1], nm, sizeof mv.around[1]);
+            uint32_t j;
+            for (j = 0; j < 2u; j++) {                   /* the list's previous and next entries (by list index) */
+                uint32_t n = (pos + (j ? 1u : total - 1u)) % total;
+                if (n < NBANK) {
+                    nm = BANK[n].name;
+                    str_cpy(mv.around[j], nm, sizeof mv.around[j]);
+                } else if (preset_at(n, &kk) == NENGINES && kk < UP_SLOTS) {
+                    char ub[13];
+                    up_name(kk, ub);
+                    str_cpy(mv.around[j], ub, sizeof mv.around[j]);
+                } else {
+                    str_cpy(mv.around[j], "USER", sizeof mv.around[j]);
+                }
+            }
         }
     } else {
         str_cpy(mv.cat, "KIT", sizeof mv.cat);

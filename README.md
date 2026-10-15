@@ -21,9 +21,10 @@ Groove Engine · eight tracks of any kind · a premium 240 × 240 interface desi
 ---
 
 > [!WARNING]
-> **Experimental, never run on hardware.** Everything below is implemented and verified in host simulation and with
-> the real JieLi target compiler, but no FM1 Move build has run on a physical FM-1 yet. Do not install it on a device
-> you are not prepared to recover (see [Recovery](#recovery)). The stable firmware this project builds on is
+> **Experimental beta.** Everything below is implemented and verified in host simulation and with the real JieLi
+> target compiler. Community testers have installed earlier 0.3 builds on their FM-1s and reported bugs (see
+> [the changelog](docs/CHANGELOG.md)); the fixes are verified in simulation and wait for their retest. No structured
+> hardware test pass has been made by the maintainer. Do not install it on a device you are not prepared to recover (see [Recovery](#recovery)). The stable firmware this project builds on is
 > [SLOOP](https://github.com/isod89/sloop-fm1).
 
 ## Status

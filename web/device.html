@@ -206,10 +206,11 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
     <div class="card">
       <h2>FM1 Move <span id="mv-ver"></span> <span class="badge exp">EXPERIMENTAL</span></h2>
       <p class="muted">Eight tracks of any kind, the Groove Engine, the new screens, FM1M projects, and this device page.</p>
-      <div class="notice red"><b>Never run on an FM-1 yet.</b> This build is compiled with the real JieLi compiler and tested only in
-        simulation (host tests and the virtual FM1). Timing, audio load and the display bus of a real FM-1 have not been tried.
+      <div class="notice red"><b>Beta.</b> This build is compiled with the real JieLi compiler and its fixes are tested only in
+        simulation (host tests and the virtual FM1). Community testers run earlier 0.3 builds on their FM-1s, but there has been no
+        structured hardware test of audio load, timing and the display bus.
         Install it only on an FM-1 you are ready to recover (see Rescue below). Save a SLOOP backup first if you have one.</div>
-      <label class="check"><input type="checkbox" id="ack-move"> I understand this firmware has never been tested on hardware, that it may not
+      <label class="check"><input type="checkbox" id="ack-move"> I understand this firmware has not been tested systematically on hardware, that it may not
         start, and how to put SLOOP or the official firmware back.</label>
       <button class="btn primary" id="go-move" disabled>Install FM1 Move</button>
       <dl class="facts" id="mv-facts"></dl>
@@ -306,7 +307,7 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
   <div class="card" data-body hidden>
     <h2>Sample slots</h2>
     <div class="slots" id="slots"></div>
-    <p class="tiny" style="margin:10px 0 0">About 3.7 s of sound each (80 KiB, IMA ADPCM at 22 kHz). A drum track plays one as a kit (KIT USR1–USR3), a synth track with
+    <p class="tiny" style="margin:10px 0 0">About 7.4 s of sound each (80 KiB, 4-bit IMA ADPCM at 22.05 kHz, mono). A drum track plays one as a kit (KIT USR1–USR3), a synth track with
       the SAMPLE or GRAIN engine as an instrument. FM1 Move has three slots: SLOOP's fourth (USR4) is where FM1 Move keeps its projects.</p>
   </div>
   <div class="card" data-body hidden>
@@ -447,7 +448,8 @@ let dev = null;          /* {kind: "usb" | "virtual", link, info, move, ...} */
 let midi = null;
 const rq = (r, o) => dev.link.request(r, o);
 const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";   /* SLOOP / FM1 Move name their USB MIDI "Felucca" */
-const FM1_PORT = /fm-1|felucca|ota|composite|sinco|usb-midi/i;                   /* every name the updater probes (fm1ota.js) */
+const FM1_PORT = OTA.FM1_PORT;   /* every name the updater probes (fm1ota.js): one list, so Connect never says "No FM-1 found"
+                                   about a port Install would use (a copy here missed SLOOP and Clipper) */
 const seenPorts = (m) => [...new Set([...m.inputs.values()].filter((p) => p.state !== "disconnected").map((p) => p.name || "(no name)"))];
 const NOT_FOUND_TIPS = "Plug the FM-1 straight into the computer (no hub), switch it on, close every other app or tab that uses MIDI " +
   "(SLOOP's editor, M-UPGRADE, a DAW; on Windows only one program can use a MIDI port), then reload this page and try again.";

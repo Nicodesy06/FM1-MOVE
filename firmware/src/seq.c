@@ -547,6 +547,15 @@ static uint32_t rec_target(const track_t *t, uint32_t *later)
     return abs;
 }
 
+/* FM1 Move: a step written by hand (no recorded timing): when it held nothing, an old take's raw timing (roff)
+ * must not move it off the grid at a quantize strength under 100 % */
+static void step_hand(track_t *t, uint32_t idx)
+{
+    idx %= NSTEP;
+    if (is_drum(t) ? !dstep_mask(&t->dstep[idx]) : !(t->step[idx].time == ST_NOTE && t->step[idx].n))
+        t->roff[idx] = 0;
+}
+
 /* note into synth step idx (overdub: a step that holds notes gets this one added, a chord of up to 4;
  * when full, the last note is replaced; MONO / LEGATO / UNISON parts keep one note per step) */
 static void step_add(track_t *t, uint32_t idx, uint32_t note, uint32_t vel, uint32_t lvl, uint32_t rat)
@@ -583,9 +592,12 @@ static void step_add(track_t *t, uint32_t idx, uint32_t note, uint32_t vel, uint
 static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int hold)
 {
     uint32_t later, abs = rec_target(t, &later), idx = trk_pidx(t, abs), k;
+    const step_t *s = &t->step[idx % NSTEP];
+    int fresh = s->time != ST_NOTE || !s->n || t->p[P_VOICE] != V_POLY;   /* (step_add starts the step afresh) */
     undo_mark(t, UNDO_REC(t));
     step_add(t, idx, note, vel, vel_lvl(vel), rat);
-    t->roff[idx % NSTEP] = rec_dev64(t, abs);         /* the raw timing (played back by the quantize strength) */
+    if (fresh)                                      /* the raw timing (played back by the quantize strength); an */
+        t->roff[idx % NSTEP] = rec_dev64(t, abs);   /* overdub into notes already there keeps theirs (one per step) */
     t->seq_active = 1;
     if (later) {                                    /* it sounds now: the step must not trigger it again */
         if (t->rskip_abs != abs)
@@ -610,10 +622,12 @@ static void rec_note(track_t *t, uint32_t note, uint32_t vel, uint32_t rat, int 
 /* live recording into the drum track: lane, level, ratchet */
 static void rec_hit(track_t *t, uint32_t lane, uint32_t lvl, uint32_t rat)
 {
-    uint32_t later, abs = rec_target(t, &later);
+    uint32_t later, abs = rec_target(t, &later), idx = trk_pidx(t, abs) % NSTEP;
+    int fresh = !(dstep_mask(&t->dstep[idx]) & ~(1u << lane));   /* (no other sound on the step) */
     undo_mark(t, UNDO_REC(t));
-    dstep_set(&t->dstep[trk_pidx(t, abs)], lane, lvl, rat);
-    t->roff[trk_pidx(t, abs) % NSTEP] = rec_dev64(t, abs);
+    dstep_set(&t->dstep[idx], lane, lvl, rat);
+    if (fresh)                                      /* (an overdub keeps the timing of the hits already there) */
+        t->roff[idx] = rec_dev64(t, abs);
     t->seq_active = 1;
     if (later) {
         if (t->rskip_abs != abs)
@@ -1034,11 +1048,17 @@ static void ft_close(void)
         trk[i].p[P_SDIV] = 2;                         /* 1/16 */
     }
     for (i = 0; i < ft_n; i++) {                      /* the notes, to the nearest step */
-        uint32_t idx = (ft_ev[i].t * len * 2u + T) / (2u * T) % len;
+        uint32_t u = (ft_ev[i].t * len * 2u + T) / (2u * T), idx = u % len;
+        /* FM1 Move: how far from that step it was played, 1/64 step (roff, as a live take keeps it): the quantize
+         * strength plays it back from there to the grid. The first note on a step sets it (as rec_note) */
+        int32_t d = (int32_t)((ft_ev[i].t * len * 128u + T) / (2u * T)) - (int32_t)(u * 64u);
+        int fresh = is_drum(t) ? !dstep_mask(&t->dstep[idx]) : !(t->step[idx].time == ST_NOTE && t->step[idx].n);
         if (is_drum(t))
             dstep_set(&t->dstep[idx], ft_ev[i].note & 15u, ft_ev[i].vel & 3u, 0);
         else
             step_add(t, idx, ft_ev[i].note, ft_ev[i].vel, vel_lvl(ft_ev[i].vel), 0);
+        if (fresh)
+            t->roff[idx] = (int8_t)clamp(d, MICRO_MIN, MICRO_MAX);
     }
     if (!is_drum(t))
         for (i = 0; i < ft_n; i++) {                  /* their lengths: TIE steps, up to the next note */

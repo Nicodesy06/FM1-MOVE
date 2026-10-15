@@ -167,8 +167,9 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     with the Groove Engine, and every function is one press away.</p>
   <div class="strip"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="cta"><a class="btn primary" href="#quick-start">Quick start</a><a class="btn" href="../sim/">Try it in the browser</a><a class="btn" href="../device/">Install &amp; manage</a></div>
-  <div class="note warn"><b>Experimental.</b> FM1 Move is tested in simulation (host tests and the browser simulator, which runs the firmware's own code). It has
-    <b>not yet run on a physical FM-1</b>. Read <a href="#install">Install</a> and <a href="#recovery">Recovery</a> before you put it on your device.</div>
+  <div class="note warn"><b>Beta, experimental.</b> The maintainer tests FM1 Move in simulation (host tests and the browser simulator, which runs the firmware's own code).
+    Community testers have installed earlier 0.3 builds on their FM-1s and reported bugs; this build's fixes are verified in simulation only and wait for their retest.
+    There has been <b>no structured hardware test pass</b> yet. Read <a href="#install">Install</a> and <a href="#recovery">Recovery</a> before you put it on your device.</div>
 </div>
 
 <!-- ================================================================== QUICK START -->
@@ -539,8 +540,12 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><th>On CLIPS</th><th>What it does</th></tr>
     <tr><td>SAVE (again)</td><td>Launches the clip under the cursor</td></tr>
     <tr><td>EDIT</td><td>Copies the clip playing into the cursor's slot. If that slot holds a pattern it asks first: <kbd>EDIT</kbd> again replaces, any other button cancels.</td></tr>
-    <tr><td>REC</td><td>Clears the cursor's clip (asks: <kbd>REC</kbd> again clears). On this screen REC does not arm recording — record from the other screens.</td></tr>
+    <tr><td>REC</td><td>Clears the cursor's clip (asks: <kbd>REC</kbd> again clears; there is no undo). On this screen REC does not arm recording — record from the other screens.</td></tr>
   </table></div>
+  <div class="note" id="clear-track"><b>Clear a track:</b> select the track, press <kbd>SAVE</kbd> (CLIPS: the cursor is already on that track's clip playing), then
+    <kbd>REC</kbd>, and <kbd>REC</kbd> again to confirm. That clears the pattern of the clip playing (its notes, locks, nudges); the sound stays. It cannot be undone,
+    which is why it asks. To remove only some notes: hold <kbd>EDIT</kbd> and press their keys (undo: <kbd>EDIT</kbd> + <kbd>OCT−</kbd>). SLOOP's "hold REC to clear" is
+    not used in FM1 Move: REC records.</div>
   <h3>How clips keep your work</h3>
   <ul>
     <li>Everything that writes a pattern — <kbd>SEQ</kbd> + keys, recording, <kbd>EDIT</kbd>, the STEP page, the groove, the device page — writes the clip playing. Switching
@@ -563,7 +568,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
         <tr><th>Control</th><th>GROOVE screen (ARP)</th></tr>
         <tr><td>ALGORITHM</td><td>Template: STRAIGHT, MPC 16, HOUSE, UK GARAGE, BROKEN, ROLLING, LATIN, USER. Choosing one also sets its swing.</td></tr>
         <tr><td>KNOB 1</td><td>Swing, 0–100</td></tr>
-        <tr><td>KNOB 2</td><td>Quantize strength: 100 % on the grid, 0 % exactly as played</td></tr>
+        <tr><td>KNOB 2</td><td>Quantize strength: 100 % on the grid, 0 % exactly as played, anything between (<a href="#quantize">how much, which grid</a>)</td></tr>
         <tr><td>KNOB 3</td><td>Groove amount: how much of the template's timing and accents</td></tr>
         <tr><td>KNOB 4</td><td>Humanize: small timing and velocity variations</td></tr>
       </table></div>
@@ -575,6 +580,20 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <li><b>Humanize repeats:</b> the variations are the same every loop and after saving, so a take you like stays as it is.</li>
     <li><b>Swing once:</b> swing shapes the grid; templates add only what swing does not, so nothing is moved twice.</li>
   </ul>
+  <h3 id="quantize">How much quantize, on which grid</h3>
+  <ul>
+    <li><b>Strength, per track:</b> <kbd>ARP</kbd> (GROOVE) › <kbd>KNOB 2</kbd> QUANT. 100 % puts every recorded note on the grid; 75 % / 50 % / 25 % move it that
+      share of the way from where you played it; 0 % plays it exactly as played. A new track starts at 100 % (as SLOOP). Each track keeps its own value, and the
+      project saves it.</li>
+    <li><b>Your timing is never thrown away:</b> each recorded note keeps how early or late you played it (up to half a step), so you can lower or raise the strength
+      at any time, even after saving and loading.</li>
+    <li><b>The grid is the track's step:</b> TRACKS (<kbd>SEL</kbd>) › <kbd>KNOB 4</kbd> DIV, 1/32 to 2 bars, triplets included. To record on an 1/8 grid, set DIV
+      1/8 before recording (DIV also sets how fast the pattern plays, so set it first).</li>
+    <li><b>Not the same as REC QUANT:</b> SETTINGS › REC QUANT only decides when a take starts and stops (on 1, 2, 4 or 8 bars). It never moves notes.</li>
+    <li><b>What stays on the grid:</b> note lengths (a note lasts whole steps) and ratchets. Only the start of a note keeps your timing.</li>
+  </ul>
+  <div class="note">Fixed in this update (host simulation): the free first take of an empty project now keeps each note's timing, like any other take (it used to land fully on the
+    grid whatever the strength); an overdub on a step no longer replaces the timing of the notes already on it; a step written by hand no longer inherits an old take's timing.</div>
   <div class="note"><b>Commit</b> (baking the groove into the steps, with one undo) is implemented and tested in the engine but has no panel gesture yet.</div>
 </section>
 
@@ -707,7 +726,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <div class="card"><h4 style="margin-top:0">Install</h4>FM1 Move 0.3 (experimental, behind a warning you must tick), SLOOP 2.6 (stable), or back to the official V15 with M-VAVE's own file.</div>
     <div class="card"><h4 style="margin-top:0">Tracks &amp; sounds</h4>The eight tracks; engine, sound or kit; every parameter of the track and the song (those the panel does not reach are marked "web only").</div>
     <div class="card"><h4 style="margin-top:0">User presets</h4>Store a track's sound in one of 32 slots, load, rename, erase, export and import them.</div>
-    <div class="card"><h4 style="margin-top:0">Samples &amp; kits</h4>Three sample slots (USR1–3, about 3.7 s each). Build a drum kit by dropping sounds on 16 pads, or a multi-sampled instrument — WAV, MP3, AIFF…</div>
+    <div class="card"><h4 style="margin-top:0">Samples &amp; kits</h4>Three sample slots (USR1–3, about 7.4 s each: mono, 22.05 kHz, 4-bit IMA ADPCM). Build a drum kit by dropping sounds on 16 pads, or a multi-sampled instrument — WAV, MP3, AIFF…</div>
     <div class="card"><h4 style="margin-top:0">FM6 patches</h4>Load DX7 cartridges or single voices (.syx) into the bank B1–B27; export the bank.</div>
     <div class="card"><h4 style="margin-top:0">Projects &amp; backup</h4>Load, save, export, import and clear projects; one file backs up everything and puts it back.</div>
   </div>
@@ -723,7 +742,8 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
       already runs FM1 Move). Read the warning, tick it, press <b>Install FM1 Move</b>, allow MIDI when the browser asks. Do not unplug while it writes.</li>
     <li>The FM-1 restarts into FM1 Move. Connect it on the page to see its version.</li>
   </ol>
-  <div class="note warn">FM1 Move has not yet run on a physical FM-1. Install it only on a device you are ready to recover. Installing custom firmware is at your own risk.</div>
+  <div class="note warn">FM1 Move is a beta: community testers run it on their FM-1s, but no structured hardware test pass has been made, and each update's fixes are
+    verified in simulation first. Install it only on a device you are ready to recover. Installing custom firmware is at your own risk.</div>
 </section>
 
 <!-- ================================================================== RECOVERY -->

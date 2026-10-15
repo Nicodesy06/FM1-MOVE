@@ -86,7 +86,7 @@ def main(move_pkg, version, sloop_pkg=None):
     ota = strip_module((HERE / "fm1pkg.js").read_text(encoding="utf-8")) + "\n" + \
         strip_module((HERE / "fm1ota.js").read_text(encoding="utf-8"))
     ota = ("const OTA = (() => {\n" + ota +
-           "\nreturn { Updater, productOf, logicalImage, validateStockPackage, OUR_LOADER, sha256hex };\n})();")
+           "\nreturn { Updater, productOf, logicalImage, validateStockPackage, OUR_LOADER, sha256hex, FM1_PORT };\n})();")
     html = (HERE / "device.html").read_text(encoding="utf-8")
     for mark, text in (("/*PROTO*/", proto), ("/*LIB*/", lib), ("/*OTA*/", ota),
                        ("/*META*/", json.dumps({"move": move_meta, "sloop": sloop_meta})),
