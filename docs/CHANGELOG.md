@@ -16,6 +16,22 @@ Full status, causes and the hardware test list: [docs/BUGFIX_0.3.1.md](BUGFIX_0.
 - **Quantize:** the free first take keeps its timing (it was always fully quantized); an overdub keeps the timing of
   the notes already on a step; a step written by hand gets no stale recorded timing. Strength 0–100 % per track
   (GROOVE › KNOB 2) was already there; the manual now explains strength, grid (DIV) and REC QUANT apart.
+- **Every control says what it does (UI audit):** a new host test, `tests/fm1move_ui_audit.c`, presses every
+  button and turns every knob and encoder (and, with a button held, every key) on every screen and page, on a synth
+  and a drum track, and fails on a knob cell without its label or value, on a change the screen does not show, and
+  on a label cut short. What it found, fixed:
+  - With a button held (FX, EDIT, ARP, SEQ, SEL, GLO) the knob strip showed the names but **no values**, and the big
+    readout only a unit ("HZ"): SEQ held + KNOB 1 on the SEQUENCER screen changed the note without saying which. The
+    strip now shows each knob's value on every screen (NOTE C#4, DUST 12, RATE 1/16, VOLUME -3.5 DB…).
+  - On CLIPS, a held button's knobs were labelled LAUNCH / COPY / CLEAR; they now show what they edit.
+  - EDIT held: SHIFT and TRANSP say how far (+2 STEPS, -1 ST); the keys say what they do (ERASE C4, ERASE KICK,
+    MUTED SNARE, KEYS MUTE SOUNDS).
+  - SEQ + a step held: ALGORITHM / PRESETS (the parameter lock) now say which parameter and its value (LOCK PIT +4).
+  - PRESETS on a screen that does not show the sound now says which (SOUND FM BASS, KIT 808).
+  - SEQUENCER SHIFT no longer hides the moving pattern behind its readout.
+  - Drum step held: the ratchet value is shown.
+  - Three labels were cut on screen: SOUND › SYNC "LFO SYNC" / "ENV SYNC" are now LFO / ENV (the page is SYNC), the
+    KEY page's "SCALE LOCK" is now LOCK. `fm1move_ui_test` now fails on any label cut short.
 - **REC QUANT under a bar:** SETTINGS › REC QUANT now also offers 1/16, 1/8, 1/4 (the next beat) and 1/2 bar, besides
   1, 2, 4, 8 bars and OFF; the toast says where the take starts or stops. Stored in the settings word's spare bits
   21–25 (a 0.3 setting reads as it was; 0.3 reads the new values as 1 BAR).

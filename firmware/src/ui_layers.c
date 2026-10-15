@@ -75,6 +75,7 @@ static void layer_undo_mark(track_t *t)
         ui.step_sess = (undo_sess += 4u) | 3u;
     undo_mark(t, ui.step_sess);
 }
+static int16_t ly_shift_acc, ly_trans_acc;              /* EDIT held: SHIFT and TRANSP so far (FM1 Move's knob strip) */
 static void pattern_rotate(track_t *t, int32_t d)       /* every step one later (d > 0) / earlier */
 {
     uint32_t len = trk_len(t), i;
@@ -573,12 +574,15 @@ static void layer_knobs(uint32_t layer)
                 t->p[P_TFLT] = (int16_t)clamp(t->p[P_TFLT] + accel(EN_K4, s, 127), -64, 63);
             break;
         case LY_ERASE:
-            if (k == 0u)
+            if (k == 0u) {
                 pattern_rotate(t, s);
-            else if (k == 1u)
+                ly_shift_acc += s;                      /* (FM1 Move says how far, while EDIT is held) */
+            } else if (k == 1u) {
                 pattern_length(t, s);
-            else if (k == 2u)
+            } else if (k == 2u && !is_drum(t)) {
                 pattern_transpose(t, s);
+                ly_trans_acc += s;
+            }
             break;
         case LY_ROLL:
             if (k == 0u)

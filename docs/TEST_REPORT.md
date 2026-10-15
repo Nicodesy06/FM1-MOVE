@@ -159,6 +159,15 @@ loads the n-th sound).
 
 Host simulation only: **no FM1 Move build has run on a physical FM-1.**
 
+### UI audit (host simulation)
+
+`tests/fm1move_ui_audit.c` (in the full suite): 3 820 actions — every screen and page with every encoder both ways,
+every button held on every screen with every encoder (and on PLAY every key), SEQ + a step held — on a synth and a drum
+track. It fails on a knob cell without its label or value, on a change of what is set that the screen does not show at
+all, and on a label cut short. First run: about 200 findings (held-button knobs without values, CLIPS strip, EDIT layer,
+parameter locks, PRESETS off the sound screens, SEQUENCER SHIFT, 3 clipped labels); after the fixes: 0. It cannot
+judge whether a shown text is the right one: the specific cases have their own checks in `fm1move_ui_test`.
+
 ### 0.3.1: the testers' reports (host simulation)
 
 Details: `docs/BUGFIX_0.3.1.md`. New checks, each shown to fail on the previous code first:

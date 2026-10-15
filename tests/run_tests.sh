@@ -129,6 +129,11 @@ if $ASAN -o "$OUT/fm1move_ui_asan" tests/fm1move_ui_test.c -lm 2>/dev/null; then
     run "FM1 Move UI on a virtual FM1 under ASan + UBSan" "$OUT/fm1move_ui_asan" "$OUT/fm1ui"
 fi
 
+# FM1 Move UI audit: every screen and page, every button held, every knob, encoder and key, on a synth and a drum
+# track: no knob cell without its label or value, no change the screen does not show, no label cut short
+$CC -O1 -w -Ibuild/gen -Ifirmware/src -Ifirmware/hal -o "$OUT/fm1move_ui_audit" tests/fm1move_ui_audit.c -lm
+run "FM1 Move UI audit: every control in every context says what it does" "$OUT/fm1move_ui_audit"
+
 # FM1 Move UI: the design system and screens on the host (labels fit, partial redraw), the colour contrast
 python3 tools/gen_dsfont.py build/gen/ds_fonts.h >/dev/null
 $CC -Ibuild/gen -Ifirmware/src -o "$OUT/ui_mockups" tests/ui_mockups.c

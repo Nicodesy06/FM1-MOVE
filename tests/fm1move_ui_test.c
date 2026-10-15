@@ -160,6 +160,7 @@ static void turn(uint32_t role, int32_t s) { encs[panel.enc[role]] += s * panel.
 static int fails;
 static void check(int ok, const char *what) { printf("fm1ui: %-74s %s\n", what, ok ? "ok" : "FAIL"); fails += !ok; }
 
+#ifndef FM1UI_NO_MAIN                                  /* (tests/fm1move_ui_audit.c reuses all of the above) */
 int main(int argc, char **argv)
 {
     uint32_t i, k;
@@ -856,7 +857,7 @@ int main(int argc, char **argv)
         tap(B_EDIT);
         tap(B_EDIT);
         frames(2);
-        check(ctl.page[SC_SOUND] == 3u && !strcmp(mv.k[0].label, "LFO SYNC") && !strcmp(mv.k[3].label, "ENV SYNC"),
+        check(ctl.page[SC_SOUND] == 3u && !strcmp(mv.k[0].label, "LFO") && !strcmp(mv.k[3].label, "ENV"),
               "SOUND page 4: LFO SYNC / TRIG / POL, ENV SYNC");
         {
             uint32_t k2, got = 0;
@@ -1098,6 +1099,39 @@ int main(int argc, char **argv)
         frames(2);
     }
 
+    /* SEQ held on the SEQUENCER screen (no STEPS page there): KNOB 1 still says what it edits, the note, and its value */
+    {
+        uint32_t n0;
+        track_select(1);
+        ctl.menu = 0;
+        ctl.screen = SC_SEQ;
+        ctl.page[SC_SEQ] = 0;
+        song.seq_mode = 1;
+        frames(4);
+        press(B_SEQ);
+        frames(20);
+        n0 = pen_note[0];
+        turn(EN_K1, 1);
+        frames(2);
+        {
+            char nn[8];
+            note_name(nn, pen_note[0]);
+            check(pen_note[0] != n0 && mv.k[0].label && !strcmp(mv.k[0].label, "NOTE") && !strcmp(mv.k[0].value, nn),
+                  "SEQ held on SEQUENCER + KNOB 1: the strip says NOTE and the new note");
+        }
+        release(B_SEQ);
+        press(B_FX);
+        frames(20);
+        turn(EN_K2, 1);
+        frames(2);
+        check(!strcmp(mv.k[1].label, "DUST") && mv.k[1].value[0], "FX held + KNOB 2: DUST with its value (not an empty cell)");
+        release(B_FX);
+        frames(120);
+        song.g[G_DUST] = 0;
+        tap(B_HOME);
+        frames(2);
+    }
+
     /* UX-02: SAVE opens CLIPS on the selected track's clip playing, so SAVE, REC, REC clears that track (asks first) */
     tap(B_HOME);
     ctl.row[SC_CLIPS] = 5;
@@ -1177,8 +1211,10 @@ int main(int argc, char **argv)
         frames(20);
         check(!over, "12000 frames of random use: no crash, every blit on the screen, voice budget kept");
         check(sel_glitch == 0u, "BUG-01: in all of it, no frame set song.sel to another track");
+        check(ds_clipped == 0u, "no label was cut short on any screen (every one fits its room)");
     }
     printf("fm1ui: frames rendered %u, blits %u\n", ds_frames, blits);
     printf(fails ? "fm1ui: %d FAILED\n" : "fm1ui: all checks ok\n", fails);
     return fails;
 }
+#endif

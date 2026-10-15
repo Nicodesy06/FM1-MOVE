@@ -368,6 +368,9 @@ static int32_t ds_label(int32_t x, int32_t y, int32_t w, const char *s, uint16_t
     if (t == -2) {
         ds_track = -1;
         ds_clipped++;
+#ifdef DS_CLIP_LOG
+        DS_CLIP_LOG(s, w);                    /* (host tests: which label, how wide the room was) */
+#endif
     }
     e = ds_text_clip(&DS_F12, x, y, w, s, c);
     ds_track = 0;

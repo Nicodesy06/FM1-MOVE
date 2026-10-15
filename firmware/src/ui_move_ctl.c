@@ -75,6 +75,7 @@ static void ctl_toast(const char *a, const char *b)
     str_cpy(ctl.toast + n, b, sizeof ctl.toast - n);
     ctl.toast_ms = fm1_ms | 1u;
 }
+static void mv_sound(uint32_t i, char *b, uint32_t n);   /* (below) */
 /* SLOOP's messages (ui_say) become toasts */
 static void ctl_messages(void)
 {
@@ -132,8 +133,8 @@ static kbind_t ctl_bind(uint32_t k)
     static const kbind_t SND[4] = {{KB_TP, P_DIST, "DRIVE"}, {KB_TP, P_CHOR, "CHORUS"}, {KB_TP, P_DLY, "DELAY"},
                                    {KB_TP, P_REV, "REVERB"}};
     /* SLOOP 2.6: LFO 2 and ENV SYNC; the INSERT (A B C named by its TYPE: label 0 = the descriptor's); ANALOG's TYPE */
-    static const kbind_t SYN[4] = {{KB_TP, P_LSYNC, "LFO SYNC"}, {KB_TP, P_LTRIG, "LFO TRIG"}, {KB_TP, P_LPOL, "LFO POL"},
-                                   {KB_TP, P_ESYNC, "ENV SYNC"}};
+    static const kbind_t SYN[4] = {{KB_TP, P_LSYNC, "LFO"}, {KB_TP, P_LTRIG, "LFO TRIG"}, {KB_TP, P_LPOL, "LFO POL"},
+                                   {KB_TP, P_ESYNC, "ENV"}};   /* (the page is SYNC: "LFO SYNC" did not fit) */
     static const kbind_t INS[4] = {{KB_TP, P_ITYPE, "INSERT"}, {KB_TP, P_IA, 0}, {KB_TP, P_IB, 0}, {KB_TP, P_IC, 0}};
     static const kbind_t IN2[4] = {{KB_TP, P_IMIX, "INS MIX"}, {KB_TP, P_FTYPE, "FLT TYPE"}, {KB_NONE, 0, 0}, {KB_NONE, 0, 0}};
     static const kbind_t TX1[4] = {{KB_GP, G_TXSRC, "TEXTURE"}, {KB_GP, G_TXLVL, "LEVEL"}, {KB_GP, G_TXTONE, "TONE"},
@@ -231,6 +232,83 @@ static int32_t ctl_batt(void)
     return song.batt_raw >= 591 ? 3 : song.batt_raw >= 561 ? 2 : song.batt_raw >= 531 ? 1 : 0;
 }
 static int ctl_on_usb(void) { return usb.config && !usb.suspended; }
+/* SEQ + a step held: ALGORITHM picks the lock parameter, PRESETS its value on the step(s); say which and what */
+static void ctl_lock_watch(void)
+{
+    static uint32_t last = 0xFFFFFFFFu;
+    const track_t *t = TSEL;
+    uint32_t w, idx, id = ui.lock_par % P_COUNT, sig;
+    int li;
+    if (ui.layer != LY_STEP || !ui.step_held) {
+        last = 0xFFFFFFFFu;
+        return;
+    }
+    for (w = 0; w < 16u && !((ui.step_held >> w) & 1u); w++)
+        ;
+    idx = ((uint32_t)ui.step_page * 16u + w) % NSTEP;
+    li = lock_find(t, idx, id, 0);
+    sig = id << 24 | idx << 16 | (li >= 0 ? (uint16_t)t->lock[li].val ^ 0x8000u : 0xFFFFu);
+    if (last != 0xFFFFFFFFu && sig != last) {
+        char b[24], v[16], *e;
+        const char *unit = 0;
+        const param_desc_t *d = lock_desc(t, id);
+        if (li >= 0)
+            param_format(d, t->lock[li].val, v, &unit);
+        else
+            str_cpy(v, "OFF", sizeof v);
+        str_cpy(b, d->label, 10);
+        e = ds_cat(b + str_len(b), " ");
+        str_cpy(e, v, (unsigned)(sizeof b - (uint32_t)(e - b)));
+        ctl_toast("LOCK ", b);
+    }
+    last = sig;
+}
+/* EDIT held: what the keys did (the audio interrupt erases and mutes; nothing else on screen shows it), and the
+ * SHIFT / TRANSP counts start again each time EDIT goes down */
+static void ctl_erase_watch(void)
+{
+    static uint32_t prev_notes;
+    static uint16_t prev_mute;
+    static uint8_t prev_er;
+    const track_t *t = TSEL;
+    uint32_t edges = fm1_in.notes & ~prev_notes, k;
+    prev_notes = fm1_in.notes;
+    if (ui.layer != LY_ERASE) {
+        ly_shift_acc = ly_trans_acc = 0;
+        prev_mute = drum_mute;
+        prev_er = er_mute;
+        return;
+    }
+    if (er_mute != prev_er) {
+        prev_er = er_mute;
+        ctl_toast(er_mute ? "KEYS MUTE SOUNDS" : "KEYS ERASE SOUNDS", "");
+        return;
+    }
+    if (drum_mute != prev_mute) {
+        uint32_t ch = (uint32_t)(drum_mute ^ prev_mute), l;
+        for (l = 0; l < 16u && !((ch >> l) & 1u); l++)
+            ;
+        prev_mute = drum_mute;
+        ctl_toast((drum_mute >> l) & 1u ? "MUTED " : "ON AGAIN: ", LANE_NAME[l & 15u]);
+        return;
+    }
+    for (k = 0; k < 27u; k++) {                          /* a key down: what it erases (as it plays, or now if stopped) */
+        char nm[8];
+        if (!((edges >> k) & 1u))
+            continue;
+        if (is_drum(t)) {
+            if (punch_key(k) < 0 || er_mute)
+                continue;                                /* (black keys: the mode; MUTE: said above) */
+            ctl_toast("ERASE ", LANE_NAME[lane_of_key(k) & 15u]);
+        } else {
+            uint32_t n = kb_map(t, k);
+            if (n == KB_SILENT)
+                continue;
+            note_name(nm, n);
+            ctl_toast("ERASE ", nm);
+        }
+    }
+}
 static uint32_t ctl_late0;                              /* felucca_dbg.late at power-on (it is kept across resets) */
 static void ctl_batt_watch(void)                        /* empty: said once, again only after it was charged (2 bars) */
 {
@@ -847,6 +925,8 @@ static void ui_input(void)
     ml_poll();                                           /* MIDI LEARN: a CC came for the picked parameter (2.6) */
     pc_poll();                                           /* MIDI Program Change: a track's sound (2.6, ui.c) */
     ctl_batt_watch();
+    ctl_lock_watch();
+    ctl_erase_watch();
     ctl_midi_step_in();                                  /* the STEP page from a MIDI keyboard (2.6) */
     if (ins_full) {
         ins_full = 0;
@@ -998,6 +1078,17 @@ static void ui_input(void)
             uint32_t total, cur = preset_pos(&total);
             if (total)
                 preset_go((uint32_t)(((int32_t)cur + s % (int32_t)total + (int32_t)total) % (int32_t)total));
+        }
+        if (ctl.menu || (ctl.screen != SC_PLAY && !(ctl.screen == SC_SOUND && !ctl.page[SC_SOUND])) ||
+            ui.layer != LY_PLAY) {                       /* a screen that does not show the sound: say which one */
+            char nm[16];
+            if (is_drum(TSEL) || is_synth(TSEL)) {
+                mv_sound(song.sel, nm, sizeof nm);
+                if (!(ui.msg_t && ui.msg[0] == 'H' && ui.msg[1] == 'E')) {   /* (a refusal - HEAVY ENGINES... - says more) */
+                    ui.msg_t = 0;                        /* (the sound's name says more than "ENGINE ...") */
+                    ctl_toast(is_drum(TSEL) ? "KIT " : "SOUND ", nm);
+                }
+            }
         }
     }
     if ((s = panel_enc(EN_ALGO)) != 0) {                 /* ALGORITHM: the screen's navigator */
@@ -1248,6 +1339,8 @@ static void mv_knob_b(uint32_t k, kbind_t kb)
         param_format(d, song.g[kb.id], o->value, &unit);
         o->ratio = (int16_t)((song.g[kb.id] - d->min) * 1000 / (d->max - d->min));
         o->bipolar = d->min < 0;
+        if ((int32_t)k == ctl.hot)
+            str_cpy(mv.hot_unit, unit ? unit : "", sizeof mv.hot_unit);
         break;
     }
     case KB_GRV_Q:
@@ -1356,6 +1449,126 @@ static uint32_t lvk(uint32_t lv)                         /* a step level -> the 
 /* a layer held long enough (or used): SEQ shows STEPS, SEL shows KEY over the screen (SLOOP's layer pages). A tap
  * (the button's own screen) never flashes it; on the SEQUENCER the steps are the screen already */
 #define CTL_LAYER_MS 250u
+/* the knobs while a layer is held: what each edits, with its value (the page over the screen or not: SEQ held on
+ * the SEQUENCER screen shows no STEPS page, its knobs still say what they edit) */
+static void mv_layer_knobs(void)
+{
+    const track_t *ts = TSEL;
+    uint32_t base = (uint32_t)ui.step_page * 16u;
+    char *e;
+    switch (ui.layer) {
+    case LY_FX:
+        mv_knob_b(0, (kbind_t){KB_GP, G_FILT, "FILTER"});
+        mv_knob_b(1, (kbind_t){KB_GP, G_DUST, "DUST"});
+        mv_knob_b(2, (kbind_t){KB_GP, G_DUCK, "DUCK"});
+        mv_knob_b(3, (kbind_t){KB_TP, P_TFLT, "TRK FLT"});
+        break;
+    case LY_ERASE:                                       /* SHIFT and TRANSP: how far since EDIT went down */
+        e = mv.k[0].value;
+        if (ly_shift_acc > 0)
+            *e++ = '+';
+        ds_itoa(e, ly_shift_acc);
+        mv.k[0].bipolar = 1;
+        mv_knob_b(1, (kbind_t){KB_TP, P_SLEN, "LENGTH"});
+        if (is_drum(ts)) {
+            str_cpy(mv.k[2].value, "--", sizeof mv.k[2].value);
+        } else {
+            e = mv.k[2].value;
+            if (ly_trans_acc > 0)
+                *e++ = '+';
+            ds_itoa(e, ly_trans_acc);
+            mv.k[2].bipolar = 1;
+        }
+        if (ctl.hot == 0)
+            str_cpy(mv.hot_unit, "STEPS", sizeof mv.hot_unit);
+        else if (ctl.hot == 2)
+            str_cpy(mv.hot_unit, "ST", sizeof mv.hot_unit);
+        break;
+    case LY_ROLL:
+        mv_knob_b(0, (kbind_t){KB_GP, G_ROLL, "RATE"});
+        break;
+    case LY_STEP:
+        if (ui.step_held) {                              /* the first step held: its values */
+            uint32_t w, idx;
+            int32_t m;
+            for (w = 0; w < 16u && !((ui.step_held >> w) & 1u); w++)
+                ;
+            idx = (base + w) % NSTEP;
+            m = ts->micro[idx];
+            if (is_drum(ts)) {
+                static const char *const LVN[4] = {"GHOST", "SOFT", "NORM", "HARD"};
+                const dstep_t *d = &ts->dstep[idx];
+                mv.k[0].label = "SOUND";
+                str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
+                str_cpy(mv.k[1].value, dstep_has(d, pen_lane) ? LVN[lvl_rank(dstep_lvl(d, pen_lane))] : "--",
+                        sizeof mv.k[1].value);
+                if (dstep_has(d, pen_lane)) {            /* (the sound's ratchet on this step) */
+                    e = ds_cat(mv.k[2].value, "X");
+                    ds_itoa(e, (int32_t)dstep_rat(d, pen_lane) + 1);
+                } else {
+                    str_cpy(mv.k[2].value, "--", sizeof mv.k[2].value);
+                }
+            } else {
+                const step_t *st = &ts->step[idx];
+                if (step_on(st))
+                    note_name(mv.k[0].value, st->note[0]);
+                else
+                    str_cpy(mv.k[0].value, "--", sizeof mv.k[0].value);
+                mv.k[1].label = "VELO";                  /* (2.6: the step's velocity, 1..127) */
+                if (step_on(st))
+                    ds_itoa(mv.k[1].value, (int32_t)step_vel_shown(st));
+                else
+                    str_cpy(mv.k[1].value, "--", sizeof mv.k[1].value);
+                e = ds_cat(mv.k[2].value, "X");
+                ds_itoa(e, (int32_t)(st->rat & 3u) + 1);
+            }
+            e = mv.k[3].value;
+            if (m > 0)
+                *e++ = '+';
+            ds_itoa(e, m);
+            mv.k[3].ratio = (int16_t)((m - MICRO_MIN) * 1000 / (MICRO_MAX - MICRO_MIN));
+            mv.k[3].bipolar = 1;
+        } else {
+            if (is_drum(ts))
+                mv.k[0].label = "SOUND", str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
+            else
+                note_name(mv.k[0].value, pen_note[0]);
+            mv_knob_b(1, (kbind_t){KB_TP, P_SDIV, "DIV"});
+            mv_knob_b(2, (kbind_t){KB_TP, P_SSWING, "SWING"});
+            mv_knob_b(3, (kbind_t){KB_TP, P_SLEN, "LENGTH"});
+        }
+        break;
+    case LY_SCALE: {
+        const track_t *kr = key_ref();
+        uint32_t sc = (uint32_t)clamp(kr->p[P_SCALE], 0, NSCALES - 1);
+        str_cpy(mv.k[0].value, is_drum(ts) ? "--" : N_CHORD[clamp(ts->p[P_CHORD], 0, 5)], sizeof mv.k[0].value);
+        mv.k[0].ratio = (int16_t)(is_drum(ts) ? -1 : ts->p[P_CHORD] * 200);
+        str_cpy(mv.k[1].value, N_SCALE[sc], sizeof mv.k[1].value);
+        mv.k[1].ratio = (int16_t)(sc * 1000u / (NSCALES - 1u));
+        {
+            static const char *const QN[3] = {"OFF", "LOCK", "WHITE"};   /* (SNAP: the SCALE LOCK) */
+            str_cpy(mv.k[2].value, is_drum(ts) ? "--" : QN[clamp(ts->p[P_QUANT], 0, 2)], sizeof mv.k[2].value);
+            mv.k[2].label = "LOCK";                      /* (SCALE LOCK: "SCALE LOCK" did not fit the cell) */
+        }
+        if (!is_drum(ts))
+            mv_knob_b(3, (kbind_t){KB_TP, P_TRANS, "TRANSP"});
+        else
+            str_cpy(mv.k[3].value, "--", sizeof mv.k[3].value);
+        break;
+    }
+    case LY_MIX:
+        mv_knob_b(0, (kbind_t){KB_TP, P_LEVEL, "VOLUME"});
+        mv_knob_b(1, (kbind_t){KB_TP, P_PAN, "PAN"});
+        mv_knob_b(2, (kbind_t){KB_TP, P_REV, "REVERB"});
+        mv_knob_b(3, (kbind_t){KB_TP, P_DLY, "DELAY"});
+        break;
+    default:
+        break;
+    }
+    (void)e;
+    (void)base;
+}
+
 static void mv_layer(void)
 {
     const track_t *ts = TSEL;
@@ -1395,49 +1608,6 @@ static void mv_layer(void)
             }
             mv.lay_fl[i] = (uint8_t)fl;
         }
-        if (ui.step_held) {                              /* the first step held: its values */
-            uint32_t w, idx;
-            int32_t m;
-            for (w = 0; w < 16u && !((ui.step_held >> w) & 1u); w++)
-                ;
-            idx = (base + w) % NSTEP;
-            m = ts->micro[idx];
-            if (is_drum(ts)) {
-                static const char *const LVN[4] = {"GHOST", "SOFT", "NORM", "HARD"};
-                const dstep_t *d = &ts->dstep[idx];
-                mv.k[0].label = "SOUND";
-                str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
-                str_cpy(mv.k[1].value, dstep_has(d, pen_lane) ? LVN[lvl_rank(dstep_lvl(d, pen_lane))] : "--",
-                        sizeof mv.k[1].value);
-            } else {
-                const step_t *st = &ts->step[idx];
-                if (step_on(st))
-                    note_name(mv.k[0].value, st->note[0]);
-                else
-                    str_cpy(mv.k[0].value, "--", sizeof mv.k[0].value);
-                mv.k[1].label = "VELO";                  /* (2.6: the step's velocity, 1..127) */
-                if (step_on(st))
-                    ds_itoa(mv.k[1].value, (int32_t)step_vel_shown(st));
-                else
-                    str_cpy(mv.k[1].value, "--", sizeof mv.k[1].value);
-                e = ds_cat(mv.k[2].value, "X");
-                ds_itoa(e, (int32_t)(st->rat & 3u) + 1);
-            }
-            e = mv.k[3].value;
-            if (m > 0)
-                *e++ = '+';
-            ds_itoa(e, m);
-            mv.k[3].ratio = (int16_t)((m - MICRO_MIN) * 1000 / (MICRO_MAX - MICRO_MIN));
-            mv.k[3].bipolar = 1;
-        } else {
-            if (is_drum(ts))
-                mv.k[0].label = "SOUND", str_cpy(mv.k[0].value, LANE_SHORT[pen_lane & 15u], sizeof mv.k[0].value);
-            else
-                note_name(mv.k[0].value, pen_note[0]);
-            mv_knob_b(1, (kbind_t){KB_TP, P_SDIV, "DIV"});
-            mv_knob_b(2, (kbind_t){KB_TP, P_SSWING, "SWING"});
-            mv_knob_b(3, (kbind_t){KB_TP, P_SLEN, "LENGTH"});
-        }
     } else {
         const track_t *kr = key_ref();
         uint32_t root = (uint32_t)kr->p[P_ROOT] % 12u, sc = (uint32_t)clamp(kr->p[P_SCALE], 0, NSCALES - 1);
@@ -1469,19 +1639,6 @@ static void mv_layer(void)
             }
             mv.lay_st[i] = (uint8_t)(pc == root ? 2u : in ? 1u : 0u);
         }
-        str_cpy(mv.k[0].value, is_drum(ts) ? "--" : N_CHORD[clamp(ts->p[P_CHORD], 0, 5)], sizeof mv.k[0].value);
-        mv.k[0].ratio = (int16_t)(is_drum(ts) ? -1 : ts->p[P_CHORD] * 200);
-        str_cpy(mv.k[1].value, N_SCALE[sc], sizeof mv.k[1].value);
-        mv.k[1].ratio = (int16_t)(sc * 1000u / (NSCALES - 1u));
-        {
-            static const char *const QN[3] = {"OFF", "LOCK", "WHITE"};   /* (SNAP: the SCALE LOCK) */
-            str_cpy(mv.k[2].value, is_drum(ts) ? "--" : QN[clamp(ts->p[P_QUANT], 0, 2)], sizeof mv.k[2].value);
-            mv.k[2].label = "SCALE LOCK";
-        }
-        if (!is_drum(ts))
-            mv_knob_b(3, (kbind_t){KB_TP, P_TRANS, "TRANSP"});
-        else
-            str_cpy(mv.k[3].value, "--", sizeof mv.k[3].value);
     }
 }
 
@@ -1543,18 +1700,23 @@ static void mv_fill(void)
     mv.hot = ctl.hot >= 0 && fm1_ms - ctl.hot_ms < CTL_HOT_MS ? ctl.hot : -1;
     for (k = 0; k < 4u; k++)
         mv_knob(k);
-    mv.nofocus = (uint8_t)(ctl_roll() || (!ctl.menu && ctl.screen == SC_CLIPS));
+    mv.nofocus = (uint8_t)(ui.layer == LY_PLAY && (ctl_roll() || (!ctl.menu && ctl.screen == SC_CLIPS) ||
+                                                   (ctl.hot >= 0 && ctl_bind((uint32_t)ctl.hot).kind == KB_SHIFT)));
+    /* (SHIFT: the pattern moving on the screen is what it does; an overlay would hide it) */
     if (ui.layer != LY_PLAY) {                           /* a layer held: what its knobs do */
         static const char *const LK[LY_COUNT][4] = {
             {0}, {"FILTER", "DUST", "DUCK", "TRK FLT"}, {"SHIFT", "LENGTH", "TRANSP", 0}, {"RATE", 0, 0, 0},
             {"NOTE", "DIV", "SWING", "LENGTH"}, {"CHORD", "SCALE", "KEYS", "TRANSP"}, {"VOLUME", "PAN", "REVERB", "DELAY"},
             {0}};
         static const char *const LKH[4] = {"NOTE", "LEVEL", "RATCHET", "NUDGE"};
+        mv.hot_unit[0] = 0;                              /* (not the screen's knob's unit) */
         for (k = 0; k < 4u; k++) {
             mv.k[k].label = ui.layer == LY_STEP && ui.step_held ? LKH[k] : LK[ui.layer % LY_COUNT][k];
             mv.k[k].value[0] = 0;
             mv.k[k].ratio = -1;
+            mv.k[k].bipolar = 0;
         }
+        mv_layer_knobs();
     }
     /* SEQUENCER */
     if (ctl_roll() && ui.layer == LY_PLAY)
@@ -1718,8 +1880,9 @@ static void mv_fill(void)
             mv.scene = (uint8_t)k;                       /* every track on clip k */
     }
     mv.blink = (uint8_t)((fm1_ms / 250u) & 1u);
-    if (!ctl.menu && ctl.screen == SC_CLIPS) {
+    if (!ctl.menu && ctl.screen == SC_CLIPS)
         mv.row_sel = ctl.row[SC_CLIPS];
+    if (!ctl.menu && ctl.screen == SC_CLIPS && ui.layer == LY_PLAY) {   /* (a layer held: its knobs, said as such) */
         mv.k[1].label = "LAUNCH", str_cpy(mv.k[1].value, "CLIPS", 12);
         mv.k[2].label = "COPY", str_cpy(mv.k[2].value, "EDIT", 12);
         mv.k[3].label = "CLEAR", str_cpy(mv.k[3].value, "REC", 12);

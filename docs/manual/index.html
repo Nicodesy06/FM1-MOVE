@@ -281,7 +281,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>SOUND · PRESET</td><td>engine</td><td colspan="4">the four macros</td></tr>
     <tr><td>SOUND · ENVELOPE</td><td>engine</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
     <tr><td>SOUND · LFO</td><td>engine</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
-    <tr><td>SOUND · SYNC <span class="tag new">NEW</span></td><td>engine</td><td>LFO SYNC</td><td>LFO TRIG</td><td>LFO POL</td><td>ENV SYNC</td></tr>
+    <tr><td>SOUND · SYNC <span class="tag new">NEW</span></td><td>engine</td><td>LFO (sync)</td><td>LFO TRIG</td><td>LFO POL</td><td>ENV (sync)</td></tr>
     <tr><td>SOUND · SENDS</td><td>engine</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
     <tr><td>SOUND · INSERT <span class="tag new">NEW</span></td><td>engine</td><td>INSERT (type)</td><td>A</td><td>B</td><td>C</td></tr>
     <tr><td>SOUND · INSERT 2 <span class="tag new">NEW</span></td><td>engine</td><td>INS MIX</td><td>FLT TYPE (ANALOG)</td><td colspan="2">—</td></tr>
@@ -390,6 +390,9 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
   <h3>Change a track's kind</h3>
   <p>On TRACKS (<kbd>SEL</kbd>), turn <kbd>KNOB 1</kbd>: the screen asks "TRACK 2 TO DRUMS? — its pattern is cleared". Press <kbd>SEL</kbd> to confirm, anything else to cancel.
     All six of the track's <a href="#clips">clips</a> are emptied too (synth steps and drum lanes do not convert).</p>
+  <div class="note"><b>Holding a button</b> (FX, EDIT, ARP, SEQ, SEL, GLO) gives the knobs other jobs: the strip at the bottom always says what each one edits
+    and its value, on every screen; turn one and its value shows large. EDIT held: SHIFT and TRANSP show how far you moved the pattern; the keys say what they
+    erase or mute. SEQ + a step held: ALGORITHM and PRESETS say which parameter the lock is on and its value.</div>
   <h3>Heavy engines</h3>
   <p>The GRAIN, FM6 and PHYS engines each need a big memory area; three are available. A fourth heavy engine is refused with a message ("HEAVY ENGINES ALL IN USE")
     until one of them changes engine; a project that asks for more loads them as ANALOG and says "HEAVY ENGINES: 3 MAX". Choosing a GRAIN, FM6 or PHYS sound then leaves
@@ -480,7 +483,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
       <ol>
         <li>Hold <kbd>SEL</kbd>: white keys 9–16 or the black keys set the root; <kbd>KNOB 2</kbd> the scale (16: major, minor, dorian, mixolydian, pentatonics,
           harmonic and melodic minor, phrygian, lydian, locrian, blues, whole tone, diminished…).</li>
-        <li>Still holding <kbd>SEL</kbd>: <kbd>KNOB 3</kbd> <b>SCALE LOCK</b> = <b>LOCK</b> (every key into the scale, a key out of it plays the scale’s note below) or
+        <li>Still holding <kbd>SEL</kbd>: <kbd>KNOB 3</kbd> <b>LOCK</b> (SCALE LOCK) = <b>LOCK</b> (every key into the scale, a key out of it plays the scale’s note below) or
           <b>WHITE</b> (the white keys walk the scale from C = the root). It applies to every synth track at once, like the scale.</li>
       </ol>
       <ul>
@@ -629,7 +632,7 @@ footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--edge);
     <tr><td>PRESET</td><td colspan="4">the engine's four macros (PRESETS browses the sounds)</td></tr>
     <tr><td>ENVELOPE</td><td>ATTACK</td><td>DECAY</td><td>SUSTAIN</td><td>RELEASE</td></tr>
     <tr><td>LFO</td><td>RATE</td><td>WAVE</td><td>to PITCH</td><td>to FILTER</td></tr>
-    <tr><td>SYNC <span class="tag new">NEW</span></td><td>LFO SYNC: free, or 4 bars … 1/32 (triplets too)</td><td>LFO TRIG: NOTE / FREE</td><td>LFO POL: bipolar / unipolar</td><td>ENV SYNC: attack, decay, release as note values</td></tr>
+    <tr><td>SYNC <span class="tag new">NEW</span></td><td>LFO (its sync): free, or 4 bars … 1/32 (triplets too)</td><td>LFO TRIG: NOTE / FREE</td><td>LFO POL: bipolar / unipolar</td><td>ENV (its sync): attack, decay, release as note values</td></tr>
     <tr><td>SENDS</td><td>DRIVE</td><td>CHORUS</td><td>DELAY</td><td>REVERB</td></tr>
     <tr><td>INSERT <span class="tag new">NEW</span></td><td>INSERT: OFF, SOFT, HARD, FOLD, FUZZ, CRUSH, PHASR, FLANG, CHOR</td><td colspan="3">A · B · C, named by the type</td></tr>
     <tr><td>INSERT 2 <span class="tag new">NEW</span></td><td>INS MIX: dry / wet</td><td>FLT TYPE: ANALOG's filter LP / BP / HP (ANALOG only)</td><td colspan="2">—</td></tr>
