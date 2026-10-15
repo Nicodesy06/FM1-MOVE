@@ -10,7 +10,7 @@ by feature, from the code (`firmware/src/felucca.c` build switches, `ui_move_ctl
 Status words: **kept** = works as in SLOOP; **changed** = works, differently; **web** = works, but only from the
 device page (`docs/device/`), not from the FM-1's panel yet; **not yet** = the SLOOP code is merged but FM1 Move does
 not reach or apply it yet; **gone** = not in FM1 Move. *2.6* marks what SLOOP 2.6 added. Everything here is verified
-in host simulation only: no FM1 Move build has run on an FM-1 yet.
+in host simulation only: community testers report running 0.3 builds on their FM-1s, but no structured hardware test has been made.
 
 ## Sequencer — all kept
 

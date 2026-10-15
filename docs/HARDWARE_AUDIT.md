@@ -6,7 +6,8 @@ Status: M0 audit, 2026-10-10. Every line is tagged with its source:
 - **[BUILD]**: measured in this repository with the real JieLi toolchain (`tools/build.py` output).
 - **[DOC]**: stated in third-party documentation (SLOOP/Dinghy README, FM-1-RE, the M-VAVE manual). Not re-verified here.
 - **[INFER]**: technical inference from the above.
-- **[TEST-HW]**: a hypothesis that can only be settled on a physical FM-1. **None of the FM1 Move work has been run on hardware yet.**
+- **[TEST-HW]**: a hypothesis that can only be settled on a physical FM-1. **The maintainer has not run FM1 Move on hardware; community testers run 0.3 builds and report
+  issues (docs/BUGFIX_0.3.1.md), which is not a structured hardware validation.**
 
 ## 1. SoC and CPU
 

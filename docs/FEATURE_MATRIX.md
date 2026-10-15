@@ -58,6 +58,8 @@ Feature by feature against SLOOP 2.6 (kept / changed / web only / not yet / remo
 | Step editor with cursor (piano roll, acid-style entry, accent / slide) | SLOOP + FM1M (host, ced992f) | SEQUENCER STEP page on synth tracks |
 | Move a note (the whole step, locks and nudge too) | FM1M (host) | STEP page: ALGORITHM on a note; one undo |
 | Battery level (3 bars, low toast, SETTINGS row) | SLOOP + FM1M (host) | status bar; SETTINGS › BATTERY |
+| REC QUANT 1/16 … 8 bars (when a take starts / stops) | FM1M 0.3.1 (host) | SETTINGS › REC QUANT; 1 BAR default |
+| Overload voice cap, AUDIO LOAD (peak load, late buffers) | FM1M 0.3.1 (host; overload only on a device) | SETTINGS › AUDIO LOAD |
 | Layer pages: steps while SEQ held, chords on the keys while SEL held | SLOOP + FM1M (host, a125cb0) | STEPS (4 × 4) and KEY pages over any screen |
 | Undo / redo (one level, one track) | SLOOP | |
 | Copy / paste / shift / double / halve | PART | shift, length ×2/½ exist |

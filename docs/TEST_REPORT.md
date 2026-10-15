@@ -1,7 +1,7 @@
 # FM1 Move — Test report
 
-All results below are **host simulation** (Linux x86-64, gcc) or **static analysis of the target build**. No
-FM1 Move build has been run on an FM-1 yet.
+All results below are **host simulation** (Linux x86-64, gcc) or **static analysis of the target build**. The
+maintainer has not run FM1 Move on an FM-1; community testers report running 0.3 builds on their FM-1s, but no structured hardware test has been made (docs/BUGFIX_0.3.1.md).
 
 ## Environment
 
@@ -169,6 +169,9 @@ Details: `docs/BUGFIX_0.3.1.md`. New checks, each shown to fail on the previous 
   a hand-written step gets none; the free first take keeps its timing.
 - `eight_track_test`: a fading voice re-struck stays in the budget (9 → 8); the overload cap lowers and recovers.
 - `web/test_device.mjs`: FM-1 port names, the page uses the updater's list.
+- `fm1move_ui_test`, REC QUANT under a bar: every value (OFF, 1/16 … 8 BARS) through the settings word and back, a 0.3
+  word reads as it was, the knob ladder 1/2 → 1/4 → 1/8 → 1/16 → OFF, 1/4 starts on the next beat (not the bar),
+  1/16 within a sixteenth; the 1-bar and 4-bar cycle tests unchanged.
 Full suite: every test passes except the known baseline `fm1_alnk0_irq` (+54 %, cost unchanged at 268); 182 golden
 renders identical. Not run on an FM-1.
 

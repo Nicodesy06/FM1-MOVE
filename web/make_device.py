@@ -10,7 +10,7 @@
                                     /*META*/    the firmware packages offered (version, identity, SHA-256)
                                     /*GROUPS*/  the parameter pages of params.c (ids from core.h)
   docs/index.html                 redirect to device/ (web/site_index.html)
-  docs/firmware/fm1move-VER.fwsc  the FM1 Move package (experimental: never run on an FM-1)
+  docs/firmware/fm1move-VER.fwsc  the FM1 Move package (beta: host-tested, no structured hardware test)
 
   web/make_device.py FM1MOVE_PKG VERSION [SLOOP_PKG]
     FM1MOVE_PKG  build/felucca.fwsc of an FM1MOVE=1 build
