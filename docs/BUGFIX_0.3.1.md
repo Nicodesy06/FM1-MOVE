@@ -92,7 +92,9 @@ lengths and ratchets stay on the step grid. Not done either: groove settings in 
 | Quantize 0/25/50/75/100 %, overdub, hand entry, free take | pass | timing feel wanted |
 | Installer port detection | pass (static + wasm protocol) | install / connect wanted |
 | Clear-track path, filter locks while playing | pass | — |
-| Full suite (SLOOP layout) | see TEST_REPORT.md | — |
+| Full suite (SLOOP layout) | pass but the known baseline `fm1_alnk0_irq` (+54 %, unchanged); 182 golden renders identical | — |
+| Device page vs firmware in WebAssembly (`test_device.mjs`) | all ok | — |
+| Target build (FM1MOVE=1, JieLi compiler) | image 574 676 B of 581 564, RAM 96 576 of 98 304, pool unchanged | — |
 
 ## 4. What needs a physical FM-1
 
@@ -111,7 +113,7 @@ lengths and ratchets stay on the step grid. Not done either: groove settings in 
 ## 5. FEAT-02 — longer samples (feasibility only)
 Today: 3 user slots × 80 KiB (+ USR4's flash holds the projects), 4-bit IMA ADPCM at 22.05 kHz mono = 7.4 s each;
 decoding costs a few operations per sample. MP3 / low-bitrate codecs would need a frame decoder (tens of KiB of code
-and RAM — the app slot has ~8 KiB free and RAM ~1.7 KiB), a decode per voice in the audio interrupt (the place
+and RAM — the app slot has 6.7 KiB free and RAM 1.7 KiB), a decode per voice in the audio interrupt (the place
 BUG-02 lives), and lose sample-exact loops and cheap pitching. Not proposed. Cheaper options to measure later: a
 lower sample rate per slot (11 kHz = 14.8 s, darker), or slot sharing (one kit across slots).
 

@@ -159,6 +159,19 @@ loads the n-th sound).
 
 Host simulation only: **no FM1 Move build has run on a physical FM-1.**
 
+### 0.3.1: the testers' reports (host simulation)
+
+Details: `docs/BUGFIX_0.3.1.md`. New checks, each shown to fail on the previous code first:
+- `fm1move_ui_test`: no UI frame sets `song.sel` to another track (watched over the whole run, fuzz included); a heavy
+  preset refused leaves the sound and the message; PRESETS neighbours by list position; CLIPS opens on the clip
+  playing; a filter lock plays on its step while the loop runs; SETTINGS › AUDIO LOAD.
+- `groove_test`: strength 0 / 25 / 50 / 75 / 100 % on real firing times; an overdub keeps the step's recorded timing;
+  a hand-written step gets none; the free first take keeps its timing.
+- `eight_track_test`: a fading voice re-struck stays in the budget (9 → 8); the overload cap lowers and recovers.
+- `web/test_device.mjs`: FM-1 port names, the page uses the updater's list.
+Full suite: every test passes except the known baseline `fm1_alnk0_irq` (+54 %, cost unchanged at 268); 182 golden
+renders identical. Not run on an FM-1.
+
 ### STEP page MOVE and the battery (host simulation)
 
 `tests/fm1move_ui_test.c`, new checks: ALGORITHM on a note moves it over the next chord with its tie (the chord slides

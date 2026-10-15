@@ -206,10 +206,11 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
     <div class="card">
       <h2>FM1 Move <span id="mv-ver"></span> <span class="badge exp">EXPERIMENTAL</span></h2>
       <p class="muted">Eight tracks of any kind, the Groove Engine, the new screens, FM1M projects, and this device page.</p>
-      <div class="notice red"><b>Never run on an FM-1 yet.</b> This build is compiled with the real JieLi compiler and tested only in
-        simulation (host tests and the virtual FM1). Timing, audio load and the display bus of a real FM-1 have not been tried.
+      <div class="notice red"><b>Beta.</b> This build is compiled with the real JieLi compiler and its fixes are tested only in
+        simulation (host tests and the virtual FM1). Community testers run earlier 0.3 builds on their FM-1s, but there has been no
+        structured hardware test of audio load, timing and the display bus.
         Install it only on an FM-1 you are ready to recover (see Rescue below). Save a SLOOP backup first if you have one.</div>
-      <label class="check"><input type="checkbox" id="ack-move"> I understand this firmware has never been tested on hardware, that it may not
+      <label class="check"><input type="checkbox" id="ack-move"> I understand this firmware has not been tested systematically on hardware, that it may not
         start, and how to put SLOOP or the official firmware back.</label>
       <button class="btn primary" id="go-move" disabled>Install FM1 Move</button>
       <dl class="facts" id="mv-facts"></dl>
@@ -306,7 +307,7 @@ footer { margin-top: 30px; font-size: 12px; color: var(--text-3); line-height: 1
   <div class="card" data-body hidden>
     <h2>Sample slots</h2>
     <div class="slots" id="slots"></div>
-    <p class="tiny" style="margin:10px 0 0">About 3.7 s of sound each (80 KiB, IMA ADPCM at 22 kHz). A drum track plays one as a kit (KIT USR1–USR3), a synth track with
+    <p class="tiny" style="margin:10px 0 0">About 7.4 s of sound each (80 KiB, 4-bit IMA ADPCM at 22.05 kHz, mono). A drum track plays one as a kit (KIT USR1–USR3), a synth track with
       the SAMPLE or GRAIN engine as an instrument. FM1 Move has three slots: SLOOP's fourth (USR4) is where FM1 Move keeps its projects.</p>
   </div>
   <div class="card" data-body hidden>
@@ -3595,9 +3596,9 @@ class Updater {
   }
 }
 
-return { Updater, productOf, logicalImage, validateStockPackage, OUR_LOADER, sha256hex };
+return { Updater, productOf, logicalImage, validateStockPackage, OUR_LOADER, sha256hex, FM1_PORT };
 })();
-const META = {"move": {"version": "0.3-dev", "label": "FM1 Move", "channel": "experimental", "product": "FM-1_900", "pkg": "../firmware/fm1move-0.3-dev.fwsc", "sha256": "d0a621146136c3244d967445950889f5c855da1360563fdd8f560dbc995ba037", "size": 610019}, "sloop": {"version": "2.6", "label": "SLOOP", "channel": "stable", "product": "FM-1_900", "pkg": "../firmware/sloop-2.6.fwsc", "sha256": "199829bb5b892feae9058158dfed7a137c83ec4d8dfc1223761be1f5614ad6a2", "size": 610019}};
+const META = {"move": {"version": "0.3.1", "label": "FM1 Move", "channel": "experimental", "product": "FM-1_900", "pkg": "../firmware/fm1move-0.3.1.fwsc", "sha256": "6dc54abf47d03afd41377fa22892c245435f6cb2cb65a1ea2388ba30ee28f4c7", "size": 610019}, "sloop": {"version": "2.6", "label": "SLOOP", "channel": "stable", "product": "FM-1_900", "pkg": "../firmware/sloop-2.6.fwsc", "sha256": "199829bb5b892feae9058158dfed7a137c83ec4d8dfc1223761be1f5614ad6a2", "size": 610019}};
 const PG = {"groups": [{"name": "ENV", "fam": "env", "scope": 0, "engine": false, "ids": [1, 2, 3, 4]}, {"name": "ENV DEST", "fam": "env", "scope": 0, "engine": false, "ids": [5, 6, 7, 59]}, {"name": "LFO", "fam": "lfo", "scope": 0, "engine": false, "ids": [9, 10, 11, 12]}, {"name": "LFO 2", "fam": "lfo", "scope": 0, "engine": false, "ids": [60, 61, 62]}, {"name": "LFO DEST", "fam": "lfo", "scope": 0, "engine": false, "ids": [13, 14, 15, 16]}, {"name": "FX", "fam": "fx", "scope": 0, "engine": false, "ids": [33, 34, 35, 36]}, {"name": "FILTER", "fam": "fx", "scope": 0, "engine": false, "ids": [50]}, {"name": "SLICER", "fam": "fx", "scope": 0, "engine": false, "ids": [45, 46, 47, 48]}, {"name": "INSERT", "fam": "fx", "scope": 0, "engine": false, "ids": [53, 54, 55, 56]}, {"name": "INSERT 2", "fam": "fx", "scope": 0, "engine": false, "ids": [57]}, {"name": "DLY", "fam": "fx", "scope": 1, "engine": false, "ids": [4, 5, 6, 7]}, {"name": "REV/CHO", "fam": "fx", "scope": 1, "engine": false, "ids": [8, 9, 10, 11]}, {"name": "SEL", "fam": "scl", "scope": 0, "engine": false, "ids": [25, 26, 27, 49]}, {"name": "SEL 2", "fam": "scl", "scope": 0, "engine": false, "ids": [28, 51, 52]}, {"name": "EDIT 1", "fam": "edit", "scope": 0, "engine": true, "ids": [63, 64, 65, 66]}, {"name": "EDIT 2", "fam": "edit", "scope": 0, "engine": true, "ids": [67, 68, 69, 70]}, {"name": "FILTER", "fam": "edit", "scope": 0, "engine": false, "ids": [58, 67, 68, 70]}, {"name": "VOICE", "fam": "edit", "scope": 0, "engine": false, "ids": [37, 38, 41, 42]}, {"name": "VOICE 2", "fam": "edit", "scope": 0, "engine": false, "ids": [43, 44, 39, 40]}, {"name": "GLOBAL", "fam": "glo", "scope": 1, "engine": false, "ids": [0, 1, 2, 3]}, {"name": "MASTER", "fam": "glo", "scope": 1, "engine": false, "ids": [27, 28, 29, 30]}, {"name": "SYSTEM", "fam": "glo", "scope": 1, "engine": false, "ids": [12, 13, 14, 15]}, {"name": "DRUMS", "fam": "glo", "scope": 1, "engine": false, "ids": [24, 25, 26, 32]}, {"name": "MIDI", "fam": "glo", "scope": 1, "engine": false, "ids": [24]}, {"name": "MIDI 2", "fam": "glo", "scope": 1, "engine": false, "ids": [14, 36, 12, 44]}, {"name": "TEXTURE", "fam": "glo", "scope": 1, "engine": false, "ids": [37, 38, 39, 40]}, {"name": "TEXTURE 2", "fam": "glo", "scope": 1, "engine": false, "ids": [41, 42, 43]}, {"name": "PROJECT", "fam": "save", "scope": 1, "engine": false, "ids": [16, 18, 19]}, {"name": "TOOLS", "fam": "save", "scope": 1, "engine": false, "ids": [22, 23, 31]}, {"name": "ARP", "fam": "arp", "scope": 0, "engine": false, "ids": [17, 18, 19, 20]}, {"name": "ARP 2", "fam": "arp", "scope": 0, "engine": false, "ids": [21, 22, 23, 24]}, {"name": "PATTERN", "fam": "seq", "scope": 0, "engine": false, "ids": [29, 30, 31, 32]}], "P": {"P_LEVEL": 0, "P_ATK": 1, "P_DEC": 2, "P_SUS": 3, "P_REL": 4, "P_ED_FLT": 5, "P_ED_PIT": 6, "P_ED_SHP": 7, "P_ED_FX": 8, "P_LRATE": 9, "P_LWAVE": 10, "P_LPHASE": 11, "P_LFADE": 12, "P_LD_PIT": 13, "P_LD_FLT": 14, "P_LD_SHP": 15, "P_LD_AMP": 16, "P_AMODE": 17, "P_ARATE": 18, "P_AOCT": 19, "P_AGATE": 20, "P_ASWING": 21, "P_APROB": 22, "P_AHOLD": 23, "P_AORDER": 24, "P_ROOT": 25, "P_SCALE": 26, "P_QUANT": 27, "P_TRANS": 28, "P_SLEN": 29, "P_SDIV": 30, "P_SSWING": 31, "P_SGATE": 32, "P_DIST": 33, "P_CHOR": 34, "P_DLY": 35, "P_REV": 36, "P_VOICE": 37, "P_GLIDE": 38, "P_PAN": 39, "P_MUTE": 40, "P_GLMODE": 41, "P_PRIO": 42, "P_ALLOC": 43, "P_DETUNE": 44, "P_SLCR": 45, "P_SLPAT": 46, "P_SLRATE": 47, "P_SLDEPTH": 48, "P_CHORD": 49, "P_TFLT": 50, "P_STRUM": 51, "P_VLEAD": 52, "P_ITYPE": 53, "P_IA": 54, "P_IB": 55, "P_IC": 56, "P_IMIX": 57, "P_FTYPE": 58, "P_ESYNC": 59, "P_LSYNC": 60, "P_LTRIG": 61, "P_LPOL": 62, "P_E0": 63, "P_E1": 64, "P_E2": 65, "P_E3": 66, "P_E4": 67, "P_E5": 68, "P_E6": 69, "P_E7": 70, "P_COUNT": 71}, "G": {"G_BPM": 0, "G_SWING": 1, "G_CLOCK": 2, "G_TUNE": 3, "G_DTIME": 4, "G_DFDBK": 5, "G_DCOLOR": 6, "G_DMIX": 7, "G_RSIZE": 8, "G_RDAMP": 9, "G_CRATE": 10, "G_CDEPTH": 11, "G_MIDI": 12, "G_SYNC": 13, "G_ROUTE": 14, "G_INFO": 15, "G_SLOT": 16, "G_NAME": 17, "G_LOAD": 18, "G_SAVE": 19, "G_ENGSEL": 20, "G_ENGGO": 21, "G_CLRSEQ": 22, "G_INITSND": 23, "G_DRCH": 24, "G_DRLVL": 25, "G_DRREV": 26, "G_DUST": 27, "G_DUCK": 28, "G_FILT": 29, "G_ROLL": 30, "G_NEWPRJ": 31, "G_DRDLY": 32, "G_CH1": 33, "G_CH2": 34, "G_CH3": 35, "G_CHOTH": 36, "G_TXSRC": 37, "G_TXLVL": 38, "G_TXTONE": 39, "G_TXMOVE": 40, "G_TXRATE": 41, "G_TXWHEN": 42, "G_TXDUCK": 43, "G_BEND": 44, "G_COUNT": 45}};
 
 /* ------------------------------------------------------------------ basics --- */
@@ -3641,7 +3642,8 @@ let dev = null;          /* {kind: "usb" | "virtual", link, info, move, ...} */
 let midi = null;
 const rq = (r, o) => dev.link.request(r, o);
 const isF = (p) => /felucca/i.test(p.name || "") && p.state !== "disconnected";   /* SLOOP / FM1 Move name their USB MIDI "Felucca" */
-const FM1_PORT = /fm-1|felucca|ota|composite|sinco|usb-midi/i;                   /* every name the updater probes (fm1ota.js) */
+const FM1_PORT = OTA.FM1_PORT;   /* every name the updater probes (fm1ota.js): one list, so Connect never says "No FM-1 found"
+                                   about a port Install would use (a copy here missed SLOOP and Clipper) */
 const seenPorts = (m) => [...new Set([...m.inputs.values()].filter((p) => p.state !== "disconnected").map((p) => p.name || "(no name)"))];
 const NOT_FOUND_TIPS = "Plug the FM-1 straight into the computer (no hub), switch it on, close every other app or tab that uses MIDI " +
   "(SLOOP's editor, M-UPGRADE, a DAW; on Windows only one program can use a MIDI port), then reload this page and try again.";
@@ -3749,7 +3751,7 @@ async function connectVirtual() {
   say("Starting the virtual FM1…");
   let X;
   try {
-    const r = await fetch("../sim/fm1sim.wasm?v=ee2ee86e2c89", { cache: "no-cache" });   /* (make_device.py: this build) */
+    const r = await fetch("../sim/fm1sim.wasm?v=86914f99a43a", { cache: "no-cache" });   /* (make_device.py: this build) */
     if (!r.ok) throw new Error("fm1sim.wasm: HTTP " + r.status);
     ({ instance: { exports: X } } = await WebAssembly.instantiate(await r.arrayBuffer(), {}));
   } catch (e) { say("Could not load the virtual FM1: " + e.message, true); return; }
